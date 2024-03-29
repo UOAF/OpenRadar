@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "PyInstaller Build",
+            "type": "shell",
+            "command": "C:/Users/brian/AppData/Local/Programs/Python/Python312/Scripts/pyinstaller.exe",
+            "args": [
+                "--onefile",
+                "src/OpenRadar.py"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}
