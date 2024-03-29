@@ -1,3 +1,5 @@
+"""Standalone python script to read a .ACMI file and host a single client Tacview Real Time Telemetry stream"""
+
 import socket
 import time
 from zipfile import ZipFile
