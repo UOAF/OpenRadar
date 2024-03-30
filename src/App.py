@@ -2,11 +2,11 @@ import queue
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QFileDialog
-from PyQt6.QtCore import QPointF
+from PyQt6.QtCore import QPointF, pyqtSignal
 
-from AcmiParse import ACMIFileParser
 from Symbols import RadarContact
 from TRTTClient import TRTTClientThread
+from DataThread import DataThread
 
 def runRadarApp(arguments):
 
@@ -16,6 +16,8 @@ def runRadarApp(arguments):
     # tac_client = TRTTClientThread(data_queue)
     # tac_client.start()
     
+    data_thread = DataThread(data_queue)
+    
     app = QtWidgets.QApplication(arguments)
     window = Window()
     window.setGeometry(500, 300, 800, 600)
@@ -23,6 +25,14 @@ def runRadarApp(arguments):
     app.exec()
     # tac_client.join() 
     return
+
+def print_mat(matrix):
+    """Print QT 3x3 matrix for debug"""
+    for i in range (1,4):
+        for j in range (1,4):
+            val = getattr(matrix, f"m{j}{i}")()
+            print(  f"{val:1.04f}", end=" ")
+        print("")
 
 class RadarWidget(QtWidgets.QGraphicsView):
     mapClicked = QtCore.pyqtSignal(QtCore.QPointF)
@@ -47,7 +57,21 @@ class RadarWidget(QtWidgets.QGraphicsView):
             QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setBackgroundBrush(QtGui.QBrush(QtGui.QColor(30, 30, 30)))
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        
+        self.setMap(QtGui.QPixmap('maps/balkans_4k_airbases.png'))
+        
+        self._units_dict = {}
+        data_queue = queue.Queue() # TODO figure out if this a good place to start thread. passing signals is the pain
 
+        # Create the Tacview RT Relemetry client
+        tac_client = TRTTClientThread(data_queue)
+        tac_client.start()
+        
+        self.data_thread = DataThread(data_queue)
+        self.data_thread.start()
+        self.data_thread.object_updates.connect(self.updateMap) # attach datathread->gui signal
+        
+        
     def hasMap(self):
         return not self._empty
 
@@ -93,23 +117,13 @@ class RadarWidget(QtWidgets.QGraphicsView):
                 self.fitInView()
             else:
                 self._zoom = 0
-
-            def print_mat(matrix):
-                for i in range (1,4):
-                    for j in range (1,4):
-                        val = getattr(matrix, f"m{j}{i}")()
-                        print(  f"{val:1.04f}", end=" ")
-                    print("")
-            
-            # print(self.viewportTransform().inverted()[0].mapRect(self.viewport().rect())) # Screenspace current viewable rect
-
-            # view_mat = self.viewportTransform().inverted()[0]
-            # print_mat(view_mat)
-
-            trans_mat = self.transform().inverted()[0]
-            # print_mat(trans_mat)
+                
             for item in self._units.childItems():
-                item.scaleInPlace(trans_mat.m11()) # Scale in place is only a member of the custom subclass in Symbols # TODO subclass QGraphicsItemGroup 
+                # TODO subclass QGraphicsItemGroup 
+                item.scaleInPlace(self.getIconScale()) # Scale in place is only a member of the custom subclass in Symbols 
+                
+    def getIconScale(self) -> float:
+        return self.transform().inverted()[0].m11()
                 
     def toggleDragMode(self):
         if self.dragMode() == QtWidgets.QGraphicsView.DragMode.ScrollHandDrag:
@@ -122,19 +136,69 @@ class RadarWidget(QtWidgets.QGraphicsView):
             self.mapClicked.emit(self.mapToScene(event.position().toPoint()))
         super(RadarWidget, self).mousePressEvent(event)
 
-    def updateContact(self,str):
-        pass
+    def draw_contact(self, object_id, properties: dict[dict]) -> RadarContact:
 
-    def draw_aircontact(self, x, y):
+        radar_map_size_x, radar_map_size_y = self._map.boundingRect().width(), self._map.boundingRect().height()
+        theatre_size_km = 1024 # TODO move out
+        theater_max_meter = theatre_size_km * 1000 # km to m
+        
+        pos_ux = float(properties["T"]["U"])
+        pos_vy = float(properties["T"]["V"])
+        scene_x = pos_ux / theater_max_meter * radar_map_size_x
+        scene_y = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
 
-        aircraft = RadarContact(QPointF(x,y))
+        heading = float(properties["T"].get("Heading", 0))
+        altitude = float(properties["T"].get("Altitude", 0))
+        velocity = float(properties.get("CAS", 0))
+        callsign = "Viper"
+        pilot = "Joe Pilot"
+        scale = self.getIconScale()
+        
+        aircraft = RadarContact(QPointF(scene_x,scene_y),heading,altitude,velocity,callsign,pilot,scale)
         self._units.addToGroup(aircraft)
+        self._units_dict[object_id] = aircraft
+
+        return aircraft
+    
+    def update_contact(self, object_id, properties: dict[dict]) -> None:
+
+        radar_map_size_x, radar_map_size_y = self._map.boundingRect().width(), self._map.boundingRect().height()
+        theatre_size_km = 1024 # TODO move out
+        theater_max_meter = theatre_size_km * 1000 # km to m
+
+        pos_ux = float(properties["T"]["U"])
+        pos_vy = float(properties["T"]["V"])
+        scene_x = pos_ux / theater_max_meter * radar_map_size_x
+        scene_y = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
+
+        heading = float(properties["T"].get("Heading", 0))
+        altitude = float(properties["T"].get("Altitude", 0))
+        velocity = float(properties.get("CAS", 0))
+        callsign = "Viper"
+        pilot = "Joe Pilot"
+        scale = self.getIconScale() # maybe we dont do this here and in the wheel event
+        
+        aircraft = self._units_dict[object_id]
+        aircraft.update(QPointF(scene_x,scene_y),heading,altitude,velocity,callsign,pilot,scale)
 
         return aircraft
     
     def rm_aircontact(self, object_id):
+        
+        aicraft_icon = self._units_dict[object_id]
+        self._units.removeFromGroup(aicraft_icon)
+        del self._units_dict[object_id]
+    
+    def updateMap(self, state):
 
-        pass
+        for key in list(state.keys()):
+ 
+            if key in self._units_dict:
+                self.update_contact(key,state[key])
+            else:
+                self.draw_contact(key,state[key])
+                
+        self.viewport().repaint()
 
 class Window(QtWidgets.QWidget):
     def __init__(self):
@@ -155,7 +219,7 @@ class Window(QtWidgets.QWidget):
         # Button to load ACMI
         self.btnUpdateMap = QtWidgets.QToolButton(self)
         self.btnUpdateMap.setText('Update MAP')
-        self.btnUpdateMap.clicked.connect(self.updateMap)
+        # self.btnUpdateMap.clicked.connect(self.map.updateMap)
         # Arrange layout
         VBlayout = QtWidgets.QVBoxLayout(self)
         VBlayout.addWidget(self.map)
@@ -176,6 +240,3 @@ class Window(QtWidgets.QWidget):
     def photoClicked(self, pos):
         if self.map.dragMode() == QtWidgets.QGraphicsView.DragMode.NoDrag:
             self.editPixInfo.setText('%d, %d' % (pos.x(), pos.y()))
-
-    def updateMap(self, state):
-        self.map.draw_aircontact(2000, 2000)

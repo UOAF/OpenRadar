@@ -6,17 +6,48 @@ from PyQt6.QtGui import QPainter, QPen, QBrush, QColor, QGlyphRun, QFont, QFontD
 
 class RadarContact(QtWidgets.QGraphicsItem):
 
-    def __init__(self, center: QPointF, size:float=150, parent=None) -> None:
+    def __init__(self, center: QPointF, 
+                 heading: float=0, 
+                 altitude: float=0, 
+                 velocity: float=0, 
+                 callsign: str="", 
+                 pilot: str="", 
+                 scale: float=1,
+                 size: float=150, 
+                 parent=None) -> None:
         super(RadarContact, self).__init__(parent)
         self._center = center
         self._initial_size = size
         self._size = size
-        self._scale = 1
+        self._scale = scale
         self._color = QColor(0,0,255,255)
+        self.heading = float(heading)
+        self.altitude = float(altitude)
+        self.velocity = float(velocity)
+        self.callsign = callsign
+        self.pilot = pilot
         
         # TODO move this
-        font_File_path = "fonts/app6a05.ttf"; # Specify the path to your font file
-        self.font_id = self.load_custom_font(font_File_path)
+        # font_File_path = "fonts/app6a05.ttf"; # Specify the path to your font file
+        # self.font_id = self.load_custom_font(font_File_path)
+        
+    def update(self,
+                center: QPointF,
+                heading: float=0, 
+                altitude: float=0, 
+                velocity: float=0,
+                callsign: str="", 
+                pilot: str="", 
+                scale: float=1):
+        self._center = center
+        self._scale = float(scale)
+        if heading: self.heading = float(heading)
+        if altitude: self.altitude = float(altitude)
+        if velocity: self.velocity = float(velocity)
+        self.callsign = callsign
+        self.pilot = pilot
+        if not self.velocity:
+            pass
         
     def load_custom_font(self, font_File_path):
         font_id = QFontDatabase.addApplicationFont(font_File_path)
@@ -36,13 +67,14 @@ class RadarContact(QtWidgets.QGraphicsItem):
 
         return QRectF(top_left, area)
 
-    def getVelLine(self, heading_deg: float, velocity_Kias: float) -> QLineF:
-        vel_scale = velocity_Kias / 1000.0
+    def getVelLine(self) -> QLineF:
+
+        vel_scale = self.velocity / 1000.0
         vel_vec_len_px = min(self._size/2.0, vel_scale*self._size/2.0)
 
         start_pt = self._center
 
-        heading_rad = math.radians(heading_deg-90) # -90 rotaes north to up
+        heading_rad = math.radians(self.heading-90) # -90 rotaes north to up
         end_x = start_pt.x() + vel_vec_len_px*math.cos(heading_rad)
         end_y = start_pt.y() + vel_vec_len_px*math.sin(heading_rad)
         end_pt = QPointF(end_x, end_y)
@@ -61,7 +93,7 @@ class RadarContact(QtWidgets.QGraphicsItem):
         # Draw Velocity Line
         pen = QPen(QBrush(QColor(0,0,255,255)), self._size/50.0)
         painter.setPen(pen)
-        painter.drawLine(self.getVelLine(12,300))
+        painter.drawLine(self.getVelLine())
         
         painter.drawRect(self.shapeRect())
         
