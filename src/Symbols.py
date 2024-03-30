@@ -13,12 +13,11 @@ class RadarContact(QtWidgets.QGraphicsItem):
                  callsign: str="", 
                  pilot: str="", 
                  scale: float=1,
-                 size: float=150, 
                  parent=None) -> None:
         super(RadarContact, self).__init__(parent)
         self._center = center
-        self._initial_size = size
-        self._size = size
+        self._initial_size = QSizeF(200, 100) * 1.5
+        self._size = self._initial_size
         self._scale = scale
         self._color = QColor(0,0,255,255)
         self.heading = float(heading)
@@ -58,19 +57,23 @@ class RadarContact(QtWidgets.QGraphicsItem):
                 return font_id
 
     def boundingRect(self) -> QRectF:
-        return QRectF(self._center.x()-self._size/2.0, self._center.y()-self._size/2.0, self._size, self._size)
+        return QRectF(self._center.x()-self._size.width()/2.0, 
+                      self._center.y()-self._size.height()/2.0, 
+                      self._size.width(), 
+                      self._size.height())
 
     def shapeRect(self) -> QRectF:
         # Point 1/8 the way between center and bounding top left
-        top_left = QPointF(self._center.x() - self._size/16.0, self._center.y() - self._size/16.0) 
-        area = QSizeF(self._size/8.0, self._size/8.0)
+        top_left = QPointF(self._center.x() - self._size.width()/32.0, 
+                           self._center.y() - self._size.height()/16.0) 
+        area = QSizeF(self._size.width()/16.0, 
+                      self._size.height()/8.0)
 
         return QRectF(top_left, area)
 
     def getVelLine(self) -> QLineF:
-
         vel_scale = self.velocity / 1000.0
-        vel_vec_len_px = min(self._size/2.0, vel_scale*self._size/2.0)
+        vel_vec_len_px = self._size.height()/16 + min(self._size.height()/2.0, vel_scale*self._size.height()/2.0)
 
         start_pt = self._center
 
@@ -89,18 +92,45 @@ class RadarContact(QtWidgets.QGraphicsItem):
               option: QtWidgets.QStyleOptionGraphicsItem | None, 
               widget: QtWidgets.QWidget | None = ...) -> None:
         
+        # Draw label Line
+        pen = QPen(QBrush(QColor(255,255,255,255)), self._size.height()/80.0)
+        painter.setPen(pen)
+        ll_top_left = QPointF(self._center.x() - self._size.width()/6.0, 
+                              self._center.y() - self._size.height()/6.0)
+        # ll_bottom_right = QPointF(self._center.x() - self._size.width()/16.0, 
+        #                           self._center.y() - self._size.height()/16.0)
+        ll_bottom_right = self.shapeRect().topLeft()
+        painter.drawLine(ll_top_left, ll_bottom_right)
+        
+        pen = QPen(QBrush(QColor(0,0,255,255)), self._size.height()/50.0)
+        # Draw Name
+        bottom_right = QPointF(ll_top_left.x(), 
+                               ll_top_left.y() - self._size.height()/16.0)
+        top_left = QPointF(self._center.x() - self._size.width()/2, 
+                           ll_top_left.y() + self._size.height()/16.0)
+        # painter.drawRect(QRectF(top_left,bottom_right))
+        font = QFont("Ariel")
+        font.setPixelSize(int(self._size.height()/8))
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(QRectF(top_left,bottom_right), Qt.AlignmentFlag.AlignCenter, self.pilot) # TODO replace with callsign when tacview is updated
+   
+        # Draw bounding Box debug
+        # painter.drawRect(self.boundingRect())
+        
         
         # Draw Velocity Line
-        pen = QPen(QBrush(QColor(0,0,255,255)), self._size/50.0)
+        
         painter.setPen(pen)
         painter.drawLine(self.getVelLine())
         
+        # Draw outside shape
         painter.drawRect(self.shapeRect())
         
 
         # pen = QPen(Qt.GlobalColor.blue)
         # pen.setWidth = 4000
-        # pen = QPen(QBrush(Qt.GlobalColor.blue), self._size/20.0)
+        # pen = QPen(QBrush(Qt.GlobalColor.blue), self._size.height()/20.0)
         # painter.setPen(pen)
         # painter.drawArc(self.shapeRect(), 16*180, -16*180)
     

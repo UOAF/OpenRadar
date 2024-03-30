@@ -33,7 +33,11 @@ class DataThread(QThread):
 
             if object_key in ("-"):
                 self.object_removals.emit(acmi_obj["-"])
-                del self.state[object_key]
+                object_id = acmi_obj[object_key]
+                if object_id in self.state:
+                    del self.state[object_id]
+                else:
+                    print(f"tried to delete object {object_id} not in self.state")
             elif object_key in ("#"):
                 self.object_updates.emit(self.state)
             elif object_key in ("global"):
@@ -53,15 +57,15 @@ class DataThread(QThread):
             if not any(clas in object_next[object_id].get("Type", "") for clas in HIDDEN_OBJECT_CLASSES):
                 self.state[object_id] = object_next[object_id]
             return
-        
+
         # Filter and merge new dictionary over old dictionary
         next_properties = {key: val for key, val in object_next[object_id].items() if val is not None}
         object_last = self.state[object_id]
         out_dict = object_last | next_properties
         out_dict["T"] = object_last["T"] | {key: val for key, val in next_properties["T"].items() if val is not None}
-        
+
         self.state[object_id] = out_dict
-        
+
 # Testing
 if __name__ == '__main__':
 

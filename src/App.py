@@ -118,9 +118,12 @@ class RadarWidget(QtWidgets.QGraphicsView):
             else:
                 self._zoom = 0
                 
+                
+            icon_scale = self.getIconScale()
+            print(icon_scale)
             for item in self._units.childItems():
                 # TODO subclass QGraphicsItemGroup 
-                item.scaleInPlace(self.getIconScale()) # Scale in place is only a member of the custom subclass in Symbols 
+                item.scaleInPlace(icon_scale) # Scale in place is only a member of the custom subclass in Symbols 
                 
     def getIconScale(self) -> float:
         return self.transform().inverted()[0].m11()
@@ -150,8 +153,8 @@ class RadarWidget(QtWidgets.QGraphicsView):
         heading = float(properties["T"].get("Heading", 0))
         altitude = float(properties["T"].get("Altitude", 0))
         velocity = float(properties.get("CAS", 0))
-        callsign = "Viper"
-        pilot = "Joe Pilot"
+        callsign = properties.get("Callsign", "Viper")
+        pilot = properties.get("Pilot", "Joe Pilot")
         scale = self.getIconScale()
         
         aircraft = RadarContact(QPointF(scene_x,scene_y),heading,altitude,velocity,callsign,pilot,scale)
@@ -174,8 +177,8 @@ class RadarWidget(QtWidgets.QGraphicsView):
         heading = float(properties["T"].get("Heading", 0))
         altitude = float(properties["T"].get("Altitude", 0))
         velocity = float(properties.get("CAS", 0))
-        callsign = "Viper"
-        pilot = "Joe Pilot"
+        callsign = properties.get("Callsign", "Viper")
+        pilot = properties.get("Pilot", "Joe Pilot")
         scale = self.getIconScale() # maybe we dont do this here and in the wheel event
         
         aircraft = self._units_dict[object_id]
