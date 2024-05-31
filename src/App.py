@@ -121,13 +121,8 @@ class Map:
             self._base_zoom = min(self.width / maprect.width, self.height / maprect.height)
             self._scale = self._base_zoom
             newSize = int(maprect.width * self._base_zoom), int(maprect.height * self._base_zoom)
-            print(self._map_source.get_size())
-            print(self.size)
-            print(newSize)
             
             self._image_surf = pygame.transform.scale(self._map_source, newSize)
-            print("resize", self._scale)
-            
             #Center
             self._offsetX, self._offsetY = ((self.size[0] - newSize[0]) / 2), ((self.size[1] - newSize[1]) / 2) 
                 
@@ -165,11 +160,9 @@ class Map:
         else:
             self._zoom = 0
             
-        print(self._zoom)
-            
     def _canvas_to_screen(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        screenX = int((canvasCoords[0] + self._offsetX) * self._scale)
-        screenY = int((canvasCoords[1] + self._offsetY) * self._scale)
+        screenX = int((canvasCoords[0] * self._scale) + self._offsetX)
+        screenY = int((canvasCoords[1] * self._scale) + self._offsetY)
         return screenX, screenY
         
     def _screen_to_canvas(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
@@ -178,30 +171,27 @@ class Map:
         return  canvasX, canvasY
     
     def _canvas_to_world(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
-        return (0,0)    
-    
-        # TODO port to pygame
-        # radar_map_size_x, radar_map_size_y = self._map.boundingRect().width(), self._map.boundingRect().height()
-        # theatre_size_km = 1024 # TODO move out
-        # theater_max_meter = theatre_size_km * 1000 # km to m
-        
-        # pos_ux = float(properties["T"]["U"])
-        # pos_vy = float(properties["T"]["V"])
-        # scene_x = pos_ux / theater_max_meter * radar_map_size_x
-        # scene_y = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
+        radar_map_size_x, radar_map_size_y = self._map_source.get_size()
+        theatre_size_km = 1024 # TODO move out
+        theater_max_meter = theatre_size_km * 1000 # km to m
+
+        pos_ux = canvasCoords[0] / radar_map_size_x * theater_max_meter
+        pos_vy = theater_max_meter - (canvasCoords[1] / radar_map_size_y * theater_max_meter)
+
+        return pos_ux, pos_vy
         
     def _world_to_canvas(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
         
-        radar_map_size_x, radar_map_size_y = self.width, self.height
+        radar_map_size_x, radar_map_size_y = self._map_source.get_size()
         theatre_size_km = 1024 # TODO move out
         theater_max_meter = theatre_size_km * 1000 # km to m
 
         pos_ux = worldCoords[0] #float(properties["T"]["U"])
         pos_vy = worldCoords[1] #float(properties["T"]["V"])
         canvasX = pos_ux / theater_max_meter * radar_map_size_x
-        canvasY = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
-        
-        return canvasY, canvasY
+        canvasY = (theater_max_meter - pos_vy) / theater_max_meter * radar_map_size_y     
+                
+        return canvasX, canvasY
 
 class Radar:
     def __init__(self, map: Map):
@@ -213,7 +203,8 @@ class Radar:
     def on_render(self):
         
         for object in self._gamestate.objects:
-            if object.Type not in HIDDEN_OBJECT_CLASSES:
+            if not any(clas in object.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects
+                
                 pos = self._map._canvas_to_screen(self._map._world_to_canvas((object.T["U"], object.T["V"])))
                 self.draw_contact(self._display_surf, pos, (0,0,255), float(object.T["Heading"]), float(object.CAS))
 
@@ -351,5 +342,28 @@ class GameState:
         
 if __name__ == "__main__" :
     
-    theApp = App()
-    theApp.on_execute()
+    pygame.init()
+    _display_surf = pygame.display.set_mode((640,480), pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE)
+    
+    map = Map(_display_surf)
+    
+    print("offsetX, offsetY ", map._offsetX, map._offsetY)
+    print("map size ", map._image_surf.get_size())
+    
+    top_left = map._world_to_canvas((0,1024*1000))
+    top_left_screen = map._canvas_to_screen(top_left)
+    print(f"Top Left: {top_left} Screen: {top_left_screen}")
+    
+    top_right = map._world_to_canvas((1024*1000,1024*1000))
+    top_right_screen = map._canvas_to_screen(top_right)
+    print(f"Top Right: {top_right} Screen: {top_right_screen}")
+    
+    bottom_left = map._world_to_canvas((0,0))
+    bottom_left_screen = map._canvas_to_screen(bottom_left)
+    print(f"Bottom Left: {bottom_left} Screen: {bottom_left_screen}")
+    
+    bottom_right = map._world_to_canvas((1024*1000,0))
+    bottom_right_screen = map._canvas_to_screen(bottom_right)
+    print(f"Bottom Right: {bottom_right} Screen: {bottom_right_screen}")
+    
+    pygame.quit()

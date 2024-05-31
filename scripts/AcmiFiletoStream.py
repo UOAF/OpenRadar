@@ -4,7 +4,7 @@ import socket
 import time
 from zipfile import ZipFile
 
-filename = "Data\\test.txt"
+filename = "Data\\acm.zip.acmi"
 
 # Read file as text into into acmidata
 acmidata = list()
