@@ -44,6 +44,7 @@ class App:
             self._mouseDown = False
             
     def on_loop(self):
+        self._map.on_loop()
         pass
     
     def on_render(self):
@@ -81,7 +82,7 @@ class Map:
         self._zoom = 0
         self._scale = 1
         self.fitInView()
-        self._radar = Radar(displaysurface)
+        self._radar = Radar(self)
         
         self.font = pygame.font.SysFont('Comic Sans MS', 30)
         
@@ -93,6 +94,9 @@ class Map:
         # canvasPos = self._screen_to_canvas(pygame.mouse.get_pos())
         # text_surface = self.font.render(f"{pos}\n{canvasPos}", False, (0, 0, 0), (255, 255, 255))
         # self._display_surf.blit(text_surface, (self._offsetX,self._offsetY))
+        
+    def on_loop(self):
+        self._radar.on_loop()
         
     def load_map(self, mappath):
         if mappath:
@@ -187,16 +191,37 @@ class Map:
         # scene_y = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
         
     def _world_to_canvas(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
-        return (0,0)
+        
+        radar_map_size_x, radar_map_size_y = self.width, self.height
+        theatre_size_km = 1024 # TODO move out
+        theater_max_meter = theatre_size_km * 1000 # km to m
+
+        pos_ux = worldCoords[0] #float(properties["T"]["U"])
+        pos_vy = worldCoords[1] #float(properties["T"]["V"])
+        scene_x = pos_ux / theater_max_meter * radar_map_size_x
+        scene_y = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
+        
+        return scene_x, scene_y
 
 class Radar:
-    def __init__(self, surface: pygame.Surface):
-        self._display_surf = surface
-        self._size = self.width, self.height = (18,18)
+    def __init__(self, map: Map):
+        self._display_surf = map._display_surf
+        self._size = self.width, self.height = (20,20)
+        self._gamestate = GameState()
+        self._map = map
     
     def on_render(self):
         
-        self.draw_contact(self._display_surf, (50,50,0), (0,0,255), 45, 1000)
+        for object in self._gamestate.objects:
+            if object.Type not in HIDDEN_OBJECT_CLASSES:
+                pos = self._map._canvas_to_screen(self._map._world_to_canvas((object.T["U"], object.T["V"])))
+                self.draw_contact(self._display_surf, pos, (0,0,255), float(object.T["Heading"]), float(object.CAS))
+
+        # self.draw_contact(self._display_surf, (50,50,0), (0,0,255), 45, 1000)
+        
+        
+    def on_loop(self):
+        self._gamestate.update_state()
     
     def draw_contact(self, surface: pygame.Surface, pos, color, heading, velocity):
         
@@ -205,13 +230,20 @@ class Radar:
                     pos[1]-self.height/2.0, 
                     self.width, 
                     self.height))
-        pygame.draw.rect(surface, color, contactrect, 3)
+        pygame.draw.rect(surface, pygame.Color("blue"), contactrect, 3)
+        
+        # Draw Name Line
+        # Draw a line from the top left of the contact to the right side of the name
+        pygame.draw.line(surface, pygame.Color("white"), (contactrect.topleft), (contactrect.topleft[0]+self.width, contactrect.topleft[1]), 2)
+
+        # Draw Name
+        
         
         # Draw Velocity Line
         vector = self.getVelocityVector(pos, heading, velocity) # returns line starting at 0,0
         start_point = vector[0][0] + pos[0], vector[0][1] + pos[1] # offset to the location of the contact
         end_point = vector[1][0] + pos[0], vector[1][1] + pos[1] # offset to the location of the contact
-        pygame.draw.line(surface, pygame.Color("white"), start_point, end_point, 2)
+        pygame.draw.line(surface, pygame.Color("blue"), start_point, end_point, 3)
 
     def boundingRect(self, pos) -> tuple[float,float,float,float]:
 
@@ -234,6 +266,90 @@ class Radar:
 
         return (start_pt, end_pt)
 
+import AcmiParse
+from TRTTClient import TRTTClientThread
+import queue 
+SHOWN_OBJECT_CLASSES = ("Aircraft")
+HIDDEN_OBJECT_CLASSES = ("Static", "Vehicle")
+
+class GameState:
+    """
+    Represents the state of the game.
+
+    Attributes:
+        objects (list[AcmiParse.ACMIObject]): List of ACMI objects in the game.
+        data_queue (queue.Queue): Queue to store incoming data from the Tacview client.
+        global_vars (dict): Dictionary to store global variables.
+        parser (AcmiParse.ACMIFileParser): ACMI parser to parse incoming data.
+    """
+
+    def __init__(self):
+        self.objects: list[AcmiParse.ACMIObject] = list()
+        self.data_queue = queue.Queue()
+        self.global_vars = dict()
+        
+        # Create the ACMI parser
+        self.parser = AcmiParse.ACMIFileParser()
+        
+        # Create the Tacview RT Relemetry client
+        tac_client = TRTTClientThread(self.data_queue)
+        tac_client.start()
+        
+    def update_state(self):
+        """
+        Update the game state with the latest data from the Tacview client.
+        """
+        
+        while not self.data_queue.empty():
+            
+            line = self.data_queue.get()
+            if line is None: break # End of data
+            
+            acmiline = self.parser.parse_line(line) # Parse the line into a dict
+            if acmiline is None: continue # Skip if line fails to parse
+
+            if acmiline.action in AcmiParse.ACTION_REMOVE:
+                # Remove object from battlefield
+                self._remove_object(acmiline.object_id)
+                # print(f"tried to delete object {acmiline.object_id} not in self.state")
+            
+            elif acmiline.action in AcmiParse.ACTION_TIME:
+                pass
+            
+            elif acmiline.action in AcmiParse.ACTION_GLOBAL and isinstance(acmiline, AcmiParse.ACMIObject):
+                self.global_vars = self.global_vars | acmiline.properties
+            
+            elif acmiline.action in AcmiParse.ACTION_UPDATE and isinstance(acmiline, AcmiParse.ACMIObject):
+                self._update_object(acmiline)
+            
+            else:
+                print(f"Unknown action {acmiline.action} in {acmiline}")
+
+    def _remove_object(self, object_id: str) -> None:
+        """
+        Remove an object from the game state.
+
+        Args:
+            object_id (str): The ID of the object to remove.
+        """
+        self.objects = [obj for obj in self.objects if obj.object_id != object_id]
+
+    def _update_object(self, updateObj: AcmiParse.ACMIObject) -> None:
+        """
+        Update an object in the game state.
+
+        Args:
+            updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
+        """
+        if updateObj.object_id not in self.objects:
+            self.objects.append(updateObj)
+        else:
+            for obj in self.objects:
+                if obj.object_id == updateObj.object_id:
+                    obj.update(updateObj.properties)
+                    break
+        
 if __name__ == "__main__" :
+    
     theApp = App()
     theApp.on_execute()
