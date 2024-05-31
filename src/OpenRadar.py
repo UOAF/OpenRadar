@@ -1,9 +1,8 @@
 import sys
 
-from App import runRadarApp
+from App import App
 
 if __name__ == '__main__':
 
-    runRadarApp(sys.argv)
-
-    sys.exit()
+    theApp = App(sys.argv)
+    theApp.on_execute()

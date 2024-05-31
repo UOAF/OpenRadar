@@ -4,7 +4,7 @@ import socket
 import time
 from zipfile import ZipFile
 
-filename = "Data\\acm.zip.acmi"
+filename = "Data\\test.txt"
 
 # Read file as text into into acmidata
 acmidata = list()
@@ -18,7 +18,7 @@ if filename.endswith(".zip.acmi"):
             quit()
 
 elif filename.endswith(".acmi") or filename.endswith(".txt"):
-    with open("./data/acm.txt", 'r', encoding='utf-8') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         acmidata = file.readlines()
 else:
     quit()

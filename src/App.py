@@ -2,7 +2,7 @@ import pygame
 import math
 
 class App:
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._running = True
         self.size = self.width, self.height = 640, 400
         self._mouseDown = False
@@ -198,10 +198,10 @@ class Map:
 
         pos_ux = worldCoords[0] #float(properties["T"]["U"])
         pos_vy = worldCoords[1] #float(properties["T"]["V"])
-        scene_x = pos_ux / theater_max_meter * radar_map_size_x
-        scene_y = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
+        canvasX = pos_ux / theater_max_meter * radar_map_size_x
+        canvasY = radar_map_size_y - pos_vy / theater_max_meter * radar_map_size_y
         
-        return scene_x, scene_y
+        return canvasY, canvasY
 
 class Radar:
     def __init__(self, map: Map):
