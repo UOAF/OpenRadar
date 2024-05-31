@@ -144,7 +144,11 @@ class ACMIFileParser:
             # Parse each key=value pair out of the ACMI object_id line
             properties = {}
             for prop in parts[1:]:
-                key, value = prop.split('=')
+                try:
+                    key, value = prop.split('=')
+                except ValueError:
+                    print(f"Caught ValueError {parts}")
+                    break
                 if key in "T":
                     position_vals = self.parse_t(value)
                     if position_vals is not None:
