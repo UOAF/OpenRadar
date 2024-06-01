@@ -1,3 +1,6 @@
+from cgitb import text
+from pydoc import doc
+from turtle import heading
 import pygame
 import math
 
@@ -7,11 +10,15 @@ class App:
         self.size = self.width, self.height = 640, 400
         self._mouseDown = False
         self._startPan = (0,0)
+
  
     def on_init(self):
         pygame.init()
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE)
         self._map = Map(self._display_surf)
+       
+        self.clock = pygame.time.Clock()
+        self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
  
     def on_event(self, event):
@@ -50,6 +57,8 @@ class App:
     def on_render(self):
         self._display_surf.fill((50,50,50)) # Fill grey
         self._map.on_render()
+        self.fps_counter()
+          
         pygame.display.flip()
     
     def on_cleanup(self):
@@ -65,8 +74,14 @@ class App:
                 self.on_event(event)
             self.on_loop()
             self.on_render()
+            self.clock.tick()
             
         self.on_cleanup()
+        
+    def fps_counter(self):
+        fps = str(int(self.clock.get_fps()))
+        fps_t = self.font.render(fps , 1, pygame.Color("RED"))
+        self._display_surf.blit(fps_t,(0,0))
         
 class Map:
     def __init__(self, displaysurface: pygame.Surface):
@@ -112,6 +127,7 @@ class Map:
         
     def resize(self, width, height):
         self.size = self.width, self.height = width, height
+        self._radar.resize(width, height)
         self.fitInView()
 
     def fitInView(self, scale=True):
@@ -193,62 +209,80 @@ class Map:
                 
         return canvasX, canvasY
 
+
+from AcmiParse import ACMIObject
+
 class Radar:
     def __init__(self, map: Map):
         self._display_surf = map._display_surf
-        self._size = self.width, self.height = (20,20)
+        self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
         self._gamestate = GameState()
         self._map = map
+        self.font = pygame.font.SysFont('Comic Sans MS', 18)
     
     def on_render(self):
         
-        for object in self._gamestate.objects:
-            if not any(clas in object.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects
-                
-                pos = self._map._canvas_to_screen(self._map._world_to_canvas((object.T["U"], object.T["V"])))
-                self.draw_contact(self._display_surf, pos, (0,0,255), float(object.T["Heading"]), float(object.CAS))
+        self._radar_surf.fill((0,0,0,0)) # Fill transparent
+        
+        for id, contact in self._gamestate.objects.items():
+            if not any(clas in contact.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects
+                self.draw_contact(self._radar_surf, contact)
 
+        self._display_surf.blit(self._radar_surf, (0,0))
         # self.draw_contact(self._display_surf, (50,50,0), (0,0,255), 45, 1000)
         
         
     def on_loop(self):
         self._gamestate.update_state()
+        
+    def resize(self, width, height):
+        self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
     
-    def draw_contact(self, surface: pygame.Surface, pos, color, heading, velocity):
+    def draw_contact(self, surface: pygame.Surface, contact: ACMIObject, 
+                     color: tuple[int, int, int] | None = None, size: int = 20) -> None:
+        """
+        Draws a contact on the given surface.
+
+        Args:
+            surface (pygame.Surface): The surface on which to draw the contact.
+            pos (tuple[int, int]): The center position of the icon to be drawn representing the contacts location.
+            color (tuple[int, int, int]): The color of the contact.
+            heading (float): The heading of the contact.
+            velocity (float): The velocity of the contact.
+            size (int, optional): The size of the contact icon in pixels. Defaults to 20.
+        """
+        
+        pos = self._map._canvas_to_screen(self._map._world_to_canvas((contact.T["U"], contact.T["V"])))
+        heading = float(contact.T["Heading"])
+        velocity = float(contact.CAS)
+        color = (0,0,255)
         
         # Draw Square
-        contactrect = pygame.Rect((pos[0]-self.width/2.0, 
-                    pos[1]-self.height/2.0, 
-                    self.width, 
-                    self.height))
+        contactrect = pygame.Rect((0,0,size,size))
+        contactrect.center = pos
         pygame.draw.rect(surface, pygame.Color("blue"), contactrect, 3)
+        
+        # Draw Name
+        text_surface = self.font.render(f"{contact.Name}", True, color)
+        textrect = pygame.Rect((0,0),text_surface.get_size())
+        textrect.bottomright = int(contactrect.left-size/4), int(contactrect.top)
+        
+        surface.blit(text_surface, textrect)
         
         # Draw Name Line
         # Draw a line from the top left of the contact to the right side of the name
-        pygame.draw.line(surface, pygame.Color("white"), (contactrect.topleft), (contactrect.topleft[0]+self.width, contactrect.topleft[1]), 2)
+        pygame.draw.line(surface, pygame.Color("white"), contactrect.topleft, textrect.midright, 2)
 
-        # Draw Name
-        
-        
         # Draw Velocity Line
-        vector = self.getVelocityVector(pos, heading, velocity) # returns line starting at 0,0
-        start_point = vector[0][0] + pos[0], vector[0][1] + pos[1] # offset to the location of the contact
-        end_point = vector[1][0] + pos[0], vector[1][1] + pos[1] # offset to the location of the contact
+        start_point, end_point = self.getVelocityVector(pos, heading, velocity) # returns line starting at 0,0
         pygame.draw.line(surface, pygame.Color("blue"), start_point, end_point, 3)
-
-    def boundingRect(self, pos) -> tuple[float,float,float,float]:
-
-        return (pos[0]-self.width/2.0, 
-                pos[1]-self.height/2.0, 
-                self.width, 
-                self.height)
         
-    def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading = 0.0, velocity = 0.0
-                          ) -> tuple[tuple[float,float],tuple[float,float]]:
+    def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading: float = 0.0, velocity: float = 0.0, 
+                          size: int = 20) -> tuple[tuple[float,float],tuple[float,float]]:
         vel_scale = velocity / 1000.0
-        vel_vec_len_px = self.height/16 + min(self.height/2.0, vel_scale*self.height/2.0) # todo scale for pygame
+        vel_vec_len_px = size + min(size/2.0, vel_scale*size/2.0) # Scale the velocity vector
 
-        start_pt = (0,0)
+        start_pt = start_pos
 
         heading_rad = math.radians(heading-90) # -90 rotaes north to up
         end_x = start_pt[0] + vel_vec_len_px*math.cos(heading_rad)
@@ -275,7 +309,7 @@ class GameState:
     """
 
     def __init__(self):
-        self.objects: list[AcmiParse.ACMIObject] = list()
+        self.objects: dict["str", AcmiParse.ACMIObject] = dict()
         self.data_queue = queue.Queue()
         self.global_vars = dict()
         
@@ -290,6 +324,7 @@ class GameState:
         """
         Update the game state with the latest data from the Tacview client.
         """
+        print(len(self.objects))
         
         while not self.data_queue.empty():
             
@@ -323,7 +358,11 @@ class GameState:
         Args:
             object_id (str): The ID of the object to remove.
         """
-        self.objects = [obj for obj in self.objects if obj.object_id != object_id]
+        # self.objects = [obj for obj in self.objects.ite if obj.object_id != object_id]
+        if object_id in self.objects:
+            del self.objects[object_id]
+        else:
+            print(f"tried to delete object {object_id} not in self.objects")
 
     def _update_object(self, updateObj: AcmiParse.ACMIObject) -> None:
         """
@@ -333,13 +372,10 @@ class GameState:
             updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
         """
         if updateObj.object_id not in self.objects:
-            self.objects.append(updateObj)
+            self.objects[updateObj.object_id] = updateObj
         else:
-            for obj in self.objects:
-                if obj.object_id == updateObj.object_id:
-                    obj.update(updateObj.properties)
-                    break
-        
+            self.objects[updateObj.object_id].update(updateObj.properties)
+            
 if __name__ == "__main__" :
     
     pygame.init()
