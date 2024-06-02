@@ -1,13 +1,17 @@
 import pygame
-import math
 from Radar import Radar
+
+MOUSEDRAGBUTTON = 3
+MOUSEBRAABUTTON = 1
 
 class App:
     def __init__(self, *args, **kwargs):
         self._running = True
         self.size = self.width, self.height = 640, 400
-        self.mouseDown = False
+        self.mouseDragDown = False
+        self.mouseBRAADown = False
         self._startPan = (0,0)
+        self._startBraa = (0,0)
 
  
     def on_init(self):
@@ -19,7 +23,7 @@ class App:
         self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
  
-    def on_event(self, event):
+    def on_event(self, event: pygame.event.Event):
         
         #TODO Consider refactor
         
@@ -35,18 +39,30 @@ class App:
                 self._radar.zoom(pygame.mouse.get_pos(), event.y)
                 
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._startPan = event.pos
-            self.mouseDown = True
+            
+            if event.button == MOUSEDRAGBUTTON:
+                self.mouseDragDown = True
+                self._startPan = event.pos
+            elif event.button == MOUSEBRAABUTTON:
+                self.mouseBRAADown = True
+                self._startBraa = event.pos
 
         elif event.type == pygame.MOUSEMOTION:
-            if self.mouseDown: # dragging
+            if self.mouseDragDown: # dragging
                 difX = event.pos[0] - self._startPan[0]
                 difY = event.pos[1] - self._startPan[1]
                 self._radar.pan((difX,difY)) 
                 self._startPan = event.pos
+            if self.mouseBRAADown:
+                self._radar.braa(True, self._startBraa, event.pos)
                 
         elif event.type == pygame.MOUSEBUTTONUP:
-            self.mouseDown = False
+
+            if event.button == MOUSEDRAGBUTTON:
+                self.mouseDragDown = False
+            elif event.button == MOUSEBRAABUTTON:
+                self.mouseBRAADown = False
+                self._radar.braa(False)
             
     def on_loop(self):
         self._radar.on_loop()

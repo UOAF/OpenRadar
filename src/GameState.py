@@ -30,7 +30,7 @@ class GameState:
         """
         Update the game state with the latest data from the Tacview client.
         """
-        print(len(self.objects))
+        # print(len(self.objects))
         
         while not self.data_queue.empty():
             
