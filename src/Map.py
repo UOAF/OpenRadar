@@ -1,4 +1,7 @@
 import pygame
+import math
+
+NM_TO_METERS = 1852
 
 class Map:
     def __init__(self, displaysurface: pygame.Surface):
@@ -7,7 +10,7 @@ class Map:
         self._display_surf = displaysurface
         self.size = self.width, self.height = 640, 400
         self._map_source = pygame.Surface(self.size)
-        self.load_map("maps/balkans_4k_airbases.png")
+        self.load_map("maps/balkans_4k_airbases.png", 150)
         self._image_surf = pygame.Surface((0,0))
         self._zoom_levels = dict() #Cache for scaled map images #TODO use
         self._offsetX, self._offsetY = (0,0)
@@ -32,11 +35,14 @@ class Map:
         # self._radar.on_loop()
         pass
         
-    def load_map(self, mappath):
+    def load_map(self, mappath, alpha: int|None = 100):
         if mappath:
             self._map_source = pygame.image.load(mappath).convert()
         else:
             self._map_source = pygame.Surface(self.size)
+            
+        if alpha is not None:
+            self._map_source.set_alpha(alpha)
             
     def pan(self, panVector: tuple[float,float] = (0,0) ):
         self._offsetX = (self._offsetX + panVector[0]) 
@@ -127,6 +133,18 @@ class Map:
         canvasY = (theater_max_meter - pos_vy) / theater_max_meter * radar_map_size_y     
                 
         return canvasX, canvasY
+    
+    def _screen_to_world(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
+        return self._canvas_to_world(self._screen_to_canvas(screenCoords))
+                                      
+    def _world_to_screen(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
+        return self._canvas_to_screen(self._world_to_canvas(worldCoords))
+    
+    def _world_distance(self, worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
+        return math.sqrt((worldCoords2[0] - worldCoords1[0])**2 + (worldCoords2[1] - worldCoords1[1])**2) / NM_TO_METERS
+    
+    def _world_bearing(self, worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
+        return math.degrees(math.atan2(worldCoords1[0] - worldCoords2[0], worldCoords1[1] - worldCoords2[1])) + 180
 
 if __name__ == "__main__" :
     

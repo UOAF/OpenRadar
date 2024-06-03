@@ -1,10 +1,11 @@
 from cgitb import text
+import dis
 import pygame
 import math
 
 from AcmiParse import ACMIObject
 from GameState import GameState
-from Map import Map
+from Map import Map, NM_TO_METERS
 
 SHOWN_OBJECT_CLASSES = ("Aircraft")
 HIDDEN_OBJECT_CLASSES = ("Static", "Vehicle")
@@ -30,6 +31,7 @@ class Radar(Map):
         self._drawBRAA = False
         self.unitFont = pygame.font.SysFont('Comic Sans MS', 18)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
+        self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
     
     def on_render(self):
         """
@@ -38,20 +40,18 @@ class Radar(Map):
         super().on_render()
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
+        self.draw_bullseye(self._radar_surf)
+        
         for id, contact in self._gamestate.objects.items():
             if not any(clas in contact.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects
                 self.draw_contact(self._radar_surf, contact)
 
         if self._drawBRAA:
-            # Draw BRAA Line
-            pass
-            # pygame.draw.line(self._display_surf, pygame.Color("orange"), self._startBraa, self._endBraa, 2)
+            self.draw_BRAA(self._radar_surf, self._startBraa, self._endBraa)
         else:
-            # Draw Cursor
             self.draw_cursor(self._radar_surf, pygame.mouse.get_pos())
             
         self._display_surf.blit(self._radar_surf, (0,0))
-        
         
     def on_loop(self):
         """
@@ -71,6 +71,58 @@ class Radar(Map):
         super().resize(width, height)
         self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
         
+    def draw_bullseye(self, surface: pygame.Surface, color: tuple[int,int,int,int] = (50,50,50,100), size: int = 2) -> None:
+        """
+        Draws the bullseye on the radar display.
+
+        Args:
+            surface (pygame.Surface): The surface on which to draw the bullseye.
+            bullseye (tuple[int,int]): The position of the bullseye.
+            color (tuple[int,int,int], optional): The color of the bullseye. Defaults to (50,50,50).
+            size (int, optional): The size of the bullseye in pixels. Defaults to 10.
+        """
+        BULLSEYE_NUM_RINGS = 8
+        BULLSEYE_RING_SCALE = 20 # 20nm per ring
+        px_wdith_20nm = self._world_to_screen((BULLSEYE_RING_SCALE*NM_TO_METERS,0))[0] - self._world_to_screen((0,0))[0]
+        pos = self._world_to_screen(self.bullseye_world)
+    
+        for i in range(1,BULLSEYE_NUM_RINGS):
+            pygame.draw.circle(surface, color, pos, px_wdith_20nm*i, size) # Draw 20nm circle
+        
+        # draw cross
+        pygame.draw.line(surface, color, (pos[0]-px_wdith_20nm*BULLSEYE_NUM_RINGS, pos[1]), 
+                         (pos[0]+px_wdith_20nm*BULLSEYE_NUM_RINGS, pos[1]), size)
+        pygame.draw.line(surface, color, (pos[0], pos[1]-px_wdith_20nm*BULLSEYE_NUM_RINGS),
+                         (pos[0], pos[1]+px_wdith_20nm*BULLSEYE_NUM_RINGS), size)
+
+        
+    
+    def draw_BRAA(self, surface: pygame.Surface, start: tuple[int,int], end: tuple[int,int], color: tuple[int,int,int] = (255,165,0), size: int = 2) -> None:
+        """
+        Draws a BRAA line between two points on the radar display.
+
+        Args:
+            surface (pygame.Surface): The surface on which to draw the line.
+            start (tuple[int,int]): The starting point of the line.
+            end (tuple[int,int]): The ending point of the line.
+            color (tuple[int,int,int], optional): The color of the line. Defaults to (255,165,0).
+            size (int, optional): The size of the line in pixels. Defaults to 10.
+        """
+        
+        pygame.draw.line(surface, color, start, end, size)
+        
+        #Calculate distance and bearing
+        start_world = self._screen_to_world(start)
+        end_world = self._screen_to_world(end)
+        distance_NM = self._world_distance(start_world, end_world)
+        bearing = self._world_bearing(start_world, end_world)
+                
+        
+        text_surface = self.cursorFont.render(f"{bearing:.0f}/{distance_NM:.0f}", True, (255,0,0)) #TODO fix color
+        textrect = pygame.Rect((0,0),text_surface.get_size())
+        textrect.topleft = (end[0] + 10, end[1] + 10)
+        surface.blit(text_surface, textrect)
+        
     def draw_cursor(self, surface: pygame.Surface, pos: tuple[int,int], color: tuple[int,int,int] = (255,165,0), size: int = 10) -> None:
         """
         Draws a cursor on the radar display that shows the current bullseye position.
@@ -82,8 +134,10 @@ class Radar(Map):
         """
         # pygame.draw.line(self._display_surf, color, pos, (pos[0]+size, pos[1]), 2)
         # pygame.draw.line(self._display_surf, color, pos, (pos[0], pos[1]+size), 2)
-        print(f"Drawing cursor at {pos}")
-        text_surface = self.cursorFont.render(f"test {pos}", True, (255,0,0)) #TODO fix color
+        
+        polar = self.get_pos_world_bullseye_relative(self._screen_to_world(pos))
+        
+        text_surface = self.cursorFont.render(f"{polar[0]:.0f}, {polar[1]:.0f}", True, (255,0,0)) #TODO fix color
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.topleft = (pos[0] + 10, pos[1] + 10)
         surface.blit(text_surface, textrect)
@@ -99,8 +153,7 @@ class Radar(Map):
             color (tuple[int, int, int], optional): The color of the contact. Defaults to None.
             size (int, optional): The size of the contact icon in pixels. Defaults to 20.
         """
-        
-        pos = self._canvas_to_screen(self._world_to_canvas((contact.T["U"], contact.T["V"])))
+        pos = self._world_to_screen((contact.T["U"], contact.T["V"]))
         heading = float(contact.T["Heading"])
         velocity = float(contact.CAS)
         color = (0,0,255)
@@ -166,3 +219,15 @@ class Radar(Map):
             self._startBraa = start
             self._endBraa = end
             self._drawBRAA = True
+
+    def get_pos_world_bullseye_relative(self, pos_world: tuple[float,float]) -> tuple[float,float]:
+        """
+        Gets the position relative to the bullseye in polar coordinates.
+
+        Returns:
+            tuple[float,float]: (Bearing, Distance) The position of the cursor relative to the bullseye.
+        """        
+        bearing = self._world_bearing(self.bullseye_world, pos_world)
+        distance = self._world_distance(self.bullseye_world, pos_world)
+        
+        return bearing, distance
