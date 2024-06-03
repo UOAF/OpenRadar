@@ -1,5 +1,5 @@
 import pygame
-from Radar import Radar
+from radar import Radar
 
 MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1

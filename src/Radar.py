@@ -3,9 +3,9 @@ import dis
 import pygame
 import math
 
-from AcmiParse import ACMIObject
-from GameState import GameState
-from Map import Map, NM_TO_METERS
+from acmi_parse import ACMIObject
+from game_state import GameState
+from map import Map, NM_TO_METERS
 
 SHOWN_OBJECT_CLASSES = ("Aircraft")
 HIDDEN_OBJECT_CLASSES = ("Static", "Vehicle")
@@ -71,7 +71,8 @@ class Radar(Map):
         super().resize(width, height)
         self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
         
-    def draw_bullseye(self, surface: pygame.Surface, color: tuple[int,int,int,int] = (50,50,50,100), size: int = 2) -> None:
+    def draw_bullseye(self, surface: pygame.Surface, color: tuple[int,int,int,int] = (50,50,50,100), 
+                      size: int = 2) -> None:
         """
         Draws the bullseye on the radar display.
 
@@ -83,21 +84,20 @@ class Radar(Map):
         """
         BULLSEYE_NUM_RINGS = 8
         BULLSEYE_RING_SCALE = 20 # 20nm per ring
-        px_wdith_20nm = self._world_to_screen((BULLSEYE_RING_SCALE*NM_TO_METERS,0))[0] - self._world_to_screen((0,0))[0]
+        px_width_20nm = self._world_to_screen((BULLSEYE_RING_SCALE*NM_TO_METERS,0))[0] - self._world_to_screen((0,0))[0]
         pos = self._world_to_screen(self.bullseye_world)
     
         for i in range(1,BULLSEYE_NUM_RINGS):
-            pygame.draw.circle(surface, color, pos, px_wdith_20nm*i, size) # Draw 20nm circle
+            pygame.draw.circle(surface, color, pos, px_width_20nm*i, size) # Draw 20nm circle
         
         # draw cross
-        pygame.draw.line(surface, color, (pos[0]-px_wdith_20nm*BULLSEYE_NUM_RINGS, pos[1]), 
-                         (pos[0]+px_wdith_20nm*BULLSEYE_NUM_RINGS, pos[1]), size)
-        pygame.draw.line(surface, color, (pos[0], pos[1]-px_wdith_20nm*BULLSEYE_NUM_RINGS),
-                         (pos[0], pos[1]+px_wdith_20nm*BULLSEYE_NUM_RINGS), size)
+        pygame.draw.line(surface, color, (pos[0]-px_width_20nm*BULLSEYE_NUM_RINGS, pos[1]), 
+                         (pos[0]+px_width_20nm*BULLSEYE_NUM_RINGS, pos[1]), size)
+        pygame.draw.line(surface, color, (pos[0], pos[1]-px_width_20nm*BULLSEYE_NUM_RINGS),
+                         (pos[0], pos[1]+px_width_20nm*BULLSEYE_NUM_RINGS), size)
 
-        
-    
-    def draw_BRAA(self, surface: pygame.Surface, start: tuple[int,int], end: tuple[int,int], color: tuple[int,int,int] = (255,165,0), size: int = 2) -> None:
+    def draw_BRAA(self, surface: pygame.Surface, start: tuple[int,int], end: tuple[int,int], 
+                  color: tuple[int,int,int] = (255,165,0), size: int = 2) -> None:
         """
         Draws a BRAA line between two points on the radar display.
 
@@ -123,7 +123,8 @@ class Radar(Map):
         textrect.topleft = (end[0] + 10, end[1] + 10)
         surface.blit(text_surface, textrect)
         
-    def draw_cursor(self, surface: pygame.Surface, pos: tuple[int,int], color: tuple[int,int,int] = (255,165,0), size: int = 10) -> None:
+    def draw_cursor(self, surface: pygame.Surface, pos: tuple[int,int], color: tuple[int,int,int] = (255,165,0), 
+                    size: int = 10) -> None:
         """
         Draws a cursor on the radar display that shows the current bullseye position.
 

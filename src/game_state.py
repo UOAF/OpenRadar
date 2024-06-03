@@ -1,5 +1,5 @@
-import AcmiParse
-from TRTTClient import TRTTClientThread
+import acmi_parse
+from trtt_client import TRTTClientThread
 import queue 
 
 class GameState:
@@ -14,45 +14,45 @@ class GameState:
     """
 
     def __init__(self):
-        self.objects: dict["str", AcmiParse.ACMIObject] = dict()
+        self.objects: dict["str", acmi_parse.ACMIObject] = dict()
         self.data_queue = queue.Queue()
         self.global_vars = dict()
-        
+
         # Create the ACMI parser
-        self.parser = AcmiParse.ACMIFileParser()
-        
+        self.parser = acmi_parse.ACMIFileParser()
+
         # Create the Tacview RT Relemetry client
         tac_client = TRTTClientThread(self.data_queue)
         tac_client.start()
-        
+
     def update_state(self):
         """
         Update the game state with the latest data from the Tacview client.
         """
         # print(len(self.objects))
-        
+
         while not self.data_queue.empty():
-            
+
             line = self.data_queue.get()
             if line is None: break # End of data
-            
+
             acmiline = self.parser.parse_line(line) # Parse the line into a dict
             if acmiline is None: continue # Skip if line fails to parse
 
-            if acmiline.action in AcmiParse.ACTION_REMOVE:
+            if acmiline.action in acmi_parse.ACTION_REMOVE:
                 # Remove object from battlefield
                 self._remove_object(acmiline.object_id)
                 # print(f"tried to delete object {acmiline.object_id} not in self.state")
-            
-            elif acmiline.action in AcmiParse.ACTION_TIME:
+
+            elif acmiline.action in acmi_parse.ACTION_TIME:
                 pass
-            
-            elif acmiline.action in AcmiParse.ACTION_GLOBAL and isinstance(acmiline, AcmiParse.ACMIObject):
+
+            elif acmiline.action in acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
                 self.global_vars = self.global_vars | acmiline.properties
-            
-            elif acmiline.action in AcmiParse.ACTION_UPDATE and isinstance(acmiline, AcmiParse.ACMIObject):
+
+            elif acmiline.action in acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
                 self._update_object(acmiline)
-            
+
             else:
                 print(f"Unknown action {acmiline.action} in {acmiline}")
 
@@ -69,7 +69,7 @@ class GameState:
         else:
             print(f"tried to delete object {object_id} not in self.objects")
 
-    def _update_object(self, updateObj: AcmiParse.ACMIObject) -> None:
+    def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
         """
         Update an object in the game state.
 

@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QFileDialog
 from PyQt6.QtCore import QPointF, pyqtSignal
 
 from Symbols import RadarContact
-from TRTTClient import TRTTClientThread
+from trtt_client import TRTTClientThread
 from DataThread import DataThread
 
 def runRadarApp(arguments):

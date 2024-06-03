@@ -1,3 +1,61 @@
+"""
+This module provides classes for parsing and representing ACMI (Air Combat Maneuvering Instrumentation) files.
+
+ACMIEntry:
+    Represents an entry in an ACMI file.
+    Attributes:
+        action (str): The action performed in the entry.
+        object_id (str): The ID of the object associated with the entry.
+        timestamp (float): The timestamp of the entry.
+
+ACMIObject:
+    Represents an object in an ACMI file.
+    Inherits from ACMIEntry.
+    Attributes:
+        properties (dict): The properties of the object.
+        AOA (float): Angle of Attack.
+        AOS (float): Angle of Sideslip.
+        CAS (float): Calibrated Airspeed.
+        Coalition (str): The coalition the object belongs to.
+        Color (str): The color of the object.
+        FuelWeight (float): The weight of the fuel.
+        Health (float): The health of the object.
+        IAS (float): Indicated Airspeed.
+        LateralGForce (float): Lateral G-Force.
+        LockedTarget (int): The ID of the locked target.
+        LongitudinalGForce (float): Longitudinal G-Force.
+        Mach (float): The Mach number.
+        Name (str): The name of the object.
+        Pilot (str): The name of the pilot.
+        T (dict): The position information of the object.
+        Type (str): The type of the object.
+        VerticalGForce (float): Vertical G-Force.
+
+ACMIFileParser:
+    Parses an ACMI file and stores the parsed data.
+    Attributes:
+        file_path (str): The path to the ACMI file.
+        global_obj (dict): The global object in the ACMI file.
+        objects (dict): The objects in the ACMI file.
+        relative_time (float): The relative time of the ACMI file.
+
+parse_file():
+    Parses the entire ACMI file into self.objects.
+
+parse_line(line: str) -> ACMIEntry | None:
+    Parses an ACMI line into a dictionary.
+    Args:
+        line (str): The ACMI line to parse.
+    Returns:
+        ACMIEntry | None: The parsed ACMI line as an ACMIEntry object or None.
+
+parse_t(t: str) -> dict | None:
+    Parses the position information key=val pair into a dictionary.
+    Args:
+        t (str): The position information string.
+    Returns:
+        dict | None: The parsed position information as a dictionary or None.
+"""
 ACTION_UPDATE = "+"
 ACTION_REMOVE = "-"
 ACTION_TIME = "#"
@@ -17,13 +75,57 @@ class ACMIEntry:
         self.action = action
         self.object_id = object_id
         self.timestamp = timestamp
-    
+
+    def get_action(self):
+        """
+        Returns the action associated with the current object.
+        
+        Returns:
+            str: The action associated with the current object.
+        """
+        return self.action
+
+    def get_object_id(self):
+        """
+        Returns the object ID associated with the current instance.
+        
+        Returns:
+            int: The object ID.
+        """
+        return self.object_id
+
 class ACMIObject (ACMIEntry):
+    """
+    Represents an ACMI object.
+
+    Attributes:
+        object_id (str): The ID of the object.
+        properties (dict): The properties of the object.
+        AOA (float): The angle of attack of the object.
+        AOS (float): The angle of sideslip of the object.
+        CAS (float): The calibrated airspeed of the object.
+        Coalition (str): The coalition the object belongs to.
+        Color (str): The color of the object.
+        FuelWeight (float): The weight of the fuel in the object.
+        Health (float): The health of the object.
+        IAS (float): The indicated airspeed of the object.
+        LateralGForce (float): The lateral G-force experienced by the object.
+        LockedTarget (int): The ID of the locked target.
+        LongitudinalGForce (float): The longitudinal G-force experienced by the object.
+        Mach (float): The Mach number of the object.
+        Name (str): The name of the object.
+        Pilot (str): The name of the pilot of the object.
+        T (dict): The position and velocity vectors of the object.
+        Type (str): The type of the object.
+        VerticalGForce (float): The vertical G-force experienced by the object.
+    """
+
     def __init__(self, action, object_id: str, properties: dict):
         """
-        Initialize an ACMIEntry object.
+        Initialize an ACMIObject object.
 
         Args:
+            action: The action associated with the object.
             object_id (str): The ID of the object.
             properties (dict): The properties of the object.
         """
@@ -57,9 +159,9 @@ class ACMIObject (ACMIEntry):
         }
         self.Type = ""
         self.VerticalGForce = 0.0
-        
+
         self.update(properties)
-        
+
     def update(self, properties: dict):
         """
         Updates the properties of the object.
@@ -68,10 +170,10 @@ class ACMIObject (ACMIEntry):
             properties (dict): The properties to update.
         """
         self.properties = {**self.properties, **properties}
-        
+
         for key, value in self.properties.items():
             setattr(self, str(key), value)
-        
+
     def __str__(self):
         return f"ACMIEntry({self.object_id}, {self.properties})"
         
