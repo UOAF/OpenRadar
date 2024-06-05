@@ -39,28 +39,16 @@ ACMIFileParser:
         objects (dict): The objects in the ACMI file.
         relative_time (float): The relative time of the ACMI file.
 
-parse_file():
-    Parses the entire ACMI file into self.objects.
-
-parse_line(line: str) -> ACMIEntry | None:
-    Parses an ACMI line into a dictionary.
-    Args:
-        line (str): The ACMI line to parse.
-    Returns:
-        ACMIEntry | None: The parsed ACMI line as an ACMIEntry object or None.
-
-parse_t(t: str) -> dict | None:
-    Parses the position information key=val pair into a dictionary.
-    Args:
-        t (str): The position information string.
-    Returns:
-        dict | None: The parsed position information as a dictionary or None.
 """
+from dataclasses import dataclass
+from typing import Optional
+
 ACTION_UPDATE = "+"
 ACTION_REMOVE = "-"
 ACTION_TIME = "#"
 ACTION_GLOBAL = "global"
 
+@dataclass
 class ACMIEntry:
     """
     Represents an entry in an ACMI (Air Combat Maneuvering Instrumentation) file.
@@ -70,30 +58,41 @@ class ACMIEntry:
         object_id (str): The ID of the object associated with the entry.
         timestamp (float): The timestamp of the entry.
     """
+    action: str
+    object_id: Optional[str] = "None"
+    timestamp: Optional[float] = None
+    # def __init__(self, action: str, object_id: str = "", timestamp: float = 0.0):
+    #     self.action = action
+    #     self.object_id = object_id
+    #     self.timestamp = timestamp
 
-    def __init__(self, action: str, object_id: str = "", timestamp: float = 0.0):
-        self.action = action
-        self.object_id = object_id
-        self.timestamp = timestamp
+@dataclass
+class Orientation:
+    """
+    This class represents a data structure for storing various attributes of an object.
+    
+    Attributes:
+        Altitude (float): The altitude of the object.
+        Heading (float): The heading of the object.
+        Latitude (float): The latitude of the object.
+        Longitude (float): The longitude of the object.
+        Pitch (float): The pitch of the object.
+        Roll (float): The roll of the object.
+        U (float): The U (X) Position of the object in cartesian coordinates.
+        V (float): The V (Y) Position of the object in cartesian coordinates.
+        Yaw (float): The yaw of the object.
+    """
+    Altitude: float = 0.0
+    Heading: float = 0.0
+    Latitude: float = 0.0
+    Longitude: float = 0.0
+    Pitch: float = 0.0
+    Roll: float = 0.0
+    U: float = 0.0
+    V: float = 0.0
+    Yaw: float = 0.0
 
-    def get_action(self):
-        """
-        Returns the action associated with the current object.
-        
-        Returns:
-            str: The action associated with the current object.
-        """
-        return self.action
-
-    def get_object_id(self):
-        """
-        Returns the object ID associated with the current instance.
-        
-        Returns:
-            int: The object ID.
-        """
-        return self.object_id
-
+@dataclass(kw_only=True)
 class ACMIObject (ACMIEntry):
     """
     Represents an ACMI object.
@@ -119,7 +118,26 @@ class ACMIObject (ACMIEntry):
         Type (str): The type of the object.
         VerticalGForce (float): The vertical G-force experienced by the object.
     """
-
+    T: Orientation
+    object_id: str = ""
+    properties = dict()
+    AOA: float = 0.0
+    AOS: float = 0.0
+    CAS: float = 0.0
+    Coalition: str = ""
+    Color: str = "black"
+    FuelWeight: float = 0.0
+    Health: float = 0.0
+    IAS: float = 0.0
+    LateralGForce: float = 0.0
+    LockedTarget: Optional[str] = None
+    LongitudinalGForce: float = 0.0
+    Mach: float = 0.0
+    Name: str = ""
+    Pilot: str = ""
+    Type: str = ""
+    VerticalGForce: float = 0.0
+    
     def __init__(self, action, object_id: str, properties: dict):
         """
         Initialize an ACMIObject object.
@@ -129,37 +147,9 @@ class ACMIObject (ACMIEntry):
             object_id (str): The ID of the object.
             properties (dict): The properties of the object.
         """
-        super().__init__(action, object_id)
+        super().__init__(action, object_id=object_id)
+        self.T = Orientation()
         self.object_id = object_id
-        self.properties = dict()
-        self.AOA = 0.0
-        self.AOS = 0.0
-        self.CAS = 0.0
-        self.Coalition = ""
-        self.Color = ""
-        self.FuelWeight = 0.0
-        self.Health = 0.0
-        self.IAS = 0.0
-        self.LateralGForce = 0.0
-        self.LockedTarget = 0
-        self.LongitudinalGForce = 0.0
-        self.Mach = 0.0
-        self.Name = ""
-        self.Pilot = ""
-        self.T = {
-            'Altitude': 0.0,
-            'Heading': 0.0,
-            'Latitude': 0.0,
-            'Longitude': 0.0,
-            'Pitch': 0.0,
-            'Roll': 0.0,
-            'U': 0.0,
-            'V': 0.0,
-            'Yaw': 0.0
-        }
-        self.Type = ""
-        self.VerticalGForce = 0.0
-
         self.update(properties)
 
     def update(self, properties: dict):
@@ -172,12 +162,13 @@ class ACMIObject (ACMIEntry):
         self.properties = {**self.properties, **properties}
 
         for key, value in self.properties.items():
-            setattr(self, str(key), value)
-
-    def __str__(self):
-        return f"ACMIEntry({self.object_id}, {self.properties})"
-        
-
+            
+            if key == "T":
+                for key, value in value.items():
+                    setattr(self.T, key, value)
+            else:
+                setattr(self, str(key), value)
+     
 class ACMIFileParser:
     def __init__(self, file_path: str | None = None):
         """
@@ -230,7 +221,7 @@ class ACMIFileParser:
         if line.startswith('-'):
             # Remove object from battlefield
             object_id = line[1:]
-            return ACMIEntry(ACTION_REMOVE, object_id)
+            return ACMIEntry(ACTION_REMOVE, object_id=object_id)
 
         else:
             # Parse object data
@@ -255,6 +246,9 @@ class ACMIFileParser:
                     position_vals = self.parse_t(value)
                     if position_vals is not None:
                         value = {key: val for key, val in position_vals.items() if val is not None}
+                    else:
+                        print(f"Invalid T value: {line}")
+                        break
 
                 properties[key] = value
             

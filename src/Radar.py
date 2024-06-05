@@ -1,5 +1,3 @@
-from cgitb import text
-import dis
 import pygame
 import math
 
@@ -40,16 +38,16 @@ class Radar(Map):
         super().on_render()
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
-        self.draw_bullseye(self._radar_surf)
+        self._draw_bullseye(self._radar_surf)
         
         for id, contact in self._gamestate.objects.items():
             if not any(clas in contact.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects
-                self.draw_contact(self._radar_surf, contact)
+                self._draw_contact(self._radar_surf, contact)
 
         if self._drawBRAA:
-            self.draw_BRAA(self._radar_surf, self._startBraa, self._endBraa)
+            self._draw_BRAA(self._radar_surf, self._startBraa, self._endBraa)
         else:
-            self.draw_cursor(self._radar_surf, pygame.mouse.get_pos())
+            self._draw_cursor(self._radar_surf, pygame.mouse.get_pos())
             
         self._display_surf.blit(self._radar_surf, (0,0))
         
@@ -71,7 +69,7 @@ class Radar(Map):
         super().resize(width, height)
         self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
         
-    def draw_bullseye(self, surface: pygame.Surface, color: tuple[int,int,int,int] = (50,50,50,100), 
+    def _draw_bullseye(self, surface: pygame.Surface, color: tuple[int,int,int,int] = (50,50,50,100), 
                       size: int = 2) -> None:
         """
         Draws the bullseye on the radar display.
@@ -96,7 +94,7 @@ class Radar(Map):
         pygame.draw.line(surface, color, (pos[0], pos[1]-px_width_20nm*BULLSEYE_NUM_RINGS),
                          (pos[0], pos[1]+px_width_20nm*BULLSEYE_NUM_RINGS), size)
 
-    def draw_BRAA(self, surface: pygame.Surface, start: tuple[int,int], end: tuple[int,int], 
+    def _draw_BRAA(self, surface: pygame.Surface, start: tuple[int,int], end: tuple[int,int], 
                   color: tuple[int,int,int] = (255,165,0), size: int = 2) -> None:
         """
         Draws a BRAA line between two points on the radar display.
@@ -123,7 +121,7 @@ class Radar(Map):
         textrect.topleft = (end[0] + 10, end[1] + 10)
         surface.blit(text_surface, textrect)
         
-    def draw_cursor(self, surface: pygame.Surface, pos: tuple[int,int], color: tuple[int,int,int] = (255,165,0), 
+    def _draw_cursor(self, surface: pygame.Surface, pos: tuple[int,int], color: tuple[int,int,int] = (255,165,0), 
                     size: int = 10) -> None:
         """
         Draws a cursor on the radar display that shows the current bullseye position.
@@ -143,8 +141,8 @@ class Radar(Map):
         textrect.topleft = (pos[0] + 10, pos[1] + 10)
         surface.blit(text_surface, textrect)
     
-    def draw_contact(self, surface: pygame.Surface, contact: ACMIObject, 
-                     color: tuple[int, int, int] | None = None, size: int = 20) -> None:
+    def _draw_contact(self, surface: pygame.Surface, contact: ACMIObject, 
+                     color: tuple[int, int, int] | None = None, size: int = 12) -> None:
         """
         Draws a contact on the given surface.
 
@@ -154,18 +152,21 @@ class Radar(Map):
             color (tuple[int, int, int], optional): The color of the contact. Defaults to None.
             size (int, optional): The size of the contact icon in pixels. Defaults to 20.
         """
-        pos = self._world_to_screen((contact.T["U"], contact.T["V"]))
-        heading = float(contact.T["Heading"])
+        pos = self._world_to_screen((contact.T.U, contact.T.V))
+        heading = float(contact.T.Heading)
         velocity = float(contact.CAS)
-        color = (0,0,255)
+        if color is None:
+            color_obj = pygame.Color( contact.Color ) 
+        else:
+            color_obj = pygame.Color(color)
         
         # Draw Square
         contactrect = pygame.Rect((0,0,size,size))
         contactrect.center = pos
-        pygame.draw.rect(surface, pygame.Color("blue"), contactrect, 3)
+        pygame.draw.rect(surface, color_obj, contactrect, 2)
         
         # Draw Name
-        text_surface = self.unitFont.render(f"{contact.Name}", True, color)
+        text_surface = self.unitFont.render(f"{contact.Name}", True, color_obj)
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.bottomright = int(contactrect.left-size/4), int(contactrect.top)
         
@@ -177,7 +178,7 @@ class Radar(Map):
 
         # Draw Velocity Line
         start_point, end_point = self.getVelocityVector(pos, heading, velocity) # returns line starting at 0,0
-        pygame.draw.line(surface, pygame.Color("blue"), start_point, end_point, 3)
+        pygame.draw.line(surface, color_obj, start_point, end_point, 2)
         
     def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading: float = 0.0, velocity: float = 0.0, 
                           size: int = 20) -> tuple[tuple[float,float],tuple[float,float]]:

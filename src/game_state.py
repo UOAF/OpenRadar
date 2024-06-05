@@ -15,7 +15,7 @@ class GameState:
 
     def __init__(self):
         self.objects: dict["str", acmi_parse.ACMIObject] = dict()
-        self.data_queue = queue.Queue()
+        self.data_queue: queue.Queue[str] = queue.Queue()
         self.global_vars = dict()
 
         # Create the ACMI parser
@@ -29,19 +29,26 @@ class GameState:
         """
         Update the game state with the latest data from the Tacview client.
         """
-        # print(len(self.objects))
-
+        # print(f"getting data from queue {self.data_queue._qsize()}")
         while not self.data_queue.empty():
 
             line = self.data_queue.get()
+            # print(line)
             if line is None: break # End of data
 
             acmiline = self.parser.parse_line(line) # Parse the line into a dict
-            if acmiline is None: continue # Skip if line fails to parse
+            if acmiline is None: 
+                print(f"Failed to parse line: {line}")
+                continue # Skip if line fails to parse
+            
+            
 
             if acmiline.action in acmi_parse.ACTION_REMOVE:
                 # Remove object from battlefield
-                self._remove_object(acmiline.object_id)
+                if acmiline.object_id is not None:
+                    self._remove_object(acmiline.object_id)
+                else:
+                    print(f"tried to delete object {acmiline.object_id} with unitialized object_id")
                 # print(f"tried to delete object {acmiline.object_id} not in self.state")
 
             elif acmiline.action in acmi_parse.ACTION_TIME:
