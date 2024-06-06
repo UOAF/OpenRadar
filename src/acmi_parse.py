@@ -224,15 +224,12 @@ class ACMIFileParser:
             return ACMIEntry(ACTION_REMOVE, object_id=object_id)
 
         else:
+            
+ 
             # Parse object data
             parts = line.split(',')
             object_id = parts[0]
             if object_id == '0': object_id = "global"
-
-            # TODO remove when we get the updated version of BMS that includes
-            # U and V in all acmi messages, or finish lla_to_uv
-            if line.count('|') < 8:
-                return None
 
             # Parse each key=value pair out of the ACMI object_id line
             properties = {}
