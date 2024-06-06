@@ -2,6 +2,12 @@ import acmi_parse
 from trtt_client import TRTTClientThread
 import queue 
 
+SUPPORTED_OBJECT_CLASSES = ("Aircraft")
+
+# This can cause an attempt to delete objects that are not in the game state
+# TODO: If perfomance becomes an issues consider reimplementing this list.
+HIDDEN_OBJECT_CLASSES = ("Static", "Vehicle", "Flare", "Chaff", "Parachutist") 
+
 class GameState:
     """
     Represents the state of the game.
@@ -41,8 +47,6 @@ class GameState:
                 print(f"Failed to parse line: {line}")
                 continue # Skip if line fails to parse
             
-            
-
             if acmiline.action in acmi_parse.ACTION_REMOVE:
                 # Remove object from battlefield
                 if acmiline.object_id is not None:
@@ -58,6 +62,8 @@ class GameState:
                 self.global_vars = self.global_vars | acmiline.properties
 
             elif acmiline.action in acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
+                # if not any(clas in acmiline.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects 
+                # TODO Refrence comment on HIDDEN_OBJECT_CLASSES declaration
                 self._update_object(acmiline)
 
             else:
