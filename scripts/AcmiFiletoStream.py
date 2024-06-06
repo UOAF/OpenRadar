@@ -4,7 +4,8 @@ import socket
 import time
 from zipfile import ZipFile
 
-filename = "Data\\acm.zip.acmi"
+filename = "Data\\2024-06-03_19-09-42_converted.zip.acmi"
+timemultiplier = 16.0
 
 # Read file as text into into acmidata
 acmidata = list()
@@ -22,7 +23,6 @@ elif filename.endswith(".acmi") or filename.endswith(".txt"):
         acmidata = file.readlines()
 else:
     quit()
-
 
 # create an INET, STREAMing socket
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -67,7 +67,7 @@ while True:
             buffer += line
             if line.startswith("#"):
                 cur_time = float(line[1:])
-                if lastbuffer_time > 0: time.sleep(cur_time-lastbuffer_time)
+                if lastbuffer_time > 0: time.sleep((cur_time-lastbuffer_time)/timemultiplier)
                 clientsocket.sendall(lastbuffer.encode('utf-8'))
                 lastbuffer = buffer
                 lastbuffer_time = cur_time
