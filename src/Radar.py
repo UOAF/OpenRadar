@@ -1,12 +1,11 @@
 import pygame
 import math
+import numpy as np
 
 from acmi_parse import ACMIObject
 from game_state import GameState
 from map import Map, NM_TO_METERS
-
-SHOWN_OBJECT_CLASSES = ("Aircraft")
-HIDDEN_OBJECT_CLASSES = ("Static", "Vehicle")
+from pygame_utils import draw_dashed_line
 
 class Radar(Map):
     """
@@ -38,11 +37,8 @@ class Radar(Map):
         super().on_render()
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
-        self._draw_bullseye(self._radar_surf)
-        
-        for id, contact in self._gamestate.objects.items():
-            if not any(clas in contact.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects
-                self._draw_contact(self._radar_surf, contact)
+        for id in self._gamestate.objects:
+            self._draw_contact(self._radar_surf, self._gamestate.objects[id])
 
         if self._drawBRAA:
             self._draw_BRAA(self._radar_surf, self._startBraa, self._endBraa)
@@ -152,34 +148,117 @@ class Radar(Map):
             color (tuple[int, int, int], optional): The color of the contact. Defaults to None.
             size (int, optional): The size of the contact icon in pixels. Defaults to 20.
         """
-        pos = self._world_to_screen((contact.T.U, contact.T.V))
-        heading = float(contact.T.Heading)
-        velocity = float(contact.CAS)
+
         if color is None:
             color_obj = pygame.Color( contact.Color ) 
         else:
             color_obj = pygame.Color(color)
-        
+
+        if "FixedWing" in contact.Type:
+            self._draw_aircraft(surface, contact, color_obj, size)
+        elif "Missile" in contact.Type:
+            self._draw_missile(surface, contact, color_obj, size)
+        elif "Sea" in contact.Type:
+            self._draw_ship(surface, contact, color_obj, size)
+        elif "Ground" in contact.Type:
+            self._draw_ground(surface, contact, color_obj, size)
+        elif "Navaid+Static+Bullseye" in contact.Type or contact.object_id == "7fffffffffffffff": #TODO remove objid hack
+            self._draw_bullseye(surface)
+        elif any(clas in contact.Type for clas in ["Chaff", "Flare", "Explosion", "Parachutist", "Projectile"]):
+            pass
+        else:
+            self._draw_other(surface, contact, color_obj, size)
+            print(f"Drawing Other {contact}")
+
+    def _draw_aircraft(self, surface: pygame.Surface, contact: ACMIObject, 
+                       color: pygame.Color, size: int = 12) -> None:
+
+        pos = self._world_to_screen((contact.T.U, contact.T.V))
+        heading = float(contact.T.Heading)
+        velocity = float(contact.CAS)
+
         # Draw Square
         contactrect = pygame.Rect((0,0,size,size))
         contactrect.center = pos
-        pygame.draw.rect(surface, color_obj, contactrect, 2)
-        
+        pygame.draw.rect(surface, color, contactrect, 2)
+
         # Draw Name
-        text_surface = self.unitFont.render(f"{contact.Name}", True, color_obj)
+        text_surface = self.unitFont.render(f"{contact.Name}", True, color)
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.bottomright = int(contactrect.left-size/4), int(contactrect.top)
         
         surface.blit(text_surface, textrect)
-        
+
         # Draw Name Line
         # Draw a line from the top left of the contact to the right side of the name
         pygame.draw.line(surface, pygame.Color("white"), contactrect.topleft, textrect.midright, 2)
 
         # Draw Velocity Line
         start_point, end_point = self.getVelocityVector(pos, heading, velocity) # returns line starting at 0,0
-        pygame.draw.line(surface, color_obj, start_point, end_point, 2)
+        pygame.draw.line(surface, color, start_point, end_point, 3)
         
+        # draw dashed lock line to target
+        if contact.LockedTarget is not None and contact.LockedTarget in self._gamestate.objects:
+            target = self._gamestate.objects[contact.LockedTarget]
+            target_pos = self._world_to_screen((target.T.U, target.T.V))
+            # pygame.draw.line(surface, color, pos, target_pos, 2)
+            draw_dashed_line(surface, color, pos, target_pos, 1, 6)
+        elif contact.LockedTarget is not None:
+            pass
+            # print(f"Missile {contact.object_id} has invalid target {contact.LockedTarget}")
+
+    def _draw_missile(self, surface: pygame.Surface, contact: ACMIObject,
+                      color: pygame.Color, size: int = 12) -> None:
+        
+        pos = self._world_to_screen((contact.T.U, contact.T.V))
+        
+        # Define shape around origin        
+        missile_points = np.array([(0,-size), (-size/2, size/2), (size/2, size/2)])
+        
+        heading_rad = math.radians(contact.T.Heading)
+        
+        # # rotate shape around orgin towards heading
+        transformation_mat = ((math.cos(heading_rad), math.sin(heading_rad)),
+                              (-math.sin(heading_rad), math.cos(heading_rad)))
+                
+        # translate and rotate shape to contact position
+        for i in range(len(missile_points)):
+            rotated_point = np.matmul(missile_points[i], transformation_mat)
+            missile_points[i] = np.add(rotated_point, pos)
+        
+        # draw shape at contact position
+        for point in missile_points:
+            pygame.draw.line(surface, color, pos, point, 2)
+            # pygame.draw.polygon(surface, color, list(map(tuple, missile_points)), 2)
+        
+        # draw dotted lock line to target
+        if contact.LockedTarget is not None and contact.LockedTarget in self._gamestate.objects:
+            target = self._gamestate.objects[contact.LockedTarget]
+            target_pos = self._world_to_screen((target.T.U, target.T.V))
+            # pygame.draw.line(surface, color, pos, target_pos, 2)
+            draw_dashed_line(surface, color, pos, target_pos, 1, 6)
+        elif contact.LockedTarget is not None:
+            pass
+            # print(f"Missile {contact.object_id} has invalid target {contact.LockedTarget}")
+
+    def _draw_ship(self, surface: pygame.Surface, contact: ACMIObject,
+                   color: pygame.Color, size: int = 12) -> None:
+        pass
+    
+    def _draw_ground(self, surface: pygame.Surface, contact: ACMIObject,
+                     color: pygame.Color, size: int = 12) -> None:
+        pass
+    
+    def _draw_other(self, surface: pygame.Surface, contact: ACMIObject,
+                    color: pygame.Color, size: int = 12) -> None:
+        
+        pos = self._world_to_screen((contact.T.U, contact.T.V))
+        heading = float(contact.T.Heading)
+        velocity = float(contact.CAS)
+            
+        # Draw Circle
+        pygame.draw.circle(surface, color, pos, size/2, 2)
+
     def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading: float = 0.0, velocity: float = 0.0, 
                           size: int = 20) -> tuple[tuple[float,float],tuple[float,float]]:
         """
