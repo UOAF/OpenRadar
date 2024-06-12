@@ -4,7 +4,7 @@ import numpy as np
 
 from acmi_parse import ACMIObject
 from game_state import GameState
-from map import Map, NM_TO_METERS
+from map import Map, NM_TO_METERS, METERS_TO_FT
 from pygame_utils import draw_dashed_line
 
 RADAR_CONTACT_SIZE_PX = 12
@@ -28,7 +28,7 @@ class Radar(Map):
         self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
         self._gamestate = GameState()
         self._drawBRAA = False
-        self.unitFont = pygame.font.SysFont('Comic Sans MS', 18)
+        self.unitFont = pygame.font.SysFont('Comic Sans MS', 14)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
         self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
         self.hover_obj_id: str = ""
@@ -190,8 +190,8 @@ class Radar(Map):
         contactrect.center = pos
         pygame.draw.rect(surface, color, contactrect, 2)
 
-        # Draw Name
-        text_surface = self.unitFont.render(f"{contact.Name}", True, color)
+        # Draw Info Box
+        text_surface = self._make_aircraft_text_info(contact, color)
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.bottomright = int(contactrect.left-size/4), int(contactrect.top)
         
@@ -286,8 +286,25 @@ class Radar(Map):
         # Draw Circle
         pygame.draw.circle(surface, color, pos, size/2, 2)
 
+    def _make_aircraft_text_info(self, contact: ACMIObject, color: pygame.Color) -> pygame.Surface:
+        name_surface = self.unitFont.render(f"{contact.Name}", True, color)
+        data_surface = self.unitFont.render(
+            f"{int(self.meters_to_ft(contact.T.Altitude)/100)}  {int(int(contact.CAS)/10)}", True, color
+            )
+        textrect = (max(name_surface.get_size()[0], data_surface.get_size()[0]), 
+                   name_surface.get_size()[1]+ data_surface.get_size()[1])
+        surface = pygame.Surface(textrect, pygame.SRCALPHA)
+        surface.fill((0,0,0,0))
+        surface.blit(name_surface, (textrect[0]-name_surface.get_width() ,0))
+        surface.blit(data_surface, (textrect[0]-data_surface.get_width(),name_surface.get_size()[1]))
+        
+        return surface
+    
+    def meters_to_ft(self, meters: float) -> int:
+        return int(meters * METERS_TO_FT)    
+
     def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading: float = 0.0, velocity: float = 0.0, 
-                          size: int = RADAR_CONTACT_SIZE_PX*2) -> tuple[tuple[float,float],tuple[float,float]]:
+                          size: int = RADAR_CONTACT_SIZE_PX*3) -> tuple[tuple[float,float],tuple[float,float]]:
         """
         Calculates the start and end points of a velocity vector line to draw.
 
@@ -301,7 +318,7 @@ class Radar(Map):
             tuple[tuple[float,float],tuple[float,float]]: The start and end points of the velocity vector.
         """
         vel_scale = velocity / 1000.0
-        vel_vec_len_px = vel_scale*size # Scale the velocity vector
+        vel_vec_len_px = RADAR_CONTACT_SIZE_PX/2 + vel_scale*size # Scale the velocity vector
 
         start_pt = start_pos
 

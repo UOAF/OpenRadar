@@ -2,6 +2,7 @@ import pygame
 import math
 
 NM_TO_METERS = 1852
+METERS_TO_FT = 3.28084
 
 class Map:
     def __init__(self, displaysurface: pygame.Surface):
@@ -12,7 +13,7 @@ class Map:
         self._map_source = pygame.Surface(self.size)
         self.load_map("maps/balkans_4k_airbases.png", 150)
         self._image_surf = pygame.Surface((0,0))
-        self._zoom_levels = dict() #Cache for scaled map images #TODO use
+        self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization
         self._offsetX, self._offsetY = (0,0)
         self._base_zoom = 1
         self._zoom = 0
