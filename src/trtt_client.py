@@ -28,6 +28,7 @@ class TRTTClientThread(threading.Thread):
     def run(self):
         clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientsocket.connect(("localhost", 42674))
+        # clientsocket.connect(("bms.uoaf.net", 42674))
 
         # Send handshake to host
         handshake = "XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n\0".encode('utf-8')

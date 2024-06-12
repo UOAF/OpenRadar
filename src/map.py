@@ -100,12 +100,12 @@ class Map:
             self.fitInView()
         else:
             self._zoom = 0
-            
+
     def _canvas_to_screen(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        screenX = int((canvasCoords[0] * self._scale) + self._offsetX)
+        screenX = int((canvasCoords[0] * self._scale) + self._offsetX) # error CANNOT CONVERT FLOAT INFINITY TO INTEGAR
         screenY = int((canvasCoords[1] * self._scale) + self._offsetY)
         return screenX, screenY
-        
+
     def _screen_to_canvas(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
         canvasX = float((screenCoords[0] - self._offsetX) / self._scale)
         canvasY = float((screenCoords[1] - self._offsetY) / self._scale)
@@ -131,12 +131,12 @@ class Map:
         pos_vy = worldCoords[1] #float(properties["T"]["V"])
         canvasX = pos_ux / theater_max_meter * radar_map_size_x
         canvasY = (theater_max_meter - pos_vy) / theater_max_meter * radar_map_size_y     
-                
+
         return canvasX, canvasY
     
     def _screen_to_world(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
         return self._canvas_to_world(self._screen_to_canvas(screenCoords))
-                                      
+                    
     def _world_to_screen(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
         return self._canvas_to_screen(self._world_to_canvas(worldCoords))
     

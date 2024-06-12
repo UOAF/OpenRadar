@@ -7,6 +7,8 @@ from game_state import GameState
 from map import Map, NM_TO_METERS
 from pygame_utils import draw_dashed_line
 
+RADAR_CONTACT_SIZE_PX = 12
+
 class Radar(Map):
     """
     Represents a radar display.
@@ -29,6 +31,7 @@ class Radar(Map):
         self.unitFont = pygame.font.SysFont('Comic Sans MS', 18)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
         self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
+        self.hover_obj_id: str = ""
     
     def on_render(self):
         """
@@ -53,6 +56,9 @@ class Radar(Map):
         """
         super().on_loop()
         self._gamestate.update_state()
+        
+        self.hover_obj_id = self.get_hover_object_id()
+        
         
     def resize(self, width, height):
         """
@@ -112,7 +118,7 @@ class Radar(Map):
         bearing = self._world_bearing(start_world, end_world)
                 
         
-        text_surface = self.cursorFont.render(f"{bearing:.0f}/{distance_NM:.0f}", True, (255,0,0)) #TODO fix color
+        text_surface = self.cursorFont.render(f"{bearing:.0f}/{distance_NM:.0f}", True, color)
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.topleft = (end[0] + 10, end[1] + 10)
         surface.blit(text_surface, textrect)
@@ -138,7 +144,7 @@ class Radar(Map):
         surface.blit(text_surface, textrect)
     
     def _draw_contact(self, surface: pygame.Surface, contact: ACMIObject, 
-                     color: tuple[int, int, int] | None = None, size: int = 12) -> None:
+                     color: tuple[int, int, int] | None = None, size: int = RADAR_CONTACT_SIZE_PX) -> None:
         """
         Draws a contact on the given surface.
 
@@ -149,29 +155,31 @@ class Radar(Map):
             size (int, optional): The size of the contact icon in pixels. Defaults to 20.
         """
 
+        hover =  contact.object_id in self.hover_obj_id
+
         if color is None:
             color_obj = pygame.Color( contact.Color ) 
         else:
             color_obj = pygame.Color(color)
 
         if "FixedWing" in contact.Type:
-            self._draw_aircraft(surface, contact, color_obj, size)
+            self._draw_aircraft(surface, contact, color_obj, size, hover)
         elif "Missile" in contact.Type:
             self._draw_missile(surface, contact, color_obj, size)
-        elif "Sea" in contact.Type:
-            self._draw_ship(surface, contact, color_obj, size)
+        elif any(clas in contact.Type for clas in ["Chaff", "Flare", "Explosion", "Parachutist", "Projectile"]):
+            pass
+        elif "Watercraft" in contact.Type:
+            self._draw_ship(surface, contact, color_obj)
         elif "Ground" in contact.Type:
             self._draw_ground(surface, contact, color_obj, size)
         elif "Navaid+Static+Bullseye" in contact.Type or contact.object_id == "7fffffffffffffff": #TODO remove objid hack
             self._draw_bullseye(surface)
-        elif any(clas in contact.Type for clas in ["Chaff", "Flare", "Explosion", "Parachutist", "Projectile"]):
-            pass
         else:
             self._draw_other(surface, contact, color_obj, size)
             print(f"Drawing Other {contact}")
 
     def _draw_aircraft(self, surface: pygame.Surface, contact: ACMIObject, 
-                       color: pygame.Color, size: int = 12) -> None:
+                       color: pygame.Color, size: int = RADAR_CONTACT_SIZE_PX, hover=False) -> None:
 
         pos = self._world_to_screen((contact.T.U, contact.T.V))
         heading = float(contact.T.Heading)
@@ -206,13 +214,15 @@ class Radar(Map):
         elif contact.LockedTarget is not None:
             pass
             # print(f"Missile {contact.object_id} has invalid target {contact.LockedTarget}")
+        if hover:
+            pygame.draw.circle(surface, color, pos, size*2, 2)
 
     def _draw_missile(self, surface: pygame.Surface, contact: ACMIObject,
-                      color: pygame.Color, size: int = 12) -> None:
+                      color: pygame.Color, size: int = RADAR_CONTACT_SIZE_PX) -> None:
         
         pos = self._world_to_screen((contact.T.U, contact.T.V))
         
-        # Define shape around origin        
+        # Define missile shape around origin        
         missile_points = np.array([(0,-size), (-size/2, size/2), (size/2, size/2)])
         
         heading_rad = math.radians(contact.T.Heading)
@@ -242,15 +252,32 @@ class Radar(Map):
             # print(f"Missile {contact.object_id} has invalid target {contact.LockedTarget}")
 
     def _draw_ship(self, surface: pygame.Surface, contact: ACMIObject,
-                   color: pygame.Color, size: int = 12) -> None:
-        pass
-    
+                   color: pygame.Color, size: int = 20) -> None:
+        
+        pos = self._world_to_screen((contact.T.U, contact.T.V))
+
+        # Define ship shape around origin        
+        half = size/2
+        qtr = size/4
+        ship_points = np.array([(-half,0), (-qtr,0), (-qtr,-qtr), (qtr,-qtr), (qtr,0), (half,0), 
+                                (qtr, qtr), (-qtr, qtr)])
+
+        # translate and rotate shape to contact position
+        for i in range(len(ship_points)):
+            ship_points[i] = np.add(ship_points[i], pos)
+
+        pygame.draw.polygon(surface, color, list(map(tuple, ship_points)), 2)
+
     def _draw_ground(self, surface: pygame.Surface, contact: ACMIObject,
-                     color: pygame.Color, size: int = 12) -> None:
-        pass
+                     color: pygame.Color, size: int = RADAR_CONTACT_SIZE_PX) -> None:
+        
+        pos = self._world_to_screen((contact.T.U, contact.T.V))
+            
+        # Draw Circle
+        pygame.draw.circle(surface, color, pos, size/2, 2)
     
     def _draw_other(self, surface: pygame.Surface, contact: ACMIObject,
-                    color: pygame.Color, size: int = 12) -> None:
+                    color: pygame.Color, size: int = RADAR_CONTACT_SIZE_PX) -> None:
         
         pos = self._world_to_screen((contact.T.U, contact.T.V))
         heading = float(contact.T.Heading)
@@ -260,9 +287,9 @@ class Radar(Map):
         pygame.draw.circle(surface, color, pos, size/2, 2)
 
     def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading: float = 0.0, velocity: float = 0.0, 
-                          size: int = 20) -> tuple[tuple[float,float],tuple[float,float]]:
+                          size: int = RADAR_CONTACT_SIZE_PX*2) -> tuple[tuple[float,float],tuple[float,float]]:
         """
-        Calculates the start and end points of a velocity vector.
+        Calculates the start and end points of a velocity vector line to draw.
 
         Args:
             start_pos (tuple[float,float], optional): The starting position of the vector. Defaults to (0,0).
@@ -274,7 +301,7 @@ class Radar(Map):
             tuple[tuple[float,float],tuple[float,float]]: The start and end points of the velocity vector.
         """
         vel_scale = velocity / 1000.0
-        vel_vec_len_px = size + min(size/2.0, vel_scale*size/2.0) # Scale the velocity vector
+        vel_vec_len_px = vel_scale*size # Scale the velocity vector
 
         start_pt = start_pos
 
@@ -312,3 +339,26 @@ class Radar(Map):
         distance = self._world_distance(self.bullseye_world, pos_world)
         
         return bearing, distance
+    
+    def get_hover_object_id(self, hover_distance: int = RADAR_CONTACT_SIZE_PX) -> str:
+        """
+        Gets the object ID of the object that is being hovered over.
+        
+        Args:
+            hover_distance (int): The distance in pixels to consider an object as being hovered over.
+            
+        Returns:
+            str: The object ID of the object being hovered over.
+        """
+        pos = pygame.mouse.get_pos()
+        closest = None
+        closest_dist = float('inf')
+        for id in self._gamestate.objects:
+            obj = self._gamestate.objects[id]
+            dist = math.dist(pos, self._world_to_screen((obj.T.U, obj.T.V)))
+            if dist < closest_dist:
+                closest = obj
+                closest_dist = dist
+        if closest is None or closest_dist > hover_distance:
+            return ""
+        return closest.object_id
