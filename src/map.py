@@ -71,7 +71,7 @@ class Map:
 
     def zoom(self, mousepos, y: float):
         factor = 1.10
-        maxZoom = 20
+        maxZoom = 14
         if y > 0:
             self._zoom += 1
         else:
