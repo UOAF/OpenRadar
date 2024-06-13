@@ -1,0 +1,7 @@
+[Server]
+address = "localhost"
+port = 42674
+
+[window]
+size = [ 640, 400 ]
+location = [ 100, 100 ]

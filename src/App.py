@@ -1,4 +1,6 @@
 import pygame
+
+from config import RadarConfig
 from radar import Radar
 
 MOUSEDRAGBUTTON = 3
@@ -7,15 +9,18 @@ MOUSEBRAABUTTON = 1
 class App:
     def __init__(self, *args, **kwargs):
         self._running = True
-        self.size = self.width, self.height = 640, 400
         self.mouseDragDown = False
         self.mouseBRAADown = False
         self._startPan = (0,0)
         self._startBraa = (0,0)
-
+        
  
     def on_init(self):
         pygame.init()
+        
+        self.config = RadarConfig()
+        
+        self.size: tuple[int, int] = self.config.get("window", "size", tuple[int,int]) # type: ignore
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
        

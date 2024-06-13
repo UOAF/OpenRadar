@@ -30,7 +30,6 @@ class Map:
         self._draw_scale()
         
     def on_loop(self):
-        # self._radar.on_loop()
         pass
         
     def load_map(self, mappath, alpha: int|None = 100):
