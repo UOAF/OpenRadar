@@ -18,19 +18,16 @@ class Map:
         self._base_zoom = 1
         self._zoom = 0
         self._scale = 1
+        self.theatre_size_km = 1024 # TODO move out
+        self.theater_max_meter = self.theatre_size_km * 1000 # km to m
         self.fitInView()
         # self._radar = Radar(self)
         
-        self.font = pygame.font.SysFont('Comic Sans MS', 30)
+        self.font = pygame.font.SysFont('Comic Sans MS', 10)
         
     def on_render(self):
         self._display_surf.blit(self._image_surf,(self._offsetX,self._offsetY))
-        # self._radar.on_render()
-        
-        # pos = pygame.mouse.get_pos()
-        # canvasPos = self._screen_to_canvas(pygame.mouse.get_pos())
-        # text_surface = self.font.render(f"{pos}\n{canvasPos}", False, (0, 0, 0), (255, 255, 255))
-        # self._display_surf.blit(text_surface, (self._offsetX,self._offsetY))
+        self._draw_scale()
         
     def on_loop(self):
         # self._radar.on_loop()
@@ -102,6 +99,61 @@ class Map:
         else:
             self._zoom = 0
             
+    def _draw_scale(self):
+        
+        scale_height_px = 50
+        padding = 10
+        color = pygame.Color("white")
+        graduations_nm = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+        
+        scale_width_px = int(self.width / 4) # 25% of width
+        scale_width_m = (scale_width_px / self._scale) / self._map_source.get_width() * self.theater_max_meter
+        scale_width_nm = scale_width_m / NM_TO_METERS
+        possible_graduations = [i for i in graduations_nm if i < scale_width_nm]
+        if len(possible_graduations) == 0:
+            max_graduation_nm = 1
+        else:
+            max_graduation_nm = max(possible_graduations)
+                
+        max_graduation_m = max_graduation_nm * NM_TO_METERS
+        max_graduation_px = (max_graduation_m / self.theater_max_meter) * self._map_source.get_width() * self._scale
+        
+        scale_rect = pygame.Rect(self.width - scale_width_px - padding, self.height - scale_height_px - padding, 
+                                 scale_width_px, scale_height_px)
+        
+        # pygame.draw.rect(self._display_surf, color, scale_rect, 2)
+        
+        scale_left = (scale_rect.left + (scale_rect.width - max_graduation_px) / 2, 
+                      scale_rect.top + scale_rect.height / 2)
+        
+        scale_right = (scale_left[0] + max_graduation_px, scale_left[1])
+        
+        #Horizontal line
+        pygame.draw.line(self._display_surf, color, scale_left, 
+                         (scale_left[0] + max_graduation_px, scale_left[1]), 2)
+        
+        #Graduations
+        pygame.draw.line(self._display_surf, color, (scale_left[0], scale_left[1] - 10), 
+                         (scale_left[0], scale_left[1] + 10), 2)
+        
+        pygame.draw.line(self._display_surf, color, (scale_right[0], scale_right[1] - 10), 
+                    (scale_right[0], scale_right[1] + 10), 2)
+        
+        center = scale_rect.center
+        
+        pygame.draw.line(self._display_surf, color, (center[0], center[1] - 5), 
+                         (center[0], center[1] + 5), 2)
+        
+        #text
+        text = self.font.render(f"{max_graduation_nm} NM", True, color)
+        text_rect = text.get_rect()
+        
+        
+        self._display_surf.blit(text, (scale_left[0] ,scale_rect.top ))
+        
+        
+        
+            
     def _canvas_to_screen(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
         screenX = int((canvasCoords[0] * self._scale) + self._offsetX)
         screenY = int((canvasCoords[1] * self._scale) + self._offsetY)
@@ -114,24 +166,20 @@ class Map:
     
     def _canvas_to_world(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
         radar_map_size_x, radar_map_size_y = self._map_source.get_size()
-        theatre_size_km = 1024 # TODO move out
-        theater_max_meter = theatre_size_km * 1000 # km to m
 
-        pos_ux = canvasCoords[0] / radar_map_size_x * theater_max_meter
-        pos_vy = theater_max_meter - (canvasCoords[1] / radar_map_size_y * theater_max_meter)
+        pos_ux = canvasCoords[0] / radar_map_size_x * self.theater_max_meter
+        pos_vy = self.theater_max_meter - (canvasCoords[1] / radar_map_size_y * self.theater_max_meter)
 
         return pos_ux, pos_vy
         
     def _world_to_canvas(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
         
         radar_map_size_x, radar_map_size_y = self._map_source.get_size()
-        theatre_size_km = 1024 # TODO move out
-        theater_max_meter = theatre_size_km * 1000 # km to m
 
         pos_ux = worldCoords[0] #float(properties["T"]["U"])
         pos_vy = worldCoords[1] #float(properties["T"]["V"])
-        canvasX = pos_ux / theater_max_meter * radar_map_size_x
-        canvasY = (theater_max_meter - pos_vy) / theater_max_meter * radar_map_size_y     
+        canvasX = pos_ux / self.theater_max_meter * radar_map_size_x
+        canvasY = (self.theater_max_meter - pos_vy) / self.theater_max_meter * radar_map_size_y     
                 
         return canvasX, canvasY
     
