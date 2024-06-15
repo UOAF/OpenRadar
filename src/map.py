@@ -9,7 +9,7 @@ class Map:
         super().__init__()
         self._running = True
         self._display_surf = displaysurface
-        self.size = self.width, self.height = 640, 400
+        self.size = self.width, self.height = displaysurface.get_size()
         self._map_source = pygame.Surface(self.size)
         self.load_map("maps/balkans_4k_airbases.png", 150)
         self._image_surf = pygame.Surface((0,0))
