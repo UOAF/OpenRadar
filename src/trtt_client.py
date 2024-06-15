@@ -1,3 +1,4 @@
+import re
 import socket
 import queue
 import threading
@@ -49,8 +50,11 @@ class TRTTClientThread(threading.Thread):
         self.server = server
         self.clientsocket.connect(self.server)
         buf = Buffer(self.clientsocket)
-        self.do_handshake(buf)
-        self.processing_loop(buf)
+        if self.do_handshake(buf):
+            self.processing_loop(buf)
+        else:
+            print("Tacview Handshake failed")
+            self.disconnect()
         
     def processing_loop(self, buf: Buffer):
          # Put lines from the socket into the queue while socket is open
@@ -63,7 +67,7 @@ class TRTTClientThread(threading.Thread):
         # Indicate that the thread has finished its work
         self.queue.put(None)   
                 
-    def do_handshake(self, buf: Buffer, password: str = ""):
+    def do_handshake(self, buf: Buffer, password: str = "") -> bool:
         
         handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
         self.clientsocket.sendall(handshake)
@@ -73,8 +77,9 @@ class TRTTClientThread(threading.Thread):
         if handshake is not None and handshake.startswith("XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n"):
             self.connected = True
             self.servername = handshake.split("\n")[2]
+            return True
         else:
-            self.disconnect()
+            return False
 
     def disconnect(self):
         self.connected = False
