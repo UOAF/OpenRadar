@@ -6,7 +6,7 @@ SUPPORTED_OBJECT_CLASSES = ("Aircraft")
 
 # This can cause an attempt to delete objects that are not in the game state
 # TODO: If perfomance becomes an issues consider reimplementing this list.
-HIDDEN_OBJECT_CLASSES = ("Static", "Vehicle", "Flare", "Chaff", "Parachutist") 
+HIDDEN_OBJECT_CLASSES = ("Static", "Projectile", "Vehicle", "Flare", "Chaff", "Explosion", "Parachutist", "Bomb", "Rotorcraft") 
 
 class GameState:
     """

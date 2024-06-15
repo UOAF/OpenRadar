@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from acmi_parse import ACMIObject
-from game_state import GameState
+from game_state import GameState, HIDDEN_OBJECT_CLASSES
 from map import Map, NM_TO_METERS, METERS_TO_FT
 from pygame_utils import draw_dashed_line
 
@@ -166,7 +166,7 @@ class Radar(Map):
             self._draw_aircraft(surface, contact, color_obj, size, hover)
         elif "Missile" in contact.Type:
             self._draw_missile(surface, contact, color_obj, size)
-        elif any(clas in contact.Type for clas in ["Chaff", "Flare", "Explosion", "Parachutist", "Projectile"]):
+        elif any(clas in contact.Type for clas in HIDDEN_OBJECT_CLASSES):
             pass
         elif "Watercraft" in contact.Type:
             self._draw_ship(surface, contact, color_obj)
