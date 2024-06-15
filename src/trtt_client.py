@@ -24,28 +24,54 @@ class TRTTClientThread(threading.Thread):
     def __init__(self, queue: queue.Queue):
         super(TRTTClientThread, self).__init__() # Call the init for threading.Thread
         self.queue = queue
+        self.connected = False
+        self.server = ("localhost", 42674)
+        self.servername = ""
+        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def run(self):
-        clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        clientsocket.connect(("localhost", 42674))
-        # clientsocket.connect(("bms.uoaf.net", 42674))
+        
+        self.clientsocket.connect(self.server)
+        buf = Buffer(self.clientsocket)
 
-        # Send handshake to host
-        handshake = "XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n\0".encode('utf-8')
-        clientsocket.sendall(handshake)
-
-        buf = Buffer(clientsocket)
-
-        # Get handshake from server # TODO parse server name out of handshake and do something with it
-        handshake = buf.get_handshake()
-        print(handshake)
-
-        # Put lines from the socket into the queue while socket is open
-        while True:
+        self.do_handshake(buf)
+        self.processing_loop(buf)
+        
+    # def connect(self, server: tuple):
+    #     """ blocking call to connect to the server and start processing data
+    #     """
+    #     self.server = server
+    #     self.clientsocket.connect(self.server)
+    #     buf = Buffer(self.clientsocket)
+    #     self.do_handshake(buf)
+    #     self.processing_loop(buf)
+        
+    def processing_loop(self, buf: Buffer):
+         # Put lines from the socket into the queue while socket is open
+        while self.connected:
             line = buf.get_line()
             if line is None:
+                self.disconnect()
                 break
             self.queue.put(line)
-
         # Indicate that the thread has finished its work
-        self.queue.put(None)
+        self.queue.put(None)   
+                
+    def do_handshake(self, buf: Buffer, password: str = ""):
+        
+        handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
+        self.clientsocket.sendall(handshake)
+        # Get handshake from server
+        handshake = buf.get_handshake()
+        
+        if handshake is not None and handshake.startswith("XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n"):
+            self.connected = True
+            self.servername = handshake.split("\n")[2]
+        else:
+            self.disconnect()
+
+    def disconnect(self):
+        self.connected = False
+        self.servername = ""
+        self.clientsocket.close()
+    
