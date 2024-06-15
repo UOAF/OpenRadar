@@ -18,10 +18,11 @@ class RadarConfig:
 
     def get(self, heading, key, requested_type: Type):
         try:
-            val = requested_type(self.config.get(heading).get(key))
+            val = requested_type(self.config.get(heading).get(key)) # type: ignore
             return val
         except TypeError as e:
             print (e)
+            raise TypeError(e)
         # raise TypeError(
         #     f'''Config value "{key}" Under heading "{heading}" in file {self.config_file} is not of correct type,
         #     Expected: {requested_type}, given: {type(val)}''')

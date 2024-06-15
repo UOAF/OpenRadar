@@ -1,6 +1,7 @@
 import socket
 import queue
 import threading
+from time import sleep
 
 class Buffer:
 
@@ -26,25 +27,30 @@ class TRTTClientThread(threading.Thread):
         self.queue = queue
         self.connected = False
         self.server = ("localhost", 42674)
+        self.num_retries = 5
         self.servername = ""
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def run(self):
         
+        retries = 0
+        while retries < self.num_retries:
+            try:
+                self.connect(self.server)
+                break
+            except ConnectionRefusedError:
+                retries += 1
+                print(f"Connection refused, retrying in 10 seconds {retries}/{self.num_retries}")
+                sleep(10)
+        
+    def connect(self, server: tuple):
+        """ blocking call to connect to the server and start processing data
+        """
+        self.server = server
         self.clientsocket.connect(self.server)
         buf = Buffer(self.clientsocket)
-
         self.do_handshake(buf)
         self.processing_loop(buf)
-        
-    # def connect(self, server: tuple):
-    #     """ blocking call to connect to the server and start processing data
-    #     """
-    #     self.server = server
-    #     self.clientsocket.connect(self.server)
-    #     buf = Buffer(self.clientsocket)
-    #     self.do_handshake(buf)
-    #     self.processing_loop(buf)
         
     def processing_loop(self, buf: Buffer):
          # Put lines from the socket into the queue while socket is open
