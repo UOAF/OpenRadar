@@ -223,14 +223,25 @@ class Radar(Map):
         pos = self._world_to_screen((contact.T.U, contact.T.V))
         
         # Define missile shape around origin        
-        missile_points = np.array([(0,-size), (-size/2, size/2), (size/2, size/2)])
+        # missile_points = np.array([(0,-size), (-size/2, size/2), (size/2, size/2)])
+        missile_points = np.array([(0,size), (-size/2, -size/2), (size/2, -size/2)])
         
         heading_rad = math.radians(contact.T.Heading)
         
-        # # rotate shape around orgin towards heading
+        # rotate shape around orgin towards heading
+        # transformation_mat = ((math.cos(heading_rad), math.sin(heading_rad)),
+        #                       (-math.sin(heading_rad), math.cos(heading_rad)))
         transformation_mat = ((math.cos(heading_rad), math.sin(heading_rad)),
-                              (-math.sin(heading_rad), math.cos(heading_rad)))
-                
+                              (math.sin(heading_rad), -math.cos(heading_rad)))
+        
+        # (x', y') = (x, y) * transformation_mat
+        
+        # ( cos T -sin T )
+        # ( sin T  cos T)
+        
+        # x' = x cos T - y sin T
+        # y' = y cos T + x sin T
+        
         # translate and rotate shape to contact position
         for i in range(len(missile_points)):
             rotated_point = np.matmul(missile_points[i], transformation_mat)
