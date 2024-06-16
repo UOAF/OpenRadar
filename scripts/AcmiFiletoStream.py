@@ -5,7 +5,7 @@ import time
 from zipfile import ZipFile
 
 filename = "Data\\2024-06-03_19-09-42_converted.zip.acmi"
-timemultiplier = 16.0
+timemultiplier = 32.0
 
 # Read file as text into into acmidata
 acmidata = list()
