@@ -11,7 +11,8 @@ class Map:
         self._display_surf = displaysurface
         self.size = self.width, self.height = displaysurface.get_size()
         self._map_source = pygame.Surface(self.size)
-        self.load_map("maps/balkans_4k_airbases.png", 150)
+        # self.load_map("maps/balkans_4k_airbases.png", 150)
+        self.load_map("maps/Korea.jpg", 100)
         self._image_surf = pygame.Surface((0,0))
         self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization
         self._offsetX, self._offsetY = (0,0)
@@ -68,7 +69,7 @@ class Map:
 
     def zoom(self, mousepos, y: float):
         factor = 1.10
-        maxZoom = 14
+        maxZoom = 20
         if y > 0:
             self._zoom += 1
         else:
