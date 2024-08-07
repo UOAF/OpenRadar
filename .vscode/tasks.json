@@ -4,7 +4,7 @@
         {
             "label": "PyInstaller Build",
             "type": "shell",
-            "command": "C:/Users/brian/AppData/Local/Programs/Python/Python312/Scripts/pyinstaller.exe",
+            "command": "pyinstaller.exe",
             "args": [
                 "OpenRadar.spec"
             ],

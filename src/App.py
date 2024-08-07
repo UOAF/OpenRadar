@@ -20,10 +20,9 @@ class App:
     def on_init(self):
         pygame.init()
         
-        
         pygame.display.set_caption('OpenRadar') #TODO: add icon
         
-        self.size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int])
+        self.size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int]) # type: ignore
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
        

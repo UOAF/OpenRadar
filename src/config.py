@@ -12,10 +12,14 @@ DEFAULT_CONFIG_FILE = Path("config.toml")
 class RadarConfig:
     def __init__(self, config_file: Path = DEFAULT_CONFIG_FILE, bundle_dir: Path = Path('.')):
         
+        
         self.config_file_path = config_file
         self.config_defaults_path = bundle_dir / CONFIG_DEFAULTS
         self.config: tomlkit.TOMLDocument
         self.config_defaults: tomlkit.TOMLDocument
+        
+        print(f"Loading config from {self.config_file_path}")
+        print(f"Loading defaults from {self.config_defaults_path}")
         
         with self.config_defaults_path.open("r") as f:
             self.config_defaults = tomlkit.parse(f.read())
@@ -68,6 +72,9 @@ class RadarConfig:
 
 if 'app_config' not in globals():
     
+    
+    global bundle_dir
+    bundle_dir = Path()
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'): # Running as compiled
         bundle_dir = Path(sys._MEIPASS) # type: ignore
     else:

@@ -22,8 +22,10 @@ class Map:
         active_theatre = config.app_config.get("map", "theatre", str)
         theatre = next((x for x in THEATRE_MAPS_BUILTIN if x["name"] == active_theatre), None)
         
+        # TODO: Handle non-bundle maps
         if theatre is not None:
-            self.load_map(theatre["path"], config.app_config.get("map", "map_alpha", int)) # type: ignore
+            self.load_map(config.bundle_dir / theatre["path"], 
+                          config.app_config.get("map", "map_alpha", int)) # type: ignore
             self.theatre_size_km = theatre["size"]
         else:
             self.load_map(None)
