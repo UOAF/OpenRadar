@@ -9,6 +9,10 @@ MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1
 
 class App:
+    """
+    The main application class for the OpenRadar program.
+    """
+
     def __init__(self, *args, **kwargs):
         self._running = True
         self.mouseDragDown = False
@@ -16,7 +20,6 @@ class App:
         self._startPan = (0,0)
         self._startBraa = (0,0)
         
- 
     def on_init(self):
         pygame.init()
         
@@ -31,7 +34,9 @@ class App:
         self._running = True
  
     def on_event(self, event: pygame.event.Event):
-        
+        """
+        Handles the various events triggered by the user.
+        """
         #TODO Consider refactor
         
         if event.type == pygame.QUIT:
@@ -72,10 +77,16 @@ class App:
                 self._radar.braa(False)
             
     def on_loop(self):
+        """
+        Performs any necessary updates or calculations for the application.
+        """
         self._radar.on_loop()
         pass
     
     def on_render(self):
+        """
+        Renders the application by filling the display with a grey color, rendering the radar, and displaying the FPS counter.
+        """
         self._display_surf.fill((50,50,50)) # Fill grey
         self._radar.on_render()
         self.fps_counter()
@@ -83,9 +94,15 @@ class App:
         pygame.display.flip()
     
     def on_cleanup(self):
+        """
+        Cleans up and quits the application.
+        """
         pygame.quit()
  
     def on_execute(self):
+        """
+        This is the main Loop
+        """
         if self.on_init() == False:
             self._running = False
  
@@ -100,6 +117,9 @@ class App:
         self.on_cleanup()
         
     def fps_counter(self):
+        """
+        Displays the current FPS (frames per second) on the top left corner of the display.
+        """
         fps = str(int(self.clock.get_fps()))
         fps_t = self.font.render(fps , 1, pygame.Color("RED"))
         self._display_surf.blit(fps_t,(0,0))
