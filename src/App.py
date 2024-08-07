@@ -1,6 +1,8 @@
 import pygame
+from pathlib import Path
+import sys
 
-from config import RadarConfig
+import config
 from radar import Radar
 
 MOUSEDRAGBUTTON = 3
@@ -17,12 +19,11 @@ class App:
  
     def on_init(self):
         pygame.init()
-                
-        self.config = RadarConfig()
+        
         
         pygame.display.set_caption('OpenRadar') #TODO: add icon
         
-        self.size: tuple[int, int] = self.config.get("window", "size", tuple[int,int])
+        self.size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int])
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
        
@@ -103,3 +104,4 @@ class App:
         fps = str(int(self.clock.get_fps()))
         fps_t = self.font.render(fps , 1, pygame.Color("RED"))
         self._display_surf.blit(fps_t,(0,0))
+            

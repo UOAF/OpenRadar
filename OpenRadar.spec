@@ -1,11 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+added_files = [
+         ( 'resources', 'resources' )
+         ]
 
 a = Analysis(
     ['src\\OpenRadar.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=added_files,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

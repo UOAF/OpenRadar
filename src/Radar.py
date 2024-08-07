@@ -30,7 +30,8 @@ class Radar(Map):
         self._drawBRAA = False
         self.unitFont = pygame.font.SysFont('Comic Sans MS', 14)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
-        self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
+        #self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
+        self.bullseye_world = (758422, 689920) #TODO   Dynamic bullseye 3279.98
         self.hover_obj_id: str = ""
     
     def on_render(self):
@@ -86,6 +87,10 @@ class Radar(Map):
         BULLSEYE_RING_SCALE = 20 # 20nm per ring
         px_width_20nm = self._world_to_screen((BULLSEYE_RING_SCALE*NM_TO_METERS,0))[0] - self._world_to_screen((0,0))[0]
         pos = self._world_to_screen(self.bullseye_world)
+        
+        # print()
+        # print(self._world_to_canvas((self.bullseye_world[1], self.bullseye_world[0])))
+        # print(self._world_to_canvas(self.bullseye_world))
     
         for i in range(1,BULLSEYE_NUM_RINGS):
             pygame.draw.circle(surface, color, pos, px_width_20nm*i, size) # Draw 20nm circle
@@ -298,7 +303,10 @@ class Radar(Map):
         pygame.draw.circle(surface, color, pos, size/2, 2)
 
     def _make_aircraft_text_info(self, contact: ACMIObject, color: pygame.Color) -> pygame.Surface:
-        name_surface = self.unitFont.render(f"{contact.Name}", True, color)
+        text = contact.Pilot
+        if text == "":
+            text = contact.Type
+        name_surface = self.unitFont.render(f"{contact.Pilot}", True, color)
         data_surface = self.unitFont.render(
             f"{int(self.meters_to_ft(contact.T.Altitude)/100)}  {int(int(contact.CAS)/10)}", True, color
             )

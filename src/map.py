@@ -1,8 +1,15 @@
 import pygame
 import math
 
+import config
+
+THEATRE_DEFAULT_SIZE = 1024
 NM_TO_METERS = 1852
 METERS_TO_FT = 3.28084
+
+#TODO Move to config
+THEATRE_MAPS_BUILTIN = [{"name": "Balkans", "path": "resources/maps/balkans_4k_airbases.png", "size": 1024},
+                        {"name": "KTO", "path": "resources/maps/Korea.jpg", "size": 1024}]
 
 class Map:
     def __init__(self, displaysurface: pygame.Surface):
@@ -11,15 +18,23 @@ class Map:
         self._display_surf = displaysurface
         self.size = self.width, self.height = displaysurface.get_size()
         self._map_source = pygame.Surface(self.size)
-        # self.load_map("maps/balkans_4k_airbases.png", 150)
-        self.load_map("maps/Korea.jpg", 100)
+       
+        active_theatre = config.app_config.get("map", "theatre", str)
+        theatre = next((x for x in THEATRE_MAPS_BUILTIN if x["name"] == active_theatre), None)
+        
+        if theatre is not None:
+            self.load_map(theatre["path"], config.app_config.get("map", "map_alpha", int)) # type: ignore
+            self.theatre_size_km = theatre["size"]
+        else:
+            self.load_map(None)
+            self.theatre_size_km = THEATRE_DEFAULT_SIZE
+            
         self._image_surf = pygame.Surface((0,0))
-        self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization
+        self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization0
         self._offsetX, self._offsetY = (0,0)
         self._base_zoom = 1
         self._zoom = 0
         self._scale = 1
-        self.theatre_size_km = 1024 # TODO move out
         self.theater_max_meter = self.theatre_size_km * 1000 # km to m
         self.fitInView()
         # self._radar = Radar(self)

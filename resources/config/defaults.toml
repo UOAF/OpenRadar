@@ -5,3 +5,7 @@ port = 42674
 [window]
 size = [ 640, 400 ]
 location = [ 100, 100 ]
+
+[map]
+theatre = "KTO"
+map_alpha = 100 # 0-255
