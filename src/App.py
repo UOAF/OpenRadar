@@ -1,6 +1,5 @@
 import pygame
-from pathlib import Path
-import sys
+import os
 
 import config
 from radar import Radar
@@ -21,12 +20,16 @@ class App:
         self._startBraa = (0,0)
         
     def on_init(self):
+        
+        window_x, window_y = config.app_config.get("window", "location", tuple[int,int]) # type: ignore
+        os.environ['SDL_VIDEO_WINDOW_POS'] = f"{window_x},{window_y}"
+        
         pygame.init()
         
         pygame.display.set_caption('OpenRadar') #TODO: add icon
         
         self.size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int]) # type: ignore
-        self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE)
+        self._display_surf = pygame.display.set_mode(self.size, pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
        
         self.clock = pygame.time.Clock()
@@ -42,9 +45,13 @@ class App:
         if event.type == pygame.QUIT:
             self._running = False
             
-        elif event.type == pygame.VIDEORESIZE:
-            self.size = self.width, self.height = event.w, event.h
+        elif event.type == pygame.WINDOWMOVED:
+            config.app_config.set("window", "location", (event.x, event.y))
+            
+        elif event.type == pygame.WINDOWRESIZED:
+            self.size = self.width, self.height = event.x, event.y
             self._radar.resize(self.width, self.height)
+            config.app_config.set("window", "size", self.size)
             
         elif event.type == pygame.MOUSEWHEEL:
             if event.y != 0:
