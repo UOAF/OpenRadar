@@ -18,9 +18,6 @@ class RadarConfig:
         self.config: tomlkit.TOMLDocument
         self.config_defaults: tomlkit.TOMLDocument
         
-        print(f"Loading config from {self.config_file_path}")
-        print(f"Loading defaults from {self.config_defaults_path}")
-        
         with self.config_defaults_path.open("r") as f:
             self.config_defaults = tomlkit.parse(f.read())
 
