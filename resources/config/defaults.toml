@@ -1,11 +1,11 @@
 [Server]
-address = "localhost"
-port = 42674
+address = "bms.uoaf.net" # Address to connect to the server on
+port = 42674 # Port to connect to the server on
 
 [window]
-size = [ 640, 400 ]
-location = [ 100, 100 ]
+size = [ 0, 0 ] # [width, height]
+location = [ 0, 0 ] # [x, y]
 
 [map]
-theatre = "KTO"
-map_alpha = 100 # 0-255
+theatre = "Balkans" # Theatre to load the map for on startup
+map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
