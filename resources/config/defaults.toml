@@ -7,5 +7,5 @@ size = [ 0, 0 ] # [width, height]
 location = [ 0, 0 ] # [x, y]
 
 [map]
-theatre = "Balkans" # Theatre to load the map for on startup
+theatre = "KTO" # Theatre to load the map for on startup
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
