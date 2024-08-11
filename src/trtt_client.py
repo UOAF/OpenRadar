@@ -60,14 +60,13 @@ class TRTTClientThread(threading.Thread):
     def processing_loop(self, buf: Buffer):
          # Put lines from the socket into the queue while socket is open
          
-        with open("output.txt", "w") as f:
-            while self.connected:
-                line = buf.get_line()
-                if line is None:
-                    self.disconnect()
-                    break
-                self.queue.put(line)
-                f.write(line + '\n')
+        while self.connected:
+            line = buf.get_line()
+            if line is None:
+                self.disconnect()
+                break
+            self.queue.put(line)
+
         # Indicate that the thread has finished its work
         self.queue.put(None)   
                 
