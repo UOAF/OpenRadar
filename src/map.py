@@ -18,6 +18,8 @@ class Map:
         self._display_surf = displaysurface
         self.size = self.width, self.height = displaysurface.get_size()
         self._map_source = pygame.Surface(self.size)
+        self._map_annotated = pygame.Surface(self.size)
+        self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore
        
         active_theatre = config.app_config.get("map", "theatre", str)
         theatre = next((x for x in THEATRE_MAPS_BUILTIN if x["name"] == active_theatre), None)
@@ -31,7 +33,7 @@ class Map:
             self.load_map(None)
             self.theatre_size_km = THEATRE_DEFAULT_SIZE
             
-        self._image_surf = pygame.Surface((0,0))
+        self._map_scaled = pygame.Surface((0,0))
         self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization0
         self._offsetX, self._offsetY = (0,0)
         self._base_zoom = 1
@@ -44,7 +46,8 @@ class Map:
         self.font = pygame.font.SysFont('Comic Sans MS', 10)
         
     def on_render(self):
-        self._display_surf.blit(self._image_surf,(self._offsetX,self._offsetY))
+        self._display_surf.fill(self.background_color) # Fill grey
+        self._display_surf.blit(self._map_scaled,(self._offsetX,self._offsetY))
         self._draw_scale()
         
     def on_loop(self):
@@ -53,11 +56,16 @@ class Map:
     def load_map(self, mappath, alpha: int|None = 100):
         if mappath:
             self._map_source = pygame.image.load(mappath).convert()
+            self._map_annotated = pygame.Surface(self._map_source.get_size())
+            if alpha is not None: self._map_source.set_alpha(alpha)
+            self._map_annotated.fill(self.background_color)
+            self._map_annotated.blit(self._map_source, (0,0))
+            self._map_annotated.convert()
         else:
             self._map_source = pygame.Surface(self.size)
-            
-        if alpha is not None:
-            self._map_source.set_alpha(alpha)
+            self._map_annotated = pygame.Surface(self.size)   
+            self._map_annotated.fill(self.background_color)
+            self._map_annotated.convert()
             
     def pan(self, panVector: tuple[float,float] = (0,0) ):
         self._offsetX = (self._offsetX + panVector[0]) 
@@ -72,13 +80,13 @@ class Map:
 
     def fitInView(self, scale=True):
         
-        if self._map_source is not None:
-            maprect = pygame.Rect((0,0), self._map_source.get_size())
+        if self._map_annotated is not None:
+            maprect = pygame.Rect((0,0), self._map_annotated.get_size())
             self._base_zoom = min(self.width / maprect.width, self.height / maprect.height)
             self._scale = self._base_zoom
             newSize = int(maprect.width * self._base_zoom), int(maprect.height * self._base_zoom)
             
-            self._image_surf = pygame.transform.scale(self._map_source, newSize)
+            self._map_scaled = pygame.transform.scale(self._map_annotated, newSize)
             #Center
             self._offsetX, self._offsetY = ((self.size[0] - newSize[0]) / 2), ((self.size[1] - newSize[1]) / 2) 
                 
@@ -103,7 +111,7 @@ class Map:
             self._scale = (self._base_zoom * (factor ** self._zoom))
             newSize = (int(sourceMapSize[0] * self._scale), 
                       int(sourceMapSize[1] * self._scale))
-            self._image_surf = pygame.transform.scale(self._map_source, newSize)
+            self._map_scaled = pygame.transform.scale(self._map_annotated, newSize)
             
             # Pan to keep mouse in the same place
             newcanvasmousepos = self._screen_to_canvas(mousepos)
@@ -124,7 +132,7 @@ class Map:
         graduations_nm = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
         
         scale_width_px = int(self.width / 4) # 25% of width
-        scale_width_m = (scale_width_px / self._scale) / self._map_source.get_width() * self.theater_max_meter
+        scale_width_m = (scale_width_px / self._scale) / self._map_annotated.get_width() * self.theater_max_meter
         scale_width_nm = scale_width_m / NM_TO_METERS
         possible_graduations = [i for i in graduations_nm if i < scale_width_nm]
         if len(possible_graduations) == 0:
@@ -133,7 +141,7 @@ class Map:
             max_graduation_nm = max(possible_graduations)
                 
         max_graduation_m = max_graduation_nm * NM_TO_METERS
-        max_graduation_px = (max_graduation_m / self.theater_max_meter) * self._map_source.get_width() * self._scale
+        max_graduation_px = (max_graduation_m / self.theater_max_meter) * self._map_annotated.get_width() * self._scale
         
         scale_rect = pygame.Rect(self.width - scale_width_px - padding, self.height - scale_height_px - padding, 
                                  scale_width_px, scale_height_px)
@@ -220,7 +228,7 @@ if __name__ == "__main__" :
     map = Map(_display_surf)
     
     print("offsetX, offsetY ", map._offsetX, map._offsetY)
-    print("map size ", map._image_surf.get_size())
+    print("map size ", map._map_scaled.get_size())
     
     top_left = map._world_to_canvas((0,1024*1000))
     top_left_screen = map._canvas_to_screen(top_left)
