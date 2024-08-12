@@ -1,8 +1,9 @@
-import re
 import socket
 import queue
 import threading
 from time import sleep
+
+import config
 
 class Buffer:
 
@@ -27,40 +28,68 @@ class TRTTClientThread(threading.Thread):
         super(TRTTClientThread, self).__init__() # Call the init for threading.Thread
         self.queue = queue
         self.connected = False
-        self.server = ("localhost", 42674)
-        #self.server = ("bms.uoaf.net", 42674)
-        self.num_retries = 5
+        self.connecting = True
+        self.quit = False
+
+        server = config.app_config.get("server", "address", str) # type: ignore
+        port = config.app_config.get("server", "port", int) # type: ignore
+        self.server = (server, port)
+        self.num_retries = int( config.app_config.get("server", "retries", int) ) # type: ignore
         self.servername = ""
         self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 
     def run(self):
         
         retries = 0
-        while retries < self.num_retries:
-            try:
-                self.connect(self.server)
-                break
-            except ConnectionRefusedError:
-                retries += 1
-                print(f"Connection refused, retrying in 10 seconds {retries}/{self.num_retries}")
-                sleep(10)
+        while not self.quit:
+
+            if self.connecting:
+            
+                if (retries < self.num_retries or self.num_retries == 0):
+                    try:
+                        self.clientsocket.connect(self.server)
+                        self.connecting = False
+                        self.connected = True
+                    except ConnectionRefusedError:
+                        retries += 1
+                        print(f"Connection refused, retrying in 10 seconds {retries}/{self.num_retries}")
+                        sleep(10)
+                else:
+                    print("Failed to connect to server")
+                    self.connecting = False
+                    self.connected = False
+                    
+            if self.connected:
+                
+                buf = Buffer(self.clientsocket)
+                
+                if not self.performHandshake(buf):
+                    print("Tacview Handshake failed")
+                    self.disconnect()
+                
+                self.process_data(buf) # blocking call
+                print("Disconnected from server")
+
+            sleep(1)
+                
+    def stop(self):
+        self.quit = True
+        self.disconnect()            
+    
+    def connect(self, server: str, port: int) -> bool:
         
-    def connect(self, server: tuple):
-        """ blocking call to connect to the server and start processing data
-        """
-        self.server = server
-        self.clientsocket.connect(self.server)
-        buf = Buffer(self.clientsocket)
-        if self.do_handshake(buf):
-            self.processing_loop(buf)
-        else:
-            print("Tacview Handshake failed")
-            self.disconnect()
+        if self.connected:
+            return False
+        config.app_config.set("server", "address", server)
+        config.app_config.set("server", "port", port)
+        self.server = (server, port)
+        self.connecting = True
+        return True
         
-    def processing_loop(self, buf: Buffer):
-         # Put lines from the socket into the queue while socket is open
-         
-        while self.connected:
+    def process_data(self, buf: Buffer):
+        # Put lines from the socket into the queue while socket is open
+        while self.connected and not self.quit:
             line = buf.get_line()
             if line is None:
                 self.disconnect()
@@ -70,7 +99,7 @@ class TRTTClientThread(threading.Thread):
         # Indicate that the thread has finished its work
         self.queue.put(None)   
                 
-    def do_handshake(self, buf: Buffer, password: str = "") -> bool:
+    def performHandshake(self, buf: Buffer, password: str = "") -> bool:
         
         handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
         self.clientsocket.sendall(handshake)
@@ -86,6 +115,7 @@ class TRTTClientThread(threading.Thread):
 
     def disconnect(self):
         self.connected = False
+        self.connecting = False
         self.servername = ""
         self.clientsocket.close()
     

@@ -1,6 +1,7 @@
-[Server]
+[server]
 address = "bms.uoaf.net" # Address to connect to the server on
 port = 42674 # Port to connect to the server on
+retries = 5 # Number of times to retry connecting to the server
 
 [window]
 size = [ 0, 0 ] # [width, height]
