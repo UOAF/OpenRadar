@@ -3,9 +3,7 @@ import math
 
 import config
 
-THEATRE_DEFAULT_SIZE = 1024
-NM_TO_METERS = 1852
-METERS_TO_FT = 3.28084
+from bms_math import *
 
 #TODO Move to config
 THEATRE_MAPS_BUILTIN = [{"name": "Balkans", "path": "resources/maps/balkans_4k_airbases.png", "size": 1024},
@@ -172,53 +170,32 @@ class Map:
         #text
         text = self.font.render(f"{max_graduation_nm} NM", True, color)
         text_rect = text.get_rect()
-        
-        
+  
         self._display_surf.blit(text, (scale_left[0] ,scale_rect.top ))
         
-        
-        
-            
     def _canvas_to_screen(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        screenX = int((canvasCoords[0] * self._scale) + self._offsetX)
-        screenY = int((canvasCoords[1] * self._scale) + self._offsetY)
-        return screenX, screenY
+        return canvas_to_screen(canvasCoords, self._scale, (self._offsetX, self._offsetY))
         
     def _screen_to_canvas(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
-        canvasX = float((screenCoords[0] - self._offsetX) / self._scale)
-        canvasY = float((screenCoords[1] - self._offsetY) / self._scale)
-        return  canvasX, canvasY
+        return screen_to_canvas(screenCoords, self._scale, (self._offsetX, self._offsetY))
     
     def _canvas_to_world(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
-        radar_map_size_x, radar_map_size_y = self._map_source.get_size()
-
-        pos_ux = canvasCoords[0] / radar_map_size_x * self.theater_max_meter
-        pos_vy = self.theater_max_meter - (canvasCoords[1] / radar_map_size_y * self.theater_max_meter)
-
-        return pos_ux, pos_vy
-        
-    def _world_to_canvas(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
-        
-        radar_map_size_x, radar_map_size_y = self._map_source.get_size()
-
-        pos_ux = worldCoords[0] #float(properties["T"]["U"])
-        pos_vy = worldCoords[1] #float(properties["T"]["V"])
-        canvasX = pos_ux / self.theater_max_meter * radar_map_size_x
-        canvasY = (self.theater_max_meter - pos_vy) / self.theater_max_meter * radar_map_size_y     
-                
-        return canvasX, canvasY
+        return canvas_to_world(canvasCoords, self._map_source.get_size())
     
-    def _screen_to_world(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
-        return self._canvas_to_world(self._screen_to_canvas(screenCoords))
+    def _world_to_canvas(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
+        return world_to_canvas(worldCoords, self._map_source.get_size())
+    
+    def _screen_to_world(self, screenCoords: tuple[int,int]) -> tuple[float,float]:
+        return screen_to_world(screenCoords, self._map_source.get_size(), self._scale, (self._offsetX, self._offsetY))
                                       
     def _world_to_screen(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        return self._canvas_to_screen(self._world_to_canvas(worldCoords))
+        return world_to_screen(worldCoords, self._map_source.get_size(), self._scale, (self._offsetX, self._offsetY))
     
     def _world_distance(self, worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
-        return math.sqrt((worldCoords2[0] - worldCoords1[0])**2 + (worldCoords2[1] - worldCoords1[1])**2) / NM_TO_METERS
+        return world_distance(worldCoords1, worldCoords2)
     
     def _world_bearing(self, worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
-        return math.degrees(math.atan2(worldCoords1[0] - worldCoords2[0], worldCoords1[1] - worldCoords2[1])) + 180
+        return world_bearing(worldCoords1, worldCoords2)
 
 if __name__ == "__main__" :
     

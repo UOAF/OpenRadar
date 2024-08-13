@@ -10,3 +10,4 @@ location = [ 0, 0 ] # [x, y]
 [map]
 theatre = "KTO" # Theatre to load the map for on startup
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
+background_color = [ 50, 50, 50 ] # [r, g, b] # Background color for the map
