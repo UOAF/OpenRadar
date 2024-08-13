@@ -1,6 +1,8 @@
 import pygame
 import math
 
+from bms_ini import FalconBMSIni
+
 import config
 
 from bms_math import *
@@ -17,8 +19,10 @@ class Map:
         self.size = self.width, self.height = displaysurface.get_size()
         self._map_source = pygame.Surface(self.size)
         self._map_annotated = pygame.Surface(self.size)
-        self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore
-       
+        self.ini_surface = pygame.Surface(self.size)
+        self.load_ini() #TODO make UI callback
+        
+        self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore        
         active_theatre = config.app_config.get("map", "theatre", str)
         theatre = next((x for x in THEATRE_MAPS_BUILTIN if x["name"] == active_theatre), None)
         
@@ -34,19 +38,28 @@ class Map:
         self._map_scaled = pygame.Surface((0,0))
         self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization0
         self._offsetX, self._offsetY = (0,0)
+        
         self._base_zoom = 1
         self._zoom = 0
         self._scale = 1
+        
         self.theater_max_meter = self.theatre_size_km * 1000 # km to m
         self.fitInView()
         # self._radar = Radar(self)
         
+
         self.font = pygame.font.SysFont('Comic Sans MS', 10)
         
     def on_render(self):
         self._display_surf.fill(self.background_color) # Fill grey
         self._display_surf.blit(self._map_scaled,(self._offsetX,self._offsetY))
         self._draw_scale()
+
+    def load_ini(self):
+        self.ini = FalconBMSIni("Data/test.ini")
+        self.ini_surface = self.ini.get_surf(self._map_source.get_size())
+        if self.ini_surface is not None:
+            self._map_annotated.blit(self.ini_surface, (0,0))       
         
     def on_loop(self):
         pass
@@ -58,11 +71,17 @@ class Map:
             if alpha is not None: self._map_source.set_alpha(alpha)
             self._map_annotated.fill(self.background_color)
             self._map_annotated.blit(self._map_source, (0,0))
+            if self.ini_surface is not None:
+                self.ini_surface = self.ini.get_surf(self._map_source.get_size())
+                self._map_annotated.blit(self.ini_surface, (0,0))     
             self._map_annotated.convert()
         else:
             self._map_source = pygame.Surface(self.size)
             self._map_annotated = pygame.Surface(self.size)   
             self._map_annotated.fill(self.background_color)
+            if self.ini_surface is not None:
+                self.ini_surface = self.ini.get_surf(self._map_source.get_size())
+                self._map_annotated.blit(self.ini_surface, (0,0)) 
             self._map_annotated.convert()
             
     def pan(self, panVector: tuple[float,float] = (0,0) ):

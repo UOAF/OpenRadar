@@ -3,6 +3,8 @@ import math
 THEATRE_DEFAULT_SIZE = 1024
 NM_TO_METERS = 1852
 METERS_TO_FT = 3.28084
+BMS_FT_PER_KM = 3279.98
+BMS_FT_PER_M = BMS_FT_PER_KM / 1000
 THEATRE_DEFAULT_SIZE_METERS = THEATRE_DEFAULT_SIZE * 1000 # km to m
 
 def canvas_to_screen(canvasCoords: tuple[float,float], scale: float, offset: tuple[float,float]) -> tuple[int,int]:
