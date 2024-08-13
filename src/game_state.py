@@ -28,8 +28,11 @@ class GameState:
         self.parser = acmi_parse.ACMIFileParser()
 
         # Create the Tacview RT Relemetry client
-        tac_client = TRTTClientThread(self.data_queue) #TODO move to somewhere more sensible
-        tac_client.start()
+        self.tac_client = TRTTClientThread(self.data_queue) #TODO move to somewhere more sensible
+        self.tac_client.start()
+        
+    def __del__(self):
+        self.tac_client.stop()
 
     def update_state(self):
         """
