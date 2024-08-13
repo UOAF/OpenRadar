@@ -92,12 +92,10 @@ class App:
     
     def on_render(self):
         """
-        Renders the application by filling the display with a grey color, rendering the radar, and displaying the FPS counter.
+        Renders the application
         """
-        self._display_surf.fill((50,50,50)) # Fill grey
         self._radar.on_render()
         self.fps_counter()
-          
         pygame.display.flip()
     
     def on_cleanup(self):
@@ -128,6 +126,6 @@ class App:
         Displays the current FPS (frames per second) on the top left corner of the display.
         """
         fps = str(int(self.clock.get_fps()))
-        fps_t = self.font.render(fps , 1, pygame.Color("RED"))
+        fps_t = self.font.render(fps , True, pygame.Color("RED"))
         self._display_surf.blit(fps_t,(0,0))
             

@@ -41,7 +41,7 @@ class Radar(Map):
         super().on_render()
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
-        for id in self._gamestate.objects:
+        for id in self._gamestate.objects: # Maybe speed up with
             self._draw_contact(self._radar_surf, self._gamestate.objects[id])
 
         if self._drawBRAA:
