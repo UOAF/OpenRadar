@@ -1,13 +1,11 @@
 import configparser
 import pygame
 
-
-from bms_math import BMS_FT_PER_M, THEATRE_DEFAULT_SIZE_METERS, world_to_canvas
+from bms_math import BMS_FT_PER_M, world_to_canvas
 
 BMS_NUM_LINES = 4
 BMS_LINE_POINTS = 6
 BMS_NUM_THREATS = 15
-
 
 class FalconBMSIni:
     def __init__(self, file_path):
@@ -16,6 +14,7 @@ class FalconBMSIni:
         self.lines = []
         self.threats = []
         self.load()
+        self.font = pygame.font.SysFont("Arial", 18) #TODO: render this in the screen surface to not have variable font size with map zoom
 
     def load(self):
         with open(self.file_path, "r") as f:
@@ -56,8 +55,14 @@ class FalconBMSIni:
         threat_pos = world_to_canvas(threat[0], surface.get_size())
         threat_radius = world_to_canvas((threat[1], 0), surface.get_size())[0]
         
-        pygame.draw.circle(surface, color, threat_pos, threat_radius, width=2)
+        pygame.draw.circle(surface, color, threat_pos, int(threat_radius), width=3)
         
+        threat_text = self.font.render(f"{str(threat[2])}", True, color)
+
+        textrect = pygame.Rect((0,0),threat_text.get_size())
+        textrect.center = threat_pos
+
+        surface.blit(threat_text, textrect)
         
     def print(self):
         
