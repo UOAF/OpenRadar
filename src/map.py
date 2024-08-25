@@ -20,6 +20,8 @@ class Map:
         self._map_source = pygame.Surface(self.size)
         self._map_annotated = pygame.Surface(self.size)
         self.ini_surface = pygame.Surface(self.size)
+        
+        self.ini: FalconBMSIni | None = None
         self.load_ini() #TODO make UI callback
         
         self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore        
@@ -65,13 +67,15 @@ class Map:
         pass
         
     def load_map(self, mappath, alpha: int|None = 100):
+        """Prepares the map surface by loading the map image, precalculaing the alpha with a blit and 
+        drawing the ini surface on the map. Lots of performance gain by not doing this every frame."""
         if mappath:
             self._map_source = pygame.image.load(mappath).convert()
             self._map_annotated = pygame.Surface(self._map_source.get_size())
             if alpha is not None: self._map_source.set_alpha(alpha)
             self._map_annotated.fill(self.background_color)
             self._map_annotated.blit(self._map_source, (0,0))
-            if self.ini_surface is not None:
+            if self.ini is not None and self.ini_surface is not None:
                 self.ini_surface = self.ini.get_surf(self._map_source.get_size())
                 self._map_annotated.blit(self.ini_surface, (0,0))     
             self._map_annotated.convert()
@@ -79,7 +83,7 @@ class Map:
             self._map_source = pygame.Surface(self.size)
             self._map_annotated = pygame.Surface(self.size)   
             self._map_annotated.fill(self.background_color)
-            if self.ini_surface is not None:
+            if self.ini is not None and self.ini_surface is not None:
                 self.ini_surface = self.ini.get_surf(self._map_source.get_size())
                 self._map_annotated.blit(self.ini_surface, (0,0)) 
             self._map_annotated.convert()
