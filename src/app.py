@@ -36,7 +36,8 @@ class App:
         self._radar = Radar(self._display_surf)
         self._UI = UserInterface(self._display_surf)
         self._UI.handlers = {
-            self._UI.load_ini_button: self._radar.handle_load_ini
+            self._UI.load_ini_button: self._radar.handle_load_ini,
+            self._UI.load_map_button: self._radar.handle_load_map
         }
         
         self.event_handlers = {

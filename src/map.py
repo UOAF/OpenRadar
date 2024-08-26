@@ -1,5 +1,4 @@
 import pygame
-import math
 
 from bms_ini import FalconBMSIni
 from os_uils import open_file_dialog
@@ -58,6 +57,12 @@ class Map:
         
     def on_cleanup(self):
         pass
+    
+    def handle_load_map(self, event):
+        map_file = open_file_dialog()
+        print(f"Loading map file {map_file}")
+        if map_file:
+            self.load_map(map_file)
     
     def handle_load_ini(self, event):
         ini_file = open_file_dialog()

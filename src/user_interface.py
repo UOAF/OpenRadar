@@ -15,13 +15,22 @@ class UserInterface:
         
     def ui_init(self):
         
-        button_rect = pygame.Rect((0, 0), (100, 40))
-        button_rect.bottomright = (-10, -10)
-        self.load_ini_button = pygame_gui.elements.UIButton(relative_rect=button_rect,
+        load_ini_button_rect = pygame.Rect((0, 0), (100, 40))
+        load_ini_button_rect.bottomright = (-10, -10)
+        self.load_ini_button = pygame_gui.elements.UIButton(relative_rect=load_ini_button_rect,
                                              text='Load .ini',
                                              manager=self.gui_manager,
                                              anchors={'right': 'right',
                                                       'bottom': 'bottom'})
+        
+        load_map_button_rect = pygame.Rect((0, 0), (100, 40))
+        load_map_button_rect.bottomright = (-10, -10)
+        self.load_map_button = pygame_gui.elements.UIButton(relative_rect=load_map_button_rect,
+                                             text='Load Map',
+                                             manager=self.gui_manager,
+                                             anchors={'right': 'right',
+                                                      'bottom': 'bottom',
+                                                      "right_target": self.load_ini_button})
     
     def resize(self, width, height):
         self.width, self.height = width, height
