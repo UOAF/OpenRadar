@@ -1,8 +1,5 @@
 import subprocess
-from turtle import st
 import winreg
-
-from matplotlib.pylab import f
 
 def open_file_dialog():
     
