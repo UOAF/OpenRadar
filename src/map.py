@@ -2,6 +2,7 @@ import pygame
 import math
 
 from bms_ini import FalconBMSIni
+from os_uils import open_file_dialog
 
 import config
 
@@ -20,22 +21,11 @@ class Map:
         self._map_source = pygame.Surface(self.size)
         self._map_annotated = pygame.Surface(self.size)
         self.ini_surface = pygame.Surface(self.size)
-        
-        self.ini: FalconBMSIni | None = None
-        self.load_ini() #TODO make UI callback
-        
-        self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore        
+        self.map_alpha = 100
+        self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore    
+        self.font = pygame.font.SysFont('Comic Sans MS', 10)     
         active_theatre = config.app_config.get("map", "theatre", str)
         theatre = next((x for x in THEATRE_MAPS_BUILTIN if x["name"] == active_theatre), None)
-        
-        # TODO: Handle non-bundle maps
-        if theatre is not None:
-            self.load_map(config.bundle_dir / theatre["path"], 
-                          config.app_config.get("map", "map_alpha", int)) # type: ignore
-            self.theatre_size_km = theatre["size"]
-        else:
-            self.load_map(None)
-            self.theatre_size_km = THEATRE_DEFAULT_SIZE
             
         self._map_scaled = pygame.Surface((0,0))
         self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization0
@@ -45,48 +35,80 @@ class Map:
         self._zoom = 0
         self._scale = 1
         
+        self.ini: FalconBMSIni | None = None
+        self._load_ini()   
+                     
+        # TODO: Handle non-bundle maps
+        if theatre is not None:
+            self.load_map(config.bundle_dir / theatre["path"], 
+                          config.app_config.get("map", "map_alpha", int)) # type: ignore
+            self.theatre_size_km = theatre["size"]
+        else:
+            self.load_map(None)
+            self.theatre_size_km = THEATRE_DEFAULT_SIZE   
+                 
         self.theater_max_meter = self.theatre_size_km * 1000 # km to m
-        self.fitInView()
-        # self._radar = Radar(self)
-        
 
-        self.font = pygame.font.SysFont('Comic Sans MS', 10)
+        self.fitInView()
         
     def on_render(self):
         self._display_surf.fill(self.background_color) # Fill grey
         self._display_surf.blit(self._map_scaled,(self._offsetX,self._offsetY))
         self._draw_scale()
-
-    def load_ini(self):
-        self.ini = FalconBMSIni("Data/test.ini")
-        self.ini_surface = self.ini.get_surf(self._map_source.get_size())
-        if self.ini_surface is not None:
-            self._map_annotated.blit(self.ini_surface, (0,0))       
         
+    def on_cleanup(self):
+        pass
+    
+    def handle_load_ini(self, event):
+        ini_file = open_file_dialog()
+        print(f"Loading ini file {ini_file}")
+        if ini_file:
+            self._load_ini(ini_file)
+
+    def _load_ini(self, ini_file=None):
+        
+        if ini_file is None: 
+            self.ini = None
+            self.ini_surface = None
+
+        else:
+            self.ini = FalconBMSIni(ini_file)
+            self.ini_surface = self.ini.get_surf(self._map_source.get_size())
+            self.prerender_map()     
+        
+    def prerender_map(self):
+        """Prepares the map surface by loading the map image, precalculaing the alpha with a blit and
+        """
+        
+        self._map_annotated = pygame.Surface(self._map_source.get_size())
+        if self.map_alpha is not None: self._map_source.set_alpha(self.map_alpha)
+        self._map_annotated.fill(self.background_color)
+        self._map_annotated.blit(self._map_source, (0,0))
+        if self.ini is not None and self.ini_surface is not None:
+            self.ini_surface = self.ini.get_surf(self._map_source.get_size())
+            self._map_annotated.blit(self.ini_surface, (0,0))        
+        self._map_annotated.convert()
+        self._scale_map()
+
+    
     def on_loop(self):
         pass
         
     def load_map(self, mappath, alpha: int|None = 100):
-        """Prepares the map surface by loading the map image, precalculaing the alpha with a blit and 
-        drawing the ini surface on the map. Lots of performance gain by not doing this every frame."""
+        """
+        Loads a map image from the given file path and sets it as the map source.
+        Args:
+            mappath (str): The file path of the map image.
+            alpha (int|None, optional): The alpha value for the map image. Defaults to 100.
+        Returns:
+            None
+        """
         if mappath:
             self._map_source = pygame.image.load(mappath).convert()
-            self._map_annotated = pygame.Surface(self._map_source.get_size())
-            if alpha is not None: self._map_source.set_alpha(alpha)
-            self._map_annotated.fill(self.background_color)
-            self._map_annotated.blit(self._map_source, (0,0))
-            if self.ini is not None and self.ini_surface is not None:
-                self.ini_surface = self.ini.get_surf(self._map_source.get_size())
-                self._map_annotated.blit(self.ini_surface, (0,0))     
-            self._map_annotated.convert()
+            if alpha is not None: self.map_alpha = alpha
         else:
             self._map_source = pygame.Surface(self.size)
-            self._map_annotated = pygame.Surface(self.size)   
-            self._map_annotated.fill(self.background_color)
-            if self.ini is not None and self.ini_surface is not None:
-                self.ini_surface = self.ini.get_surf(self._map_source.get_size())
-                self._map_annotated.blit(self.ini_surface, (0,0)) 
-            self._map_annotated.convert()
+        self.prerender_map()
             
     def pan(self, panVector: tuple[float,float] = (0,0) ):
         self._offsetX = (self._offsetX + panVector[0]) 
@@ -130,9 +152,7 @@ class Map:
 
             # Scale
             self._scale = (self._base_zoom * (factor ** self._zoom))
-            newSize = (int(sourceMapSize[0] * self._scale), 
-                      int(sourceMapSize[1] * self._scale))
-            self._map_scaled = pygame.transform.scale(self._map_annotated, newSize)
+            self._scale_map()
             
             # Pan to keep mouse in the same place
             newcanvasmousepos = self._screen_to_canvas(mousepos)
@@ -144,9 +164,16 @@ class Map:
             self.fitInView()
         else:
             self._zoom = 0
-            
+          
+    def _scale_map(self):
+        sourceMapSize = self._map_source.get_size()
+        newSize = (int(sourceMapSize[0] * self._scale), 
+                int(sourceMapSize[1] * self._scale))
+        self._map_scaled = pygame.transform.scale(self._map_annotated, newSize)  
+        
     def _draw_scale(self):
         
+        bottom_extra_padding = 50 # move this up above the UI buttons TODO: move this into the UI to make it less messy
         scale_height_px = 50
         padding = 10
         color = pygame.Color("white")
@@ -164,8 +191,9 @@ class Map:
         max_graduation_m = max_graduation_nm * NM_TO_METERS
         max_graduation_px = (max_graduation_m / self.theater_max_meter) * self._map_annotated.get_width() * self._scale
         
-        scale_rect = pygame.Rect(self.width - scale_width_px - padding, self.height - scale_height_px - padding, 
-                                 scale_width_px, scale_height_px)
+        scale_rect = pygame.Rect(0, 0, scale_width_px, scale_height_px)
+        
+        scale_rect.bottomright = (self.width - padding, self.height - padding - bottom_extra_padding)
         
         # pygame.draw.rect(self._display_surf, color, scale_rect, 2)
         

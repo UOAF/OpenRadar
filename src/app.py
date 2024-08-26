@@ -3,6 +3,7 @@ import os
 
 import config
 from radar import Radar
+from user_interface import UserInterface
 
 MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1
@@ -18,6 +19,8 @@ class App:
         self.mouseBRAADown = False
         self._startPan = (0,0)
         self._startBraa = (0,0)
+        self._radar: Radar
+        self._UI: UserInterface
         
     def on_init(self):
         
@@ -31,52 +34,80 @@ class App:
         self.size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int]) # type: ignore
         self._display_surf = pygame.display.set_mode(self.size, pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
+        self._UI = UserInterface(self._display_surf)
+        self._UI.handlers = {
+            self._UI.load_ini_button: self._radar.handle_load_ini
+        }
+        
+        self.event_handlers = {
+            pygame.QUIT: self.handle_quit,
+            pygame.WINDOWMOVED: self.handle_window_moved,
+            pygame.WINDOWRESIZED: self.handle_window_resized,
+            pygame.MOUSEWHEEL: self.handle_mouse_wheel,
+            pygame.MOUSEBUTTONDOWN: self.handle_mouse_button_down,
+            pygame.MOUSEMOTION: self.handle_mouse_motion,
+            pygame.MOUSEBUTTONUP: self.handle_mouse_button_up
+        }
        
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
- 
+         
     def on_event(self, event: pygame.event.Event):
         """
         Handles the various events triggered by the user.
         """
-        #TODO Consider refactor
-        
-        if event.type == pygame.QUIT:
-            self._running = False
-            
-        elif event.type == pygame.WINDOWMOVED:
-            config.app_config.set("window", "location", (event.x, event.y))
-            
-        elif event.type == pygame.WINDOWRESIZED:
-            self.size = self.width, self.height = event.x, event.y
-            self._radar.resize(self.width, self.height)
-            config.app_config.set("window", "size", self.size)
-            
-        elif event.type == pygame.MOUSEWHEEL:
-            if event.y != 0:
-                self._radar.zoom(pygame.mouse.get_pos(), event.y)
-                
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            
-            if event.button == MOUSEDRAGBUTTON:
-                self.mouseDragDown = True
-                self._startPan = event.pos
-            elif event.button == MOUSEBRAABUTTON:
-                self.mouseBRAADown = True
-                self._startBraa = event.pos
 
-        elif event.type == pygame.MOUSEMOTION:
-            if self.mouseDragDown: # dragging
-                difX = event.pos[0] - self._startPan[0]
-                difY = event.pos[1] - self._startPan[1]
-                self._radar.pan((difX,difY)) 
-                self._startPan = event.pos
+        self._UI.on_event(event)
+
+        handler = self.event_handlers.get(event.type)
+        if handler:
+            handler(event)
+            
+    def handle_quit(self, event):
+        self._running = False
+
+    def handle_window_moved(self, event):
+        config.app_config.set("window", "location", (event.x, event.y))
+
+    def handle_window_resized(self, event):
+        self.size = self.width, self.height = event.x, event.y
+        self._radar.resize(self.width, self.height)
+        self._UI.resize(self.width, self.height)
+        config.app_config.set("window", "size", self.size)
+
+    def handle_mouse_wheel(self, event):
+        if event.y != 0:
+            self._radar.zoom(pygame.mouse.get_pos(), event.y)
+
+    def handle_mouse_button_down(self, event):
+        if event.button == MOUSEDRAGBUTTON:
+            self.mouseDragDown = True
+            self._startPan = event.pos
+        elif event.button == MOUSEBRAABUTTON:
+            self.mouseBRAADown = True
+            self._startBraa = event.pos
+
+    def handle_mouse_motion(self, event):
+        if self.mouseDragDown: # dragging
+            difX = event.pos[0] - self._startPan[0]
+            difY = event.pos[1] - self._startPan[1]
+            self._radar.pan((difX,difY)) 
+            self._startPan = event.pos
+        if self.mouseBRAADown:
+            self._radar.braa(True, self._startBraa, event.pos)
+
+    def handle_mouse_button_up(self, event):
+        if event.button == MOUSEDRAGBUTTON:
+            self.mouseDragDown = False
+            
+        elif event.button == MOUSEBRAABUTTON:
+            self.mouseBRAADown = False
+            self._radar.braa(False)
             if self.mouseBRAADown:
                 self._radar.braa(True, self._startBraa, event.pos)
                 
         elif event.type == pygame.MOUSEBUTTONUP:
-
             if event.button == MOUSEDRAGBUTTON:
                 self.mouseDragDown = False
             elif event.button == MOUSEBRAABUTTON:
@@ -87,6 +118,7 @@ class App:
         """
         Performs any necessary updates or calculations for the application.
         """
+        self._UI.on_loop()
         self._radar.on_loop()
         pass
     
@@ -95,6 +127,7 @@ class App:
         Renders the application
         """
         self._radar.on_render()
+        self._UI.on_render()
         self.fps_counter()
         pygame.display.flip()
     
@@ -102,19 +135,24 @@ class App:
         """
         Cleans up and quits the application.
         """
+        self._radar.on_cleanup()
+        self._UI.on_cleanup()
         pygame.quit()
  
     def on_execute(self):
         """
         This is the main Loop
         """
+        
         if self.on_init() == False:
             self._running = False
  
         #TODO framerate limit
         while( self._running ):
+            time_delta = self.clock.tick(60)/1000.0
             for event in pygame.event.get():
                 self.on_event(event)
+            self._UI.update(time_delta)
             self.on_loop()
             self.on_render()
             self.clock.tick()
