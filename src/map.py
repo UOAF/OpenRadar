@@ -152,7 +152,6 @@ class Map:
             self._zoom = maxZoom
         elif self._zoom > 0:
             
-            sourceMapSize = self._map_source.get_size()
             oldcanvasmousepos = self._screen_to_canvas(mousepos)
 
             # Scale
