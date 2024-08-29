@@ -4,8 +4,12 @@ import numpy as np
 
 from acmi_parse import ACMIObject
 from game_state import GameState, HIDDEN_OBJECT_CLASSES
-from map import Map, NM_TO_METERS, METERS_TO_FT
+from map import Map
 from pygame_utils import draw_dashed_line
+
+from game_objects import Bullseye
+
+from bms_math import M_PER_SEC_TO_KNOTS, NM_TO_METERS, NM_TO_METERS, METERS_TO_FT
 
 RADAR_CONTACT_SIZE_PX = 12
 
@@ -32,6 +36,7 @@ class Radar(Map):
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
         #self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
         self.bullseye_world = (758422, 689920) #TODO   Dynamic bullseye 3279.98
+        self.bullseye = Bullseye(*self.bullseye_world)
         self.hover_obj_id: str = ""
     
     def on_render(self):
@@ -178,7 +183,7 @@ class Radar(Map):
         elif "Ground" in contact.Type:
             self._draw_ground(surface, contact, color_obj, size)
         elif "Navaid+Static+Bullseye" in contact.Type or contact.object_id == "7fffffffffffffff": #TODO remove objid hack
-            self._draw_bullseye(surface)
+            self.bullseye.draw(surface, self._world_to_screen(self.bullseye.get_pos()), self._px_per_nm())
         else:
             self._draw_other(surface, contact, color_obj, size)
             print(f"Drawing Other {contact}")
@@ -308,8 +313,7 @@ class Radar(Map):
             text = contact.Type
         name_surface = self.unitFont.render(f"{contact.Pilot}", True, color)
         data_surface = self.unitFont.render(
-            f"{int(self.meters_to_ft(contact.T.Altitude)/100)}  {int(int(contact.CAS)/10)}", True, color
-            )
+            f"{int(contact.T.Altitude*METERS_TO_FT)//100}  {(int(contact.CAS)*M_PER_SEC_TO_KNOTS)//10}", True, color)
         textrect = (max(name_surface.get_size()[0], data_surface.get_size()[0]), 
                    name_surface.get_size()[1]+ data_surface.get_size()[1])
         surface = pygame.Surface(textrect, pygame.SRCALPHA)

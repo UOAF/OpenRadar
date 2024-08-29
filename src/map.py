@@ -228,6 +228,25 @@ class Map:
   
         self._display_surf.blit(text, (scale_left[0] ,scale_rect.top ))
         
+        
+    def _px_per_nm(self) -> float:
+        """
+        Calculates the number of pixels per nautical mile.
+
+        Returns:
+            float: The number of pixels per nautical mile.
+        """
+        return NM_TO_METERS * self._px_per_m()
+    
+    def _px_per_m(self) -> float:
+        """
+        Calculates the number of pixels per meter.
+
+        Returns:
+            float: The number of pixels per meter.
+        """
+        return self._map_annotated.get_width() / self.theater_max_meter * self._scale
+        
     def _canvas_to_screen(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
         return canvas_to_screen(canvasCoords, self._scale, (self._offsetX, self._offsetY))
         

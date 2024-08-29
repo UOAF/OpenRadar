@@ -6,6 +6,7 @@ METERS_TO_FT = 3.28084
 BMS_FT_PER_KM = 3279.98
 BMS_FT_PER_M = BMS_FT_PER_KM / 1000
 THEATRE_DEFAULT_SIZE_METERS = THEATRE_DEFAULT_SIZE * 1000 # km to m
+M_PER_SEC_TO_KNOTS = 1.94384
 
 def canvas_to_screen(canvasCoords: tuple[float,float], scale: float, offset: tuple[float,float]) -> tuple[int,int]:
     screenX = int((canvasCoords[0] * scale) + offset[0])
@@ -43,7 +44,7 @@ def screen_to_world(screenCoords: tuple[int,int], canvas_size: tuple[float,float
     return canvas_to_world(screen_to_canvas(screenCoords, scale, offset), canvas_size)
                                     
 def world_to_screen(worldCoords: tuple[float,float], canvas_size: tuple[float,float], 
-                    scale: float, offset: tuple[float,float]) -> tuple[int,int]:
+                    scale: float = 1, offset: tuple[float,float] = (0,0)) -> tuple[int,int]:
     return canvas_to_screen(world_to_canvas(worldCoords, canvas_size), scale, offset)
 
 def world_distance(worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
