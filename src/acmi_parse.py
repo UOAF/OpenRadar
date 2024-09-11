@@ -130,7 +130,7 @@ class ACMIObject (ACMIEntry):
     Health: float = 0.0
     IAS: float = 0.0
     LateralGForce: float = 0.0
-    LockedTarget: Optional[str] = None
+    LockedTarget: str = ""
     LongitudinalGForce: float = 0.0
     Mach: float = 0.0
     Name: str = ""
@@ -160,15 +160,17 @@ class ACMIObject (ACMIEntry):
             properties (dict): The properties to update.
         """
         self.properties = {**self.properties, **properties}
+        types = get_type_hints(self)
 
         for key, value in self.properties.items():
             
             if key == "T":
+                t_types = get_type_hints(self.T)
                 for key, value in value.items():
-                    setattr(self.T, key, value)
-            else:
-                setattr(self, str(key), value)
-     
+                    setattr(self.T, str(key), t_types[str(key)](value))
+            elif key in types:
+                setattr(self, str(key), types[str(key)](value))
+
 class ACMIFileParser:
     def __init__(self, file_path: str | None = None):
         """
@@ -193,16 +195,43 @@ class ACMIFileParser:
             lines = file.readlines()
             for line in lines:
                 self.parse_line(line)
+                
+    def get_action(self, line: str) -> str | None:
+        """
+        Returns the action in the ACMI file.
+
+        Returns:
+            list: The action in the ACMI file.
+        """
+        line = line.strip()
+        if line.startswith('FileType'):
+            return None
+
+        if line.startswith('FileVersion'):
+            return None
+
+        if line.startswith('#'):
+            return ACTION_TIME
+        
+        if line.startswith('-'):
+            return ACTION_REMOVE
+        
+        parts = line.split(',')
+        object_id = parts[0]
+        if object_id == '0': 
+            return ACTION_GLOBAL
+        
+        return ACTION_UPDATE
 
     def parse_line(self, line: str) -> ACMIEntry | None:
         """
-        Parses an ACMI line into a dictionary.
+        Parses an ACMI line into an ACMIEntry.
 
         Args:
             line (str): The ACMI line to parse.
 
         Returns:
-            dict: The parsed ACMI line as a dictionary.
+            ACMIEntry: The parsed ACMI line as an object.
         """
         line = line.strip()
 
@@ -225,7 +254,6 @@ class ACMIFileParser:
 
         else:
             
- 
             # Parse object data
             parts = line.split(',')
             object_id = parts[0]
