@@ -41,7 +41,7 @@ ACMIFileParser:
 
 """
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, get_type_hints
 
 ACTION_UPDATE = "+"
 ACTION_REMOVE = "-"
@@ -313,6 +313,21 @@ class ACMIFileParser:
 
         if num_pipes == 5:
             # Complex objects in a spherical world
+            
+            # START HACK FOR EXTRA PIPE BAR IN BULLSEYE
+            #Todo remove when the extra pipe bar is removed
+            print(f"FIX ME | Extra pipe bar in bullseye: {t}")
+            lon, lat, alt, u, v, tmp = map(lambda x: float(x.strip()) if x.strip() else None, data)
+            return {
+                "Longitude": lon,
+                "Latitude": lat,
+                "Altitude": alt,
+                "U": u,
+                "V": v
+            }
+            
+            #END HACK
+            
             return None
 
         if num_pipes == 8:
