@@ -2,24 +2,11 @@ import acmi_parse
 from trtt_client import TRTTClientThread
 import queue 
 
-from typing import Type
-
-from game_objects import *
+SUPPORTED_OBJECT_CLASSES = ("Aircraft")
 
 # This can cause an attempt to delete objects that are not in the game state
 # TODO: If perfomance becomes an issues consider reimplementing this list.
 HIDDEN_OBJECT_CLASSES = ("Static", "Projectile", "Vehicle", "Flare", "Chaff", "Explosion", "Parachutist", "Bomb", "Rotorcraft") 
-
-CLASS_MAP = {
-    "Navaid+Static+Bullseye": Bullseye,
-    "FixedWing": fixedWing,
-    "Rotorcraft": rotaryWing,
-    "Missile": missile,
-    "Ground+Vehicle": groundUnit,
-    "Watercraft": surfaceVessel
-}
-
-SUPPORTED_CLASSES = Bullseye | fixedWing | rotaryWing | missile | groundUnit | surfaceVessel
 
 class GameState:
     """
@@ -33,26 +20,19 @@ class GameState:
     """
 
     def __init__(self):
-        self.objects: dict["str", acmi_parse.ACMIObject] = dict()       
+        self.objects: dict["str", acmi_parse.ACMIObject] = dict()
         self.data_queue: queue.Queue[str] = queue.Queue()
         self.global_vars = dict()
-        
-        self.new_objects: dict[Type[SUPPORTED_CLASSES], dict["str", GameObject] ] = {clas: dict() for clas in CLASS_MAP.values()}
+
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
 
         # Create the Tacview RT Relemetry client
         self.tac_client = TRTTClientThread(self.data_queue) #TODO move to somewhere more sensible
         self.tac_client.start()
-
+        
     def __del__(self):
         self.tac_client.stop()
-        
-    def get_bullseye_pos(self):
-        if '7fffffffffffffff' not in self.new_objects[Bullseye]:
-            return (0,0)
-        return self.new_objects[Bullseye]['7fffffffffffffff'].get_pos()
-    
 
     def update_state(self):
         """
@@ -98,14 +78,12 @@ class GameState:
 
         Args:
             object_id (str): The ID of the object to remove.
-        """       
-        for subdict in self.new_objects.values():
-            if object_id in subdict:
-                del subdict[object_id]
-                return
-            
-        print(f"tried to delete object {object_id} not in self.objects")  #TODO handle objects not in CLASS_MAP
-        
+        """
+        # self.objects = [obj for obj in self.objects.ite if obj.object_id != object_id]
+        if object_id in self.objects:
+            del self.objects[object_id]
+        else:
+            print(f"tried to delete object {object_id} not in self.objects")
 
     def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
         """
@@ -114,15 +92,7 @@ class GameState:
         Args:
             updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
         """
-        for key in CLASS_MAP:
-            if key in updateObj.Type:
-                
-                subdict = self.new_objects[CLASS_MAP[key]]
-                if updateObj.object_id not in subdict:
-                    subdict[updateObj.object_id] = CLASS_MAP[key](updateObj)
-                else:
-                    subdict[updateObj.object_id].update(updateObj)
-                    
-                break
-            
-        #TODO handle objects not in CLASS_MAP
+        if updateObj.object_id not in self.objects:
+            self.objects[updateObj.object_id] = updateObj
+        else:
+            self.objects[updateObj.object_id].update(updateObj.properties)

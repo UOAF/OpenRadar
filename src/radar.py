@@ -3,11 +3,11 @@ import math
 import numpy as np
 
 from acmi_parse import ACMIObject
-from game_state import GameState, HIDDEN_OBJECT_CLASSES
+from game_state import GameState, HIDDEN_OBJECT_CLASSES, CLASS_MAP
 from map import Map
 from pygame_utils import draw_dashed_line
 
-from game_objects import Bullseye
+from game_objects import *
 
 from bms_math import M_PER_SEC_TO_KNOTS, NM_TO_METERS, NM_TO_METERS, METERS_TO_FT
 
@@ -34,9 +34,6 @@ class Radar(Map):
         self._drawBRAA = False
         self.unitFont = pygame.font.SysFont('Comic Sans MS', 14)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
-        #self.bullseye_world = self._canvas_to_world((2000,2000)) #TODO   Dynamic bullseye
-        self.bullseye_world = (758422, 689920) #TODO   Dynamic bullseye 3279.98
-        self.bullseye = Bullseye(*self.bullseye_world)
         self.hover_obj_id: str = ""
     
     def on_render(self):
@@ -46,8 +43,8 @@ class Radar(Map):
         super().on_render()
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
-        for id in self._gamestate.objects: # Maybe speed up with
-            self._draw_contact(self._radar_surf, self._gamestate.objects[id])
+
+        self._draw_contacts(self._radar_surf)
 
         if self._drawBRAA:
             self._draw_BRAA(self._radar_surf, self._startBraa, self._endBraa)
@@ -152,8 +149,17 @@ class Radar(Map):
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.topleft = (pos[0] + 10, pos[1] + 10)
         surface.blit(text_surface, textrect)
+        
+    def _draw_contacts(self, surface: pygame.Surface) -> None:
+        
+        for drawable_type in CLASS_MAP.values():
+            for id in self._gamestate.new_objects[drawable_type]:
+                obj = self._gamestate.new_objects[drawable_type][id]
+                obj.draw(surface, self._world_to_screen(obj.get_pos()), self._px_per_nm())
     
-    def _draw_contact(self, surface: pygame.Surface, contact: ACMIObject, 
+    
+    # TODO remove when no longer needed
+    def _draw_contact_old(self, surface: pygame.Surface, contact: ACMIObject, 
                      color: tuple[int, int, int] | None = None, size: int = RADAR_CONTACT_SIZE_PX) -> None:
         """
         Draws a contact on the given surface.
@@ -183,7 +189,7 @@ class Radar(Map):
         elif "Ground" in contact.Type:
             self._draw_ground(surface, contact, color_obj, size)
         elif "Navaid+Static+Bullseye" in contact.Type or contact.object_id == "7fffffffffffffff": #TODO remove objid hack
-            self.bullseye.draw(surface, self._world_to_screen(self.bullseye.get_pos()), self._px_per_nm())
+            self.bullseye.draw(surface, self._world_to_screen(self._gamestate.get_bullseye_pos()), self._px_per_nm())
         else:
             self._draw_other(surface, contact, color_obj, size)
             print(f"Drawing Other {contact}")
@@ -375,8 +381,8 @@ class Radar(Map):
         Returns:
             tuple[float,float]: (Bearing, Distance) The position of the cursor relative to the bullseye.
         """        
-        bearing = self._world_bearing(self.bullseye_world, pos_world)
-        distance = self._world_distance(self.bullseye_world, pos_world)
+        bearing = self._world_bearing(self._gamestate.get_bullseye_pos(), pos_world)
+        distance = self._world_distance(self._gamestate.get_bullseye_pos(), pos_world)
         
         return bearing, distance
     
