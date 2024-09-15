@@ -27,10 +27,11 @@ class GameObject:
             font = pygame.font.SysFont("couriernewbold", 22)
         self.font = font
         
+        self.color = pygame.Color(self.data.Color) 
+        
     def update(self, object: ACMIObject):
         self.data.update(object.properties)
-        self.color = pygame.Color(self.data.Color) # TODO: invistigate performance, this may be slow
-        
+
     def get_pos(self) -> tuple[float,float]:
         return (self.data.T.U, self.data.T.V)
         
@@ -73,6 +74,7 @@ class Bullseye(MapAnnotation):
     
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(50,50,50,100)):
         super().__init__(object, color)
+        self.force_color = pygame.Color(50,50,50,100)
 
     def draw(self,  surface: pygame.Surface, pos: tuple[float, float], px_per_nm: float, line_width: int = 2) -> None:
             """
@@ -110,7 +112,7 @@ class groundUnit(GameObject):
         
     def draw(self, surface: pygame.Surface, pos, px_per_nm) -> None:
         
-        if not self.hide_class:
+        if self.hide_class:
             return
 
         color = self.color
@@ -193,21 +195,24 @@ class airUnit(GameObject):
             
     def _make_aircraft_text_info(self, color: pygame.Color) -> pygame.Surface:
                 
-        heading = self.data.T.Heading
+        altitude = self.data.T.Altitude
         calibratedspeed = self.data.CAS
         text = self.data.Pilot
         if text == "":
             text = self.data.Type
         
-        name_surface = self.font.render(f"{self.data.Pilot}", True, color)
+        name_surface = self.font.render(f"{text}", True, color)
+        type_surface = self.font.render(f"{self.data.Name}", True, color)
         data_surface = self.font.render(
-            f"{int(heading*METERS_TO_FT//10)}  {(int(int(calibratedspeed)*M_PER_SEC_TO_KNOTS)//10)}", True, color)
-        textrect = (max(name_surface.get_size()[0], data_surface.get_size()[0]), 
-                   name_surface.get_size()[1]+ data_surface.get_size()[1])
+            f"{int(altitude*METERS_TO_FT//100)}  {(int(int(calibratedspeed)*M_PER_SEC_TO_KNOTS)//10)}", True, color)
+        
+        textrect = (max(name_surface.get_size()[0], data_surface.get_size()[0], type_surface.get_size()[0]), 
+                   name_surface.get_size()[1]+ data_surface.get_size()[1] + type_surface.get_size()[1])
         surface = pygame.Surface(textrect, pygame.SRCALPHA)
         surface.fill((0,0,0,0))
         surface.blit(name_surface, (textrect[0]-name_surface.get_width() ,0))
-        surface.blit(data_surface, (textrect[0]-data_surface.get_width(),name_surface.get_size()[1]))
+        surface.blit(type_surface, (textrect[0]-type_surface.get_width(),name_surface.get_size()[1]))
+        surface.blit(data_surface, (textrect[0]-data_surface.get_width(),name_surface.get_size()[1] + type_surface.get_size()[1]))
         
         return surface
             
@@ -301,6 +306,10 @@ class rotaryWing(airUnit):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
         
+    def draw(self, surface: pygame.Surface, pos, px_per_nm) -> None:
+        
+        super().draw(surface, pos, px_per_nm)
+        
 class surfaceVessel(groundUnit):
     
     hide_class = False
@@ -328,4 +337,4 @@ class surfaceVessel(groundUnit):
         for i in range(len(ship_points)):
             ship_points[i] = np.add(ship_points[i], pos)
 
-        pygame.draw.polygon(surface, color, list(map(tuple, ship_points)), 2)
+        pygame.draw.polygon(surface, color, list(map(tuple, ship_points)), 2) # This is suprisingly slow #TODO make sprite and render

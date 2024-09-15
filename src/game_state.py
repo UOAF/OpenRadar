@@ -32,12 +32,12 @@ class GameState:
         parser (AcmiParse.ACMIFileParser): ACMI parser to parse incoming data.
     """
 
-    def __init__(self):
-        self.objects: dict["str", acmi_parse.ACMIObject] = dict()       
+    def __init__(self):      
         self.data_queue: queue.Queue[str] = queue.Queue()
         self.global_vars = dict()
         
         self.new_objects: dict[Type[SUPPORTED_CLASSES], dict["str", GameObject] ] = {clas: dict() for clas in CLASS_MAP.values()}
+        self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
 
@@ -102,6 +102,7 @@ class GameState:
         for subdict in self.new_objects.values():
             if object_id in subdict:
                 del subdict[object_id]
+                del self.all_objects[object_id]
                 return
             
         print(f"tried to delete object {object_id} not in self.objects")  #TODO handle objects not in CLASS_MAP
@@ -120,6 +121,7 @@ class GameState:
                 subdict = self.new_objects[CLASS_MAP[key]]
                 if updateObj.object_id not in subdict:
                     subdict[updateObj.object_id] = CLASS_MAP[key](updateObj)
+                    self.all_objects[updateObj.object_id] = subdict[updateObj.object_id]
                 else:
                     subdict[updateObj.object_id].update(updateObj)
                     

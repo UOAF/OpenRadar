@@ -194,12 +194,12 @@ class Radar(Map):
         pos = pygame.mouse.get_pos()
         closest = None
         closest_dist = float('inf')
-        for id in self._gamestate.objects:
-            obj = self._gamestate.objects[id]
-            dist = math.dist(pos, self._world_to_screen((obj.T.U, obj.T.V)))
+        for id in self._gamestate.all_objects:
+            obj = self._gamestate.all_objects[id]
+            dist = math.dist(pos, self._world_to_screen((obj.data.T.U, obj.data.T.V)))
             if dist < closest_dist:
                 closest = obj
                 closest_dist = dist
         if closest is None or closest_dist > hover_distance:
             return ""
-        return closest.object_id
+        return closest.data.object_id
