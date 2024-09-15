@@ -1,14 +1,12 @@
 import pygame
 import math
-import numpy as np
 
-from acmi_parse import ACMIObject
 from game_state import GameState, CLASS_MAP
 from map import Map
 
 from game_objects import *
 
-from bms_math import NM_TO_METERS, NM_TO_METERS, METERS_TO_FT
+from bms_math import METERS_TO_FT
 
 RADAR_CONTACT_SIZE_PX = 12
 
