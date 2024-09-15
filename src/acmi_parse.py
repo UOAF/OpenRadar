@@ -91,7 +91,7 @@ class Orientation:
     U: float = 0.0
     V: float = 0.0
     Yaw: float = 0.0
-
+    
 @dataclass(kw_only=True)
 class ACMIObject (ACMIEntry):
     """
@@ -160,16 +160,19 @@ class ACMIObject (ACMIEntry):
             properties (dict): The properties to update.
         """
         self.properties = {**self.properties, **properties}
-        types = get_type_hints(self)
 
         for key, value in self.properties.items():
             
             if key == "T":
-                t_types = get_type_hints(self.T)
+
                 for key, value in value.items():
-                    setattr(self.T, str(key), t_types[str(key)](value))
-            elif key in types:
-                setattr(self, str(key), types[str(key)](value))
+                    setattr(self.T, str(key), _t_types[str(key)](value))
+            elif key in _types:
+                setattr(self, str(key), _types[str(key)](value))
+
+# Do these once for performance #TODO figure out a cleaner home for these
+_types = get_type_hints(ACMIObject)
+_t_types = get_type_hints(Orientation)
 
 class ACMIFileParser:
     def __init__(self, file_path: str | None = None):
