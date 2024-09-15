@@ -153,7 +153,7 @@ class App:
  
         #TODO framerate limit
         while( self._running ):
-            time_delta = self.clock.tick(60)/1000.0
+            time_delta = self.clock.tick()/1000.0
             for event in pygame.event.get():
                 self.on_event(event)
             self._UI.update(time_delta)
