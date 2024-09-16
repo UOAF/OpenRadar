@@ -4,8 +4,8 @@ import socket
 import time
 from zipfile import ZipFile
 
-filename = "Data\\2024-06-03_19-09-42_converted.zip.acmi"
-timemultiplier = 32.0
+filename = "Data\\2024-09-16_19-09-36_converted.zip.acmi"
+timemultiplier = 32
 
 # Read file as text into into acmidata
 acmidata = list()
