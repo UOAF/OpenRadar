@@ -41,7 +41,7 @@ class Radar(Map):
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
 
-        self._draw_contacts(self._radar_surf)
+        self._draw_all_contacts(self._radar_surf)
 
         if self._drawBRAA:
             self._draw_BRAA(self._radar_surf, self._startBraa, self._endBraa)
@@ -117,12 +117,21 @@ class Radar(Map):
         textrect.topleft = (pos[0] + 10, pos[1] + 10)
         surface.blit(text_surface, textrect)
         
-    def _draw_contacts(self, surface: pygame.Surface) -> None:
+    def _draw_contact(self, surface: pygame.Surface, obj: GameObject) -> None:
+        
+        if obj.locked_target is not None:
+            obj.draw(surface, self._world_to_screen(obj.get_pos()), self._px_per_nm(), 
+                     target_pos=self._world_to_screen(obj.locked_target.get_pos()))
+        else:
+            obj.draw(surface, self._world_to_screen(obj.get_pos()), self._px_per_nm())
+        
+        
+    def _draw_all_contacts(self, surface: pygame.Surface) -> None:
         
         for drawable_type in CLASS_MAP.values():
             for id in self._gamestate.new_objects[drawable_type]:
                 obj = self._gamestate.new_objects[drawable_type][id]
-                obj.draw(surface, self._world_to_screen(obj.get_pos()), self._px_per_nm())
+                self._draw_contact(surface, obj)
     
     def meters_to_ft(self, meters: float) -> int:
         return int(meters * METERS_TO_FT)    

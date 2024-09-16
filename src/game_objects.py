@@ -1,10 +1,10 @@
-from re import T
 import pygame
 
 import numpy as np
 
 from bms_math import *
 from acmi_parse import ACMIObject
+from pygame_utils import draw_dashed_line
 
 font : pygame.font.Font | None = None
 
@@ -21,6 +21,7 @@ class GameObject:
         self.color = color
         self.force_color: pygame.Color | None = None
         self.visible = True
+        self.locked_target: GameObject | None = None
         
         global font
         if font is None:
@@ -48,7 +49,7 @@ class GameObject:
         self.visible = True
     
     #Abstract method
-    def draw(self, surface: pygame.Surface, position, px_per_meter) -> None:
+    def draw(self, surface: pygame.Surface, position, px_per_meter, target_pos=None) -> None:
         return
     
 class MapAnnotation(GameObject):
@@ -110,7 +111,7 @@ class groundUnit(GameObject):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
         
-    def draw(self, surface: pygame.Surface, pos, px_per_nm) -> None:
+    def draw(self, surface: pygame.Surface, pos, px_per_nm, target=None) -> None:
         
         if self.hide_class:
             return
@@ -130,9 +131,9 @@ class airUnit(GameObject):
     
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
-        self.locked_target = None
+        self.locked_target: GameObject | None = None
         self.callsign = "Viper"
-        
+                
     def get_surface(self, px_per_meter) -> pygame.Surface:
         size = (20,20)
         surface = pygame.Surface(size, pygame.SRCALPHA)
@@ -146,7 +147,7 @@ class airUnit(GameObject):
         
         return surface
     
-    def draw(self, surface: pygame.Surface, pos, px_per_nm) -> None:
+    def draw(self, surface: pygame.Surface, pos, px_per_nm, *, target_pos: tuple[float,float] | None = None) -> None:
         # def _draw_aircraft(self, surface: pygame.Surface, contact: ACMIObject, 
         #            color: pygame.Color, size: int = RADAR_CONTACT_SIZE_PX, hover=False) -> None:
 
@@ -183,18 +184,14 @@ class airUnit(GameObject):
         pygame.draw.line(surface, color, pos, end_point, 3)
         
         # draw dashed lock line to target
-        # if self.locked_target is not None and self.locked_target in self._gamestate.objects:
-        #     target = self._gamestate.objects[contact.LockedTarget]
-        #     target_pos = self._world_to_screen((target.T.U, target.T.V))
-        #     # pygame.draw.line(surface, color, pos, target_pos, 2)
-        #     draw_dashed_line(surface, color, pos, target_pos, 1, 6)
-        # elif self.locked_target is not None:
-        #     pass
+        if target_pos is not None:
+            draw_dashed_line(surface, color, pos, target_pos, 1, 6)
+
         # if hover:
         #     pygame.draw.circle(surface, color, pos, size*2, 2)
             
     def _make_aircraft_text_info(self, color: pygame.Color) -> pygame.Surface:
-                
+        
         altitude = self.data.T.Altitude
         calibratedspeed = self.data.CAS
         text = self.data.Pilot
@@ -240,14 +237,12 @@ class airUnit(GameObject):
     
 class missile(airUnit):
     
-    hide_class = True
+    hide_class = False
     
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
     
-    def draw(self, surface: pygame.Surface, pos, px_per_nm):
-        
-        return #TODO fix missile lookup
+    def draw(self, surface: pygame.Surface, pos, px_per_nm, target_pos=None):
         
         if self.hide_class or not self.visible:
             return  # Don't draw if not visible
@@ -286,17 +281,11 @@ class missile(airUnit):
         # draw shape at contact position
         for point in missile_points:
             pygame.draw.line(surface, color, pos, point, 2)
-            # pygame.draw.polygon(surface, color, list(map(tuple, missile_points)), 2)
         
         # draw dotted lock line to target
-        if contact.LockedTarget is not None and contact.LockedTarget in self._gamestate.objects:
-            target = self._gamestate.objects[contact.LockedTarget]
-            target_pos = self._world_to_screen((target.T.U, target.T.V))
+        if target_pos is not None:
             # pygame.draw.line(surface, color, pos, target_pos, 2)
             draw_dashed_line(surface, color, pos, target_pos, 1, 6)
-        elif contact.LockedTarget is not None:
-            pass
-            # print(f"Missile {contact.object_id} has invalid target {contact.LockedTarget}")
     
 class fixedWing(airUnit):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
@@ -306,9 +295,8 @@ class rotaryWing(airUnit):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
         
-    def draw(self, surface: pygame.Surface, pos, px_per_nm) -> None:
-        
-        super().draw(surface, pos, px_per_nm)
+    def draw(self, surface: pygame.Surface, pos, px_per_nm, target=None) -> None:
+        super().draw(surface, pos, px_per_nm, target)
         
 class surfaceVessel(groundUnit):
     
@@ -317,7 +305,7 @@ class surfaceVessel(groundUnit):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
         
-    def draw(self, surface: pygame.Surface, pos, px_per_nm) -> None:
+    def draw(self, surface: pygame.Surface, pos, px_per_nm, target=None) -> None:
         
         if self.hide_class or not self.visible:
             return  # Don't draw if not visible

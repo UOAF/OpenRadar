@@ -123,16 +123,25 @@ class GameState:
         Args:
             updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
         """
-        for key in CLASS_MAP:
-            if key in updateObj.Type:
-                
-                subdict = self.new_objects[CLASS_MAP[key]]
-                if updateObj.object_id not in subdict:
+
+        if updateObj.object_id in self.all_objects:
+            self.all_objects[updateObj.object_id].update(updateObj)
+            self._update_target_lock(self.all_objects[updateObj.object_id])
+        else:
+            for key in CLASS_MAP:
+                if key in updateObj.Type:
+                    subdict = self.new_objects[CLASS_MAP[key]]
                     subdict[updateObj.object_id] = CLASS_MAP[key](updateObj)
                     self.all_objects[updateObj.object_id] = subdict[updateObj.object_id]
-                else:
-                    subdict[updateObj.object_id].update(updateObj)
-                    
-                break
+                    break
+        
+    def _update_target_lock(self, updateObj: GameObject) -> None:
+        if updateObj.data.LockedTarget not in [None, "", "0"]:
+            if updateObj.data.LockedTarget in self.all_objects:
+                updateObj.locked_target = self.all_objects[updateObj.data.LockedTarget]
+            else:
+                print(f"Target {updateObj.data.LockedTarget} not found")
+        else:
+            updateObj.locked_target = None
             
         #TODO handle objects not in CLASS_MAP
