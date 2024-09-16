@@ -1,0 +1,43 @@
+{
+  "button":{
+    "colours":
+    {
+      "normal_bg": "#9b9b9b",
+      "hovered_bg": "#b9b9b9",
+      "normal_border": "#3a3a3a",
+      "hovered_border": "#e8e8e8"
+    },
+    "misc":
+    {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "10"
+    }
+  },
+  "#bottom_ui_panel":{
+    "misc":{
+      "shadow_width": "0",
+      "border_width": "2"
+    }
+  },
+  "#settings_button":
+  {
+    "images":
+    {
+      "normal_image":
+      {
+        "path": "resources/icons/gears64.png"
+      }
+    }
+  },
+  "#layers_button":
+  {
+    "images":
+    {
+      "normal_image":
+      {
+        "path": "resources/icons/layer-group64.png"
+      }
+    }
+  }
+}

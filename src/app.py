@@ -3,7 +3,7 @@ import pygame_gui
 import os
 import config
 from radar import Radar
-from user_interface import UserInterface
+from ui.user_interface import UserInterface
 
 MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1
@@ -35,13 +35,13 @@ class App:
         self._display_surf = pygame.display.set_mode(self.size, pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
         self._UI = UserInterface(self._display_surf)
-        self._UI.handlers = self._UI.handlers | {
-            pygame_gui.UI_BUTTON_PRESSED : { 
-                self._UI.load_ini_button: self._radar.handle_load_ini,
-                self._UI.load_map_button: self._radar.handle_load_map,
-                self._UI.layers_button: self._UI.handle_layers_button,
-                self._UI.layers_window.close_window_button: self._UI.handle_layer_window_quit },
-        }
+        # self._UI.handlers = self._UI.handlers | {
+        #     pygame_gui.UI_BUTTON_PRESSED : { 
+        #         self._UI.load_ini_button: self._radar.handle_load_ini,
+        #         self._UI.load_map_button: self._radar.handle_load_map,
+        #         self._UI.layers_button: self._UI.handle_layers_button,
+        #         self._UI.layers_window.close_window_button: self._UI.handle_layer_window_quit},
+        # }
         
         self.event_handlers = {
             pygame.QUIT: self.handle_quit,

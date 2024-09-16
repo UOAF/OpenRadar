@@ -105,7 +105,7 @@ class GameState:
                 del self.all_objects[object_id]
                 return
             
-        print(f"tried to delete object {object_id} not in self.objects")  #TODO handle objects not in CLASS_MAP
+        # print(f"tried to delete object {object_id} not in self.objects")  #TODO handle objects not in CLASS_MAP
         
 
     def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
