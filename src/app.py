@@ -121,7 +121,7 @@ class App:
         Performs any necessary updates or calculations for the application.
         """
         if self._radar._gamestate.current_time is not None:
-            self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%S"))
+            self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%SZ"))
         self._UI.on_loop()
         self._radar.on_loop()
         pass
