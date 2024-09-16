@@ -44,9 +44,11 @@ class SettingsWindow(UIWindow):
                                             container=self,
                                             object_id='#settings_tabs',
                                             anchors={'left': 'left',
-                                                     'right': 'right',
-                                                     'top': 'top',
-                                                     'bottom': 'bottom'})
+                                                     'top': 'top'})
+        self.settings_tabs.set_dimensions((0,0), True)
+        
+        tab = self.settings_tabs.add_tab('General', '#settings_tab_general')
+        tab = self.settings_tabs.add_tab('Server', '#settings_tab_server')
 
         # self.cancel_button = UIButton(relative_rect=pygame.Rect(-10, -40, -1, 30),
         #                               text='pygame-gui.Cancel',

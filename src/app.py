@@ -35,13 +35,11 @@ class App:
         self._display_surf = pygame.display.set_mode(self.size, pygame.RESIZABLE)
         self._radar = Radar(self._display_surf)
         self._UI = UserInterface(self._display_surf)
-        # self._UI.handlers = self._UI.handlers | {
-        #     pygame_gui.UI_BUTTON_PRESSED : { 
-        #         self._UI.load_ini_button: self._radar.handle_load_ini,
-        #         self._UI.load_map_button: self._radar.handle_load_map,
-        #         self._UI.layers_button: self._UI.handle_layers_button,
-        #         self._UI.layers_window.close_window_button: self._UI.handle_layer_window_quit},
-        # }
+        self._UI.handlers = self._UI.handlers | {
+            pygame_gui.UI_BUTTON_PRESSED : { 
+                self._UI.bottom_ui_panel.load_ini_button: self._radar.handle_load_ini}
+                # self._UI.load_map_button: self._radar.handle_load_map},
+        }
         
         self.event_handlers = {
             pygame.QUIT: self.handle_quit,
@@ -122,6 +120,8 @@ class App:
         """
         Performs any necessary updates or calculations for the application.
         """
+        if self._radar._gamestate.current_time is not None:
+            self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%S"))
         self._UI.on_loop()
         self._radar.on_loop()
         pass

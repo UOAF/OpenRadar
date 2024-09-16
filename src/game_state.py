@@ -1,4 +1,5 @@
 import acmi_parse
+import datetime
 from trtt_client import TRTTClientThread
 import queue 
 
@@ -36,6 +37,9 @@ class GameState:
         self.data_queue: queue.Queue[str] = queue.Queue()
         self.global_vars = dict()
         
+        self.reference_time: datetime.datetime | None = None
+        self.current_time: datetime.datetime | None = None
+        
         self.new_objects: dict[Type[SUPPORTED_CLASSES], dict["str", GameObject] ] = {clas: dict() for clas in CLASS_MAP.values()}
         self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
@@ -53,7 +57,6 @@ class GameState:
             return (0,0)
         return self.new_objects[Bullseye]['7fffffffffffffff'].get_pos()
     
-
     def update_state(self):
         """
         Update the game state with the latest data from the Tacview client.
@@ -79,10 +82,15 @@ class GameState:
                 # print(f"tried to delete object {acmiline.object_id} not in self.state")
 
             elif acmiline.action in acmi_parse.ACTION_TIME:
-                pass
+                if self.reference_time is not None and acmiline.timestamp is not None:
+                    self.current_time = self.reference_time + datetime.timedelta(seconds=acmiline.timestamp)
 
             elif acmiline.action in acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
                 self.global_vars = self.global_vars | acmiline.properties
+                if "ReferenceTime" in acmiline.properties:
+                    # format 2024-6-9T00:00:00Z
+                    self.reference_time = datetime.datetime.strptime(acmiline.properties["ReferenceTime"], "%Y-%m-%dT%H:%M:%SZ")
+                    self.reference_time = self.reference_time.replace(tzinfo=datetime.timezone.utc)
 
             elif acmiline.action in acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
                 # if not any(clas in acmiline.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects 
