@@ -295,8 +295,8 @@ class rotaryWing(airUnit):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
         
-    def draw(self, surface: pygame.Surface, pos, px_per_nm, target=None) -> None:
-        super().draw(surface, pos, px_per_nm, target)
+    def draw(self, surface: pygame.Surface, pos, px_per_nm, target_pos=None) -> None:
+        super().draw(surface, pos, px_per_nm, target_pos=target_pos)
         
 class surfaceVessel(groundUnit):
     

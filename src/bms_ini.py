@@ -83,10 +83,10 @@ class FalconBMSIni:
         for i in range(0, BMS_NUM_LINES):
             self.lines.append([None] * BMS_LINE_POINTS)
             for j in range(0, BMS_LINE_POINTS):
-                v,u = self.data["STPT"][f"linestpt_{i+j}"].split(",")[0:2]
+                v,u = self.data["STPT"][f"linestpt_{i*BMS_LINE_POINTS+j}"].split(",")[0:2]
                 x = float(u) / BMS_FT_PER_M
                 y = float(v) / BMS_FT_PER_M
-                self.lines [i][j] = x, y
+                self.lines[i][j] = x, y
 
     def get_ppt_threats(self):
         """
