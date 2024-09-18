@@ -94,7 +94,7 @@ class BottomUIPanel(UIPanel):
 
         if event.type == UI_BUTTON_PRESSED and event.ui_element == self.settings_button:
             if self.settings_window is None:
-                self.settings_window = SettingsWindow(pygame.Rect(0, 0, 300, 300), self.ui_manager,
+                self.settings_window = SettingsWindow(pygame.Rect(0, 0, 1000, 800), self.ui_manager,
                     window_title="Settings",
                     object_id="#settings_window"
                 )
@@ -103,6 +103,12 @@ class BottomUIPanel(UIPanel):
                 self.settings_window = None
             consumed_event = True
 
+        if event.type == UI_BUTTON_PRESSED and (self.settings_window is not None and 
+            self.settings_window.close_window_button is not None and
+            event.ui_element == self.settings_window.close_window_button):
+                self.settings_window.kill()
+                self.settings_window = None
+                
         if event.type == UI_BUTTON_PRESSED and event.ui_element == self.layers_button:
             pass
 

@@ -6,10 +6,9 @@ import pygame
 
 from pygame_gui.core import ObjectID
 from pygame_gui.core.interfaces import IUIManagerInterface
-from pygame_gui.elements import UIWindow, UIButton, UITextBox, UITabContainer
+from pygame_gui.elements import UIWindow, UIButton, UITextBox, UITabContainer, UILabel
 from pygame_gui.core.gui_type_hints import RectLike
-
-from pygame_gui.windows import UIConfirmationDialog
+from pygame_gui._constants import UI_WINDOW_RESIZED
 
 class SettingsWindow(UIWindow):
     
@@ -37,53 +36,36 @@ class SettingsWindow(UIWindow):
                            " is less than minimum dimensions: " + str(minimum_dimensions))
             warnings.warn(warn_string, UserWarning)
         self.set_minimum_dimensions(minimum_dimensions)
-
-
-        self.settings_tabs = UITabContainer(relative_rect=pygame.Rect(0, 0, 0, 0),
+        self.center()
+        
+        size = self.window_element_container.get_size() if self.window_element_container else minimum_dimensions
+        self.settings_tabs = UITabContainer(relative_rect=pygame.Rect((0,0), size),
                                             manager = self.ui_manager,
                                             container=self,
                                             object_id='#settings_tabs',
                                             anchors={'left': 'left',
-                                                     'top': 'top'})
-        self.settings_tabs.set_dimensions((0,0), True)
-        
-        tab = self.settings_tabs.add_tab('General', '#settings_tab_general')
-        tab = self.settings_tabs.add_tab('Server', '#settings_tab_server')
+                                                     'top': 'top',
+                                                     'right': 'right',
+                                                     'bottom': 'bottom'})
 
-        # self.cancel_button = UIButton(relative_rect=pygame.Rect(-10, -40, -1, 30),
-        #                               text='pygame-gui.Cancel',
-        #                               manager=self.ui_manager,
-        #                               container=self,
-        #                               object_id='#cancel_button',
-        #                               anchors={'left': 'right',
-        #                                        'right': 'right',
-        #                                        'top': 'bottom',
-        #                                        'bottom': 'bottom'})
-
-        # self.confirm_button = UIButton(relative_rect=pygame.Rect(-10, -40, -1, 30),
-        #                                text=action_short_name,
-        #                                manager=self.ui_manager,
-        #                                container=self,
-        #                                object_id='#confirm_button',
-        #                                anchors={'left': 'right',
-        #                                         'right': 'right',
-        #                                         'top': 'bottom',
-        #                                         'bottom': 'bottom',
-        #                                         'left_target': self.cancel_button,
-        #                                         'right_target': self.cancel_button})
-
-        # text_width = self.get_container().get_size()[0] - 10
-        # text_height = self.get_container().get_size()[1] - 50
-        # self.confirmation_text = UITextBox(html_text=action_long_desc,
-        #                                    relative_rect=pygame.Rect(5, 5,
-        #                                                              text_width,
-        #                                                              text_height),
-        #                                    manager=self.ui_manager,
-        #                                    container=self,
-        #                                    anchors={'left': 'left',
-        #                                             'right': 'right',
-        #                                             'top': 'top',
-        #                                             'bottom': 'bottom'},
-        #                                    text_kwargs=action_long_desc_text_kwargs)
+        for i in range(4):
+            tab = self.settings_tabs.add_tab(f"Tab{i}", f"tab{i}")
+            lab = UILabel(
+                pygame.Rect(16, 16+24*i, 120, 32), f"Label for Tab {i}",
+                manager, self.settings_tabs.get_tab_container(tab))
 
         self.set_blocking(blocking)
+        
+    def center(self):
+        if self.rect is not None and self.ui_manager is not None:
+            self.rect.center = self.ui_manager.get_root_container().get_rect().center
+            self.set_position(self.rect.topleft)
+
+    def process_event(self, event: pygame.event.Event) -> bool:
+        result = super().process_event(event)
+        
+        if event.type == UI_WINDOW_RESIZED and event.ui_element == self:
+            self.settings_tabs.set_dimensions(event.internal_size)
+        
+        
+        return result
