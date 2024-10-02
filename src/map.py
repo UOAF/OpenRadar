@@ -9,7 +9,8 @@ from bms_math import *
 
 #TODO Move to config
 THEATRE_MAPS_BUILTIN = [{"name": "Balkans", "path": "resources/maps/balkans_4k_airbases.png", "size": 1024},
-                        {"name": "KTO", "path": "resources/maps/Korea.jpg", "size": 1024}]
+                        {"name": "KTO", "path": "resources/maps/Korea.jpg", "size": 1024},
+                        {"name": "Israel", "path": "resources/maps/Israel.jpg", "size": 1024}]
 
 class Map:
     def __init__(self, displaysurface: pygame.Surface):
@@ -37,7 +38,6 @@ class Map:
         self.ini: FalconBMSIni | None = None
         self._load_ini()   
                      
-        # TODO: Handle non-bundle maps
         if theatre is not None:
             self.load_map(config.bundle_dir / theatre["path"], 
                           config.app_config.get("map", "map_alpha", int)) # type: ignore

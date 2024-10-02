@@ -1,9 +1,11 @@
 import pygame
 import pygame_gui
 import os
+import sys
 import config
 from radar import Radar
 from ui.user_interface import UserInterface
+import math
 
 MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1
@@ -22,6 +24,11 @@ class App:
         self._radar: Radar
         self._UI: UserInterface
         
+        try:
+            os.chdir(sys._MEIPASS)
+        except AttributeError:
+            pass
+        
     def on_init(self):
         
         window_x, window_y = config.app_config.get("window", "location", tuple[int,int]) # type: ignore
@@ -29,16 +36,23 @@ class App:
         
         pygame.init()
         
-        pygame.display.set_caption('OpenRadar') #TODO: add icon
+        pygame.display.set_caption('OpenRadar')
+        icon = pygame.image.load(str( (config.bundle_dir / "resources/icons/OpenRadaricon.png").absolute() ))
+        pygame.display.set_icon(icon)
         
-        self.size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int]) # type: ignore
-        self._display_surf = pygame.display.set_mode(self.size, pygame.RESIZABLE)
-        self._radar = Radar(self._display_surf)
-        self._UI = UserInterface(self._display_surf)
-        self._UI.handlers = self._UI.handlers | {
+        config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int]) # type: ignore
+        self._display_surf = pygame.display.set_mode(config_size, pygame.RESIZABLE)
+        self.size = self.width, self.height = self._display_surf.get_size() # This needs to be done seperatly as 0,0 size is handled in the display code
+        
+        manager_json_path = str( (config.bundle_dir / "resources/ui_theme.json").absolute() )
+        self.ui_manager = pygame_gui.UIManager((self.size[0], self.size[1]), manager_json_path)
+        self._radar = Radar(self._display_surf, self.ui_manager)
+          
+        self._UI = UserInterface(self._display_surf, self.ui_manager)
+        self._UI.handlers = self._UI.handlers | { # TODO: move the event handlers into the Radar Class
             pygame_gui.UI_BUTTON_PRESSED : { 
-                self._UI.bottom_ui_panel.load_ini_button: self._radar.handle_load_ini}
-                # self._UI.load_map_button: self._radar.handle_load_map},
+                self._UI.bottom_ui_panel.load_ini_button: self._radar.handle_load_ini,
+                self._UI.bottom_ui_panel.load_map_button: self._radar.handle_load_map},
         }
         
         self.event_handlers = {
@@ -60,7 +74,8 @@ class App:
         Handles the various events triggered by the user.
         """
 
-        self._UI.on_event(event)
+        if self._UI.on_event(event): return
+        if self.ui_manager.process_events(event): return
 
         handler = self.event_handlers.get(event.type)
         if handler:
@@ -86,6 +101,7 @@ class App:
         if event.button == MOUSEDRAGBUTTON:
             self.mouseDragDown = True
             self._startPan = event.pos
+            print("Event", event)
         elif event.button == MOUSEBRAABUTTON:
             self.mouseBRAADown = True
             self._startBraa = event.pos
@@ -102,6 +118,9 @@ class App:
     def handle_mouse_button_up(self, event):
         if event.button == MOUSEDRAGBUTTON:
             self.mouseDragDown = False
+            if math.dist(event.pos, self._startPan) < 5:
+                print("Right click in place")
+                self._radar.select_object(event.pos)
             
         elif event.button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False
@@ -122,7 +141,6 @@ class App:
         """
         if self._radar._gamestate.current_time is not None:
             self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%SZ"))
-        self._UI.on_loop()
         self._radar.on_loop()
         pass
     
@@ -131,8 +149,8 @@ class App:
         Renders the application
         """
         self._radar.on_render()
-        self._UI.on_render()
         self.fps_counter()
+        self.ui_manager.draw_ui(self._display_surf)
         pygame.display.flip()
     
     def on_cleanup(self):
@@ -140,7 +158,6 @@ class App:
         Cleans up and quits the application.
         """
         self._radar.on_cleanup()
-        self._UI.on_cleanup()
         pygame.quit()
  
     def on_execute(self):
@@ -156,7 +173,7 @@ class App:
             time_delta = self.clock.tick()/1000.0
             for event in pygame.event.get():
                 self.on_event(event)
-            self._UI.update(time_delta)
+            self.ui_manager.update(time_delta)
             self.on_loop()
             self.on_render()
             self.clock.tick()

@@ -3,6 +3,7 @@ import pygame
 import numpy as np
 
 from bms_math import *
+from typing import Callable, Any
 from acmi_parse import ACMIObject
 from pygame_utils import draw_dashed_line
 
@@ -22,6 +23,7 @@ class GameObject:
         self.force_color: pygame.Color | None = None
         self.visible = True
         self.locked_target: GameObject | None = None
+        self.override_name: str | None = None
         
         global font
         if font is None:
@@ -47,6 +49,16 @@ class GameObject:
         
     def show(self):
         self.visible = True
+    
+    def get_context_items(self) -> list[tuple[str, Callable[[Any], None]]]:
+        return [("Change Color", self.change_color),
+                ("Change Name", self.change_name)]
+        
+    def change_color(self, color: pygame.Color):
+        pass
+    
+    def change_name(self, name:str):
+        self.override_name = name
     
     #Abstract method
     def draw(self, surface: pygame.Surface, position, px_per_meter, target_pos=None) -> None:

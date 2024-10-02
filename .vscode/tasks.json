@@ -13,6 +13,11 @@
                 "isDefault": true
             },
             "problemMatcher": []
+        },
+        {
+            "type": "austin",
+            "file": "OpenRadar.py",
+            "label": "Profile OpenRadar.py",
         }
     ]
 }

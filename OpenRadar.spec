@@ -1,22 +1,26 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-added_files = [
-         ( 'resources', 'resources' )
-         ]
+block_cipher = None
 
 a = Analysis(
     ['src\\OpenRadar.py'],
     pathex=[],
     binaries=[],
-    datas=added_files,
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
     noarchive=False,
 )
-pyz = PYZ(a.pure)
+
+a.datas += Tree('resources', prefix='resources')
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
@@ -37,4 +41,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='resources\\icons\\OpenRadar_icon.ico'
 )

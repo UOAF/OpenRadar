@@ -25,7 +25,7 @@ class Buffer:
 
 class TRTTClientThread(threading.Thread):
     def __init__(self, queue: queue.Queue):
-        super(TRTTClientThread, self).__init__() # Call the init for threading.Thread
+        super(TRTTClientThread, self,).__init__(daemon=True) # Call the init for threading.Thread
         self.queue = queue
         self.connected = False
         self.connecting = True

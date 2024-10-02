@@ -10,29 +10,6 @@ from pygame_gui.core.interfaces import IContainerLikeInterface, IUIContainerInte
 from pygame_gui.core.interfaces import IUIManagerInterface, IUIElementInterface
 
 class SettingsPageServer(UIScrollingContainer):
-    """
-    A confirmation dialog that lets a user choose between continuing on a path they've chosen or
-    cancelling. It's good practice to give a very brief description of the action they are
-    confirming on the button they click to confirm it i.e. 'Delete' for a file deletion operation
-    or, 'Rename' for a file rename operation.
-
-    :param rect: The size and position of the window, includes the menu bar across the top.
-    :param action_long_desc: Long-ish description of action. Can make use of HTML to
-                             style the text.
-    :param manager: The UIManager that manages this UIElement. If not provided or set to None,
-                    it will try to use the first UIManager that was created by your application.
-    :param window_title: The title of the  window.
-    :param action_short_name: Short, one or two-word description of action for button.
-    :param blocking: Whether this window should block all other mouse interactions with the GUI
-                     until it is closed.
-    :param object_id: A custom defined ID for fine-tuning of theming. Defaults to
-                      '#confirmation_dialog'.
-    :param visible: Whether the element is visible by default.
-    :param action_long_desc_text_kwargs: a dictionary of variable arguments to pass to the translated string
-                                         useful when you have multiple translations that need variables inserted
-                                         in the middle.
-    """
-
 
     def __init__(self,
                  relative_rect: pygame.Rect,
@@ -55,8 +32,6 @@ class SettingsPageServer(UIScrollingContainer):
                          anchors=anchors,
                          visible=visible)
         
-
-
         self.cancel_button = UIButton(relative_rect=pygame.Rect(-10, -40, -1, 30),
                                       text='pygame-gui.Cancel',
                                       manager=self.ui_manager,

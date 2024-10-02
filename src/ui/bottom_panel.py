@@ -10,9 +10,6 @@ from pygame_gui.elements import UIPanel, UIButton, UILabel
 from pygame_gui._constants import UI_BUTTON_PRESSED
 
 from ui.settings_window import SettingsWindow
-
-from pygame_gui.windows import UIConfirmationDialog
-
 class BottomUIPanel(UIPanel):
     
     def __init__(self,
@@ -20,7 +17,7 @@ class BottomUIPanel(UIPanel):
                  starting_height: int = 1,
                  manager: Optional[IUIManagerInterface] = None,
                  *,
-                 element_id: str = 'panel',
+                 element_id: str = 'bottompanel',
                  margins: Optional[Dict[str, int]] = None,
                  container: Optional[IContainerLikeInterface] = None,
                  parent_element: Optional[UIElement] = None,
@@ -74,6 +71,16 @@ class BottomUIPanel(UIPanel):
             anchors={'left': 'left', 'top': 'top', 'left_target': self.layers_button}
         )
         
+        self.load_map_button = UIButton(
+            pygame.Rect(border, border, button_size, button_size), 
+            "Load Map",
+            manager=self.ui_manager,
+            container=self,
+            object_id="#map_button",
+            tool_tip_text="Load Map",
+            anchors={'left': 'left', 'top': 'top', 'left_target': self.load_ini_button}
+        )
+        
         self.clock_label = UILabel(
             pygame.Rect(border, border, 100, 40),
             text="00:00:00",
@@ -82,9 +89,7 @@ class BottomUIPanel(UIPanel):
             object_id="#clock_label",
             anchors={'centerx': 'centerx', 'centery': 'centery'}
         )
-        
-
-            
+                    
     def resize(self, width, height):
         self.set_dimensions((width, self.height))
 
@@ -93,6 +98,8 @@ class BottomUIPanel(UIPanel):
         consumed_event = super().process_event(event)
 
         if event.type == UI_BUTTON_PRESSED and event.ui_element == self.settings_button:
+            print("Settings button pressed")
+            print(event)
             if self.settings_window is None:
                 self.settings_window = SettingsWindow(pygame.Rect(0, 0, 1000, 800), self.ui_manager,
                     window_title="Settings",

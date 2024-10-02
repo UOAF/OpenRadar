@@ -4,11 +4,13 @@ from typing import Union, Optional, Dict
 
 import pygame
 
+from pygame_gui import UI_WINDOW_RESIZED
 from pygame_gui.core import ObjectID
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIWindow, UIButton, UITextBox, UITabContainer, UILabel
 from pygame_gui.core.gui_type_hints import RectLike
-from pygame_gui._constants import UI_WINDOW_RESIZED
+
+from ui.settings_page_server import SettingsPageServer
 
 class SettingsWindow(UIWindow):
     
@@ -48,11 +50,29 @@ class SettingsWindow(UIWindow):
                                                      'right': 'right',
                                                      'bottom': 'bottom'})
 
-        for i in range(4):
-            tab = self.settings_tabs.add_tab(f"Tab{i}", f"tab{i}")
-            lab = UILabel(
-                pygame.Rect(16, 16+24*i, 120, 32), f"Label for Tab {i}",
-                manager, self.settings_tabs.get_tab_container(tab))
+
+        self.server_tab = self.settings_tabs.add_tab("Server", "server_tab")
+        
+        tab_contents_size = (0,0)
+        tab_panel = self.settings_tabs.get_tab_container()
+        if tab_panel is not None: 
+            tab_contents_size = tab_panel.get_container().get_size() 
+            
+        self.server_page = SettingsPageServer(
+            relative_rect=pygame.Rect((0,0), tab_contents_size),
+            manager=manager,
+            container=self.settings_tabs.get_tab_container(self.server_tab),
+            anchors={'left': 'left',
+                    'right': 'left',
+                    'top': 'top',
+                    'bottom': 'top'}     
+        )
+
+        # for i in range(4):
+        #     tab = self.settings_tabs.add_tab(f"Tab{i}", f"tab{i}")
+        #     lab = UILabel(
+        #         pygame.Rect(16, 16+24*i, 120, 32), f"Label for Tab {i}",
+        #         manager, self.settings_tabs.get_tab_container(tab))
 
         self.set_blocking(blocking)
         

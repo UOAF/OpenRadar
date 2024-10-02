@@ -2,6 +2,8 @@ import acmi_parse
 import datetime
 from trtt_client import TRTTClientThread
 import queue 
+import pygame
+import math
 
 from typing import Type
 
@@ -99,6 +101,31 @@ class GameState:
 
             else:
                 print(f"Unknown action {acmiline.action} in {acmiline}")
+                
+    def get_nearest_object(self, world_pos: tuple[float, float], hover_dist_world: float) -> GameObject | None:
+
+        """
+        Gets the object ID of the object that is being hovered over.
+        
+        Args:
+            world_pos (tuple[int, int]): The position in world units to consider an object hovered over.
+            hover_dist_world (float): The distance in world units to consider an object hovered over.
+            
+        Returns:
+            str: The object ID of the object being hovered over.
+        """
+        closest = None
+        closest_dist = float('inf')
+        for id in self.all_objects:
+            obj = self.all_objects[id]
+            dist = math.dist(world_pos, (obj.data.T.U, obj.data.T.V))
+            if dist < closest_dist:
+                closest = obj
+                closest_dist = dist
+
+        if closest is None or closest_dist > hover_dist_world:
+            return None
+        return closest
 
     def _remove_object(self, object_id: str) -> None:
         """

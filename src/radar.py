@@ -1,12 +1,16 @@
 import pygame
 import math
 
+import pygame_gui
+
 from game_state import GameState, CLASS_MAP
 from map import Map
 
 from game_objects import *
 
 from bms_math import METERS_TO_FT
+
+from ui.context_menu import ContextMenu
 
 RADAR_CONTACT_SIZE_PX = 12
 
@@ -23,7 +27,7 @@ class Radar(Map):
         _gamestate (GameState): The game state object.
         font (pygame.font.Font): The font used for rendering text on the radar.
     """
-    def __init__(self, displaysurface: pygame.Surface):
+    def __init__(self, displaysurface: pygame.Surface, ui_manager: pygame_gui.UIManager):
         super().__init__(displaysurface)
         self._display_surf = displaysurface
         self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
@@ -32,7 +36,8 @@ class Radar(Map):
         self.unitFont = pygame.font.SysFont('Comic Sans MS', 14)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)
         self.hover_obj_id: str = ""
-    
+        self.ui_manager = ui_manager
+        
     def on_render(self):
         """
         Renders the radar display.
@@ -56,8 +61,6 @@ class Radar(Map):
         """
         super().on_loop()
         self._gamestate.update_state()
-        
-        self.hover_obj_id = self.get_hover_object_id()
         
     def resize(self, width, height):
         """
@@ -190,25 +193,12 @@ class Radar(Map):
         
         return bearing, distance
     
-    def get_hover_object_id(self, hover_distance: int = RADAR_CONTACT_SIZE_PX) -> str:
-        """
-        Gets the object ID of the object that is being hovered over.
+    def select_object(self, mouse_pos):
         
-        Args:
-            hover_distance (int): The distance in pixels to consider an object as being hovered over.
+        CONTEXT_DIST = self._canvas_to_world((RADAR_CONTACT_SIZE_PX*8, 0))[0]
+        
+        obj = self._gamestate.get_nearest_object(self._screen_to_world(mouse_pos), CONTEXT_DIST)
+        print(f"Selected object: {obj}")
             
-        Returns:
-            str: The object ID of the object being hovered over.
-        """
-        pos = pygame.mouse.get_pos()
-        closest = None
-        closest_dist = float('inf')
-        for id in self._gamestate.all_objects:
-            obj = self._gamestate.all_objects[id]
-            dist = math.dist(pos, self._world_to_screen((obj.data.T.U, obj.data.T.V)))
-            if dist < closest_dist:
-                closest = obj
-                closest_dist = dist
-        if closest is None or closest_dist > hover_distance:
-            return ""
-        return closest.data.object_id
+        if obj is not None:
+           menu = ContextMenu( (mouse_pos[0], mouse_pos[1]), obj, manager=self.ui_manager)
