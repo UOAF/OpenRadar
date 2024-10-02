@@ -101,7 +101,6 @@ class App:
         if event.button == MOUSEDRAGBUTTON:
             self.mouseDragDown = True
             self._startPan = event.pos
-            print("Event", event)
         elif event.button == MOUSEBRAABUTTON:
             self.mouseBRAADown = True
             self._startBraa = event.pos
@@ -119,8 +118,7 @@ class App:
         if event.button == MOUSEDRAGBUTTON:
             self.mouseDragDown = False
             if math.dist(event.pos, self._startPan) < 5:
-                print("Right click in place")
-                self._radar.select_object(event.pos)
+                self._radar.select_object(event.pos) # right click in place not on UI
             
         elif event.button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False

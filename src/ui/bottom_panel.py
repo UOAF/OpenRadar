@@ -98,8 +98,6 @@ class BottomUIPanel(UIPanel):
         consumed_event = super().process_event(event)
 
         if event.type == UI_BUTTON_PRESSED and event.ui_element == self.settings_button:
-            print("Settings button pressed")
-            print(event)
             if self.settings_window is None:
                 self.settings_window = SettingsWindow(pygame.Rect(0, 0, 1000, 800), self.ui_manager,
                     window_title="Settings",
