@@ -45,7 +45,6 @@ class Radar(Map):
         super().on_render()
         self._radar_surf.fill((0,0,0,0)) # Fill transparent
         
-
         self._draw_all_contacts(self._radar_surf)
 
         if self._drawBRAA:
@@ -127,7 +126,6 @@ class Radar(Map):
                      target_pos=self._world_to_screen(obj.locked_target.get_pos()))
         else:
             obj.draw(surface, self._world_to_screen(obj.get_pos()), self._px_per_nm())
-        
         
     def _draw_all_contacts(self, surface: pygame.Surface) -> None:
         

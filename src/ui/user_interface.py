@@ -24,7 +24,7 @@ class UserInterface:
     def resize(self, width, height):
         self.width, self.height = width, height
         self.ui_manager.set_window_resolution((self.width, self.height))
-        # self.bottom_ui_panel.resize(width, height)
+        self.bottom_ui_panel.resize(width, height)
     
     def on_event(self, event):
 
