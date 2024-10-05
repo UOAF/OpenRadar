@@ -1,14 +1,17 @@
 from typing import Union, Optional, Dict
 
+from matplotlib.pylab import f
 import pygame
 
 from pygame_gui.core import ObjectID, UIElement
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.core.interfaces import IContainerLikeInterface
-from pygame_gui.core.gui_type_hints import RectLike
 from pygame_gui.elements import UIPanel, UIButton, UILabel
-from pygame_gui._constants import UI_BUTTON_PRESSED, UI_BUTTON_ON_HOVERED
+from pygame_gui._constants import UI_BUTTON_PRESSED, UI_WINDOW_CLOSE
 
+from pygame_gui.windows import UIColourPickerDialog
+
+from ui.ui_text_entry_dialog import UITextEntryDialog, UI_TEXT_ENTRY_DIALOG_TEXT_SUBMITTED
 import game_objects
 
 class ContextMenu(UIPanel):
@@ -40,20 +43,34 @@ class ContextMenu(UIPanel):
                             visible=visible)
 
         self.unit = unit
+        self.callsign_entry = None
+        self.awaiting_callsign = False
+        
+        button_height = 30
+        button_width, _ = self.get_container().get_size()
+        self.get_container().get_abs_rect()
+        margin = (self.relative_rect.width - button_width) //2
+                
+        UILabel(
+            pygame.Rect(margin, margin, button_width, button_height), 
+            f"{unit.get_display_name()}",
+            manager=self.ui_manager,
+            container=self,
+            object_id=f"#callsign",
+            anchors={'left': 'left', 'top': 'top'}                
+        )
 
-        self.buttons = [("Change Callsign", self.change_callsign),
-                        ("Change Color", self.change_color)]
-
-        UIButton(
-            pygame.Rect(2, 2, 120, 30), 
+        self.change_callsign_button = UIButton(
+            pygame.Rect(margin, button_height*1 + margin, button_width, button_height), 
             "Change Callsign",
             manager=self.ui_manager,
             container=self,
             object_id=f"#change_callsign",
             anchors={'left': 'left', 'top': 'top'}                
         )
-        UIButton(
-            pygame.Rect(2, 32, 120, 32), 
+        
+        self.change_color_button = UIButton(
+            pygame.Rect(margin, button_height*2 + margin, button_width, button_height), 
             "Change Color",
             manager=self.ui_manager,
             container=self,
@@ -61,63 +78,49 @@ class ContextMenu(UIPanel):
             anchors={'left': 'left', 'top': 'top'}                
         )     
         
+        self.set_dimensions((self.relative_rect.width, button_height*3 + margin*2))
+        
 
     def change_callsign(self):
-        self.prompt_text()
+        self.callsign_entry = UITextEntryDialog(pygame.Rect((0,0), (200,100)), 
+                                                manager=self.ui_manager, 
+                                                window_title="Enter new callsign", 
+                                                object_id="#callsign_dialog")
+        self.awaiting_callsign = True
 
     def change_color(self):
         pass
-
-    def prompt_color(self) -> pygame.Color:
-        pygame_gui.windows(
-            object_id="#color_dialog",
-            element_id="color_dialog",
-            container=self,
-            rect=pygame.Rect(0, 0, 200, 200),
-            manager=self.ui_manager,
-            visible=1,
-            element_relative_position=(0.5, 0.5),
-            starting_height=1,
-            layer_starting_height=1,
-            layer=1,
-            element_ids=["#color_dialog"]
-        )
-
-    def prompt_text(self) -> str:
-        pass
-        # self.ui_manager.create_ui_element(
-        #     object_id="#text_dialog",
-        #     element_id="text_dialog",
-        #     container=self,
-        #     rect=pygame.Rect(0, 0, 200, 200),
-        #     manager=self.ui_manager,
-        #     visible=1,
-        #     element_relative_position=(0.5, 0.5),
-        #     starting_height=1,
-        #     layer_starting_height=1,
-        #     layer=1,
-        #     element_ids=["#text_dialog"]
-        # )
-
-    def on_button_click(self, label):
-        print(f"Button '{label}' clicked for unit {self.unit}")
 
     def process_event(self, event: pygame.Event) -> bool:
         consumed = super().process_event(event)
     
         if event.type == UI_BUTTON_PRESSED:
-            for button in self.buttons:
-                if event.ui_element == button[0]:
-                    button[1]()
-                    consumed = True
-                    break
-                  
+            if event.ui_element == self.change_callsign_button:
+                self.change_callsign()
+                consumed = True
+            elif event.ui_element == self.change_color_button:
+                self.change_color()
+                consumed = True
+                         
         if event.type == pygame.MOUSEMOTION and self.rect is not None:
             mouse_x = event.pos[0]
             mouse_y = event.pos[1]
             x1, y1 = self.rect.topleft
             x2, y2 = self.rect.bottomright
-            if not (x1 <= mouse_x <= x2 and y1 <= mouse_y <= y2):
+            if not (x1 <= mouse_x <= x2 and y1 <= mouse_y <= y2) and not self.awaiting_callsign:
                 self.kill()
+                
+        # Callsign Entry Events
+        if event.type == UI_TEXT_ENTRY_DIALOG_TEXT_SUBMITTED and event.ui_object_id == "#callsign_dialog":
+            self.unit.override_name = event.text
+            self.awaiting_callsign = False
+            self.kill()
+                    
+        if self.callsign_entry is not None and (event.type == UI_WINDOW_CLOSE and
+                                                event.ui_element == self.callsign_entry):
+            self.callsign_entry = None
+            self.awaiting_callsign = False
+    
+        # Color Picker Events
     
         return consumed

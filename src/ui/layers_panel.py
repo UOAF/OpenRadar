@@ -41,7 +41,6 @@ class LayersUIPanel(UIPanel):
                             visible=visible)
 
         button_size, _ = self.get_container().get_size()
-        print(f"panel: {self.get_abs_rect()} Container: {self.get_container().get_abs_rect()}")
         self.get_container().get_abs_rect()
         margin = (self.relative_rect.width - button_size) //2
         

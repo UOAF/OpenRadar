@@ -32,6 +32,16 @@ class GameObject:
         
         self.color = pygame.Color(self.data.Color) 
         
+    def get_display_name(self) -> str:
+
+        if self.override_name is not None and self.override_name != "":
+            return f"{self.override_name}"
+        
+        elif self.data.Pilot != "":
+            return f"{self.data.Pilot}"
+        
+        return f"{self.data.Type}"
+        
     def update(self, object: ACMIObject):
         self.data.update(object.properties)
 
@@ -144,7 +154,7 @@ class airUnit(GameObject):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
         self.locked_target: GameObject | None = None
-        self.callsign = "Viper"
+
                 
     def get_surface(self, px_per_meter) -> pygame.Surface:
         size = (20,20)
@@ -206,9 +216,8 @@ class airUnit(GameObject):
         
         altitude = self.data.T.Altitude
         calibratedspeed = self.data.CAS
-        text = self.data.Pilot
-        if text == "":
-            text = self.data.Type
+        
+        text = self.get_display_name()
         
         name_surface = self.font.render(f"{text}", True, color)
         type_surface = self.font.render(f"{self.data.Name}", True, color)
