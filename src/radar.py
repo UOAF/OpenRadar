@@ -137,32 +137,6 @@ class Radar(Map):
     def meters_to_ft(self, meters: float) -> int:
         return int(meters * METERS_TO_FT)    
 
-    def getVelocityVector(self, start_pos: tuple[float,float] = (0,0), heading: float = 0.0, velocity: float = 0.0, 
-                          size: int = RADAR_CONTACT_SIZE_PX*3) -> tuple[tuple[float,float],tuple[float,float]]:
-        """
-        Calculates the start and end points of a velocity vector line to draw.
-
-        Args:
-            start_pos (tuple[float,float], optional): The starting position of the vector. Defaults to (0,0).
-            heading (float, optional): The heading of the vector. Defaults to 0.0.
-            velocity (float, optional): The velocity of the vector. Defaults to 0.0.
-            size (int, optional): The size of the contact icon in pixels. Defaults to 20.
-
-        Returns:
-            tuple[tuple[float,float],tuple[float,float]]: The start and end points of the velocity vector.
-        """
-        vel_scale = velocity / 1000.0
-        vel_vec_len_px = RADAR_CONTACT_SIZE_PX/2 + vel_scale*size # Scale the velocity vector
-
-        start_pt = start_pos
-
-        heading_rad = math.radians(heading-90) # -90 rotaes north to up
-        end_x = start_pt[0] + vel_vec_len_px*math.cos(heading_rad)
-        end_y = start_pt[1] + vel_vec_len_px*math.sin(heading_rad)
-        end_pt = (end_x, end_y)
-
-        return (start_pt, end_pt)
-    
     def braa(self, braaEnabled:bool, start: tuple[int,int] = (0,0), end: tuple[int,int]= (0,0)):
         """
         Enables rendering of BRAA line between two points, additionally sets the start and end points of the line.
