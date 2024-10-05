@@ -132,10 +132,10 @@ class groundUnit(GameObject):
         if self.force_color is not None:
             color = self.force_color
             
-        size = 10            
+        size = 5           
         
         # Draw Circle
-        pygame.draw.circle(surface, color, pos, size/2, 2)
+        pygame.draw.circle(surface, color, pos, size, 2)
         
 class airUnit(GameObject):
     
