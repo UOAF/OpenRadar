@@ -132,8 +132,8 @@ class Radar(Map):
     def _draw_all_contacts(self, surface: pygame.Surface) -> None:
         
         for drawable_type in CLASS_MAP.values():
-            for id in self._gamestate.new_objects[drawable_type]:
-                obj = self._gamestate.new_objects[drawable_type][id]
+            for id in self._gamestate.objects[drawable_type]:
+                obj = self._gamestate.objects[drawable_type][id]
                 self._draw_contact(surface, obj)
     
     def meters_to_ft(self, meters: float) -> int:

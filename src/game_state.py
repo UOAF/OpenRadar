@@ -42,7 +42,7 @@ class GameState:
         self.reference_time: datetime.datetime | None = None
         self.current_time: datetime.datetime | None = None
         
-        self.new_objects: dict[Type[SUPPORTED_CLASSES], dict["str", GameObject] ] = {clas: dict() for clas in CLASS_MAP.values()}
+        self.objects: dict[Type[SUPPORTED_CLASSES], dict["str", GameObject] ] = {clas: dict() for clas in CLASS_MAP.values()}
         self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
@@ -55,9 +55,9 @@ class GameState:
         self.tac_client.stop()
         
     def get_bullseye_pos(self):
-        if '7fffffffffffffff' not in self.new_objects[Bullseye]:
+        if '7fffffffffffffff' not in self.objects[Bullseye]:
             return (0,0)
-        return self.new_objects[Bullseye]['7fffffffffffffff'].get_pos()
+        return self.objects[Bullseye]['7fffffffffffffff'].get_pos()
     
     def update_state(self):
         """
@@ -134,7 +134,7 @@ class GameState:
         Args:
             object_id (str): The ID of the object to remove.
         """       
-        for subdict in self.new_objects.values():
+        for subdict in self.objects.values():
             if object_id in subdict:
                 del subdict[object_id]
                 del self.all_objects[object_id]
@@ -157,7 +157,7 @@ class GameState:
         else:
             for key in CLASS_MAP:
                 if key in updateObj.Type:
-                    subdict = self.new_objects[CLASS_MAP[key]]
+                    subdict = self.objects[CLASS_MAP[key]]
                     subdict[updateObj.object_id] = CLASS_MAP[key](updateObj)
                     self.all_objects[updateObj.object_id] = subdict[updateObj.object_id]
                     break
