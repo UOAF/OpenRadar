@@ -10,6 +10,8 @@ from pygame_gui.elements import UIPanel, UIButton, UILabel
 from pygame_gui._constants import UI_BUTTON_PRESSED
 
 from ui.settings_window import SettingsWindow
+from ui.layers_panel import LayersUIPanel
+
 class BottomUIPanel(UIPanel):
     
     def __init__(self,
@@ -35,7 +37,6 @@ class BottomUIPanel(UIPanel):
                             anchors=anchors,
                             visible=visible)
         
-        
         _, self.height = self.relative_rect.size
         _, button_size = self.get_container().get_size()
         border = self.border_width if self.border_width is not None else 0
@@ -60,6 +61,7 @@ class BottomUIPanel(UIPanel):
             tool_tip_text="Layers",
             anchors={'left': 'left', 'top': 'top'}
         )
+        self.layers_panel = None
         
         self.load_ini_button = UIButton(
             pygame.Rect(border, border, button_size, button_size), 
@@ -115,7 +117,16 @@ class BottomUIPanel(UIPanel):
                 self.settings_window = None
                 
         if event.type == UI_BUTTON_PRESSED and event.ui_element == self.layers_button:
-            pass
+            print("layers_button")
+            if self.layers_panel is None:
+                self.layers_panel = LayersUIPanel(
+                    manager=self.ui_manager,
+                    object_id="#layers_panel",
+                    anchors={'left': 'left', 'bottom': 'bottom', 'bottom_target': self}
+                )
+            else:
+                self.layers_panel.kill()
+                self.layers_panel = None
 
         return consumed_event
     

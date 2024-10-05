@@ -9,15 +9,13 @@ from pygame_gui.core.gui_type_hints import RectLike
 from pygame_gui.elements import UIPanel, UIButton, UILabel
 from pygame_gui._constants import UI_BUTTON_PRESSED, UI_BUTTON_ON_HOVERED
 
-from pygame_gui.windows import UIConfirmationDialog
-
-from game_objects import GameObject
+import game_objects
 
 class ContextMenu(UIPanel):
     
     def __init__(self,
                  position: tuple[int, int],
-                 unit: GameObject,
+                 unit: game_objects.GameObject,
                  starting_height: int = 1,
                  manager: Optional[IUIManagerInterface] = None,
                  *,
@@ -115,13 +113,10 @@ class ContextMenu(UIPanel):
                     break
                   
         if event.type == pygame.MOUSEMOTION and self.rect is not None:
-            print(f"Mouse moved {event}")
             mouse_x = event.pos[0]
             mouse_y = event.pos[1]
             x1, y1 = self.rect.topleft
             x2, y2 = self.rect.bottomright
-            print (x1, mouse_x, x2)
-            print (y1, mouse_y, y2)
             if not (x1 <= mouse_x <= x2 and y1 <= mouse_y <= y2):
                 self.kill()
     
