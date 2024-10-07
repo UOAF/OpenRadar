@@ -17,7 +17,7 @@ class Map:
         super().__init__()
         self._running = True
         self._display_surf = displaysurface
-        self.size = self.width, self.height = displaysurface.get_size()
+        self.size = self.width, self.height = displaysurface.get_size()[0], displaysurface.get_size()[1] - 74 # 74 is the height of the UI panel #TODO parameterize this
         self._map_source = pygame.Surface(self.size)
         self._map_annotated = pygame.Surface(self.size)
         self._map_quick_scaled = pygame.Surface(self.size)
@@ -134,7 +134,7 @@ class Map:
         #TODO Pan limits
         
     def resize(self, width, height):
-        self.size = self.width, self.height = width, height
+        self.size = self.width, self.height = width, height - 74 # 74 is the height of the UI panel #TODO parameterize this
         self.fitInView()      
         
     def fitInView(self):
@@ -143,12 +143,12 @@ class Map:
             screen_rect = pygame.Rect((0,0), self.size)
             map_rect = pygame.Rect((0,0), self._map_annotated.get_size())
             self._base_zoom = min(screen_rect.width / map_rect.width, screen_rect.height / map_rect.height) # Assumes map is square
-
+            self._scale = self._base_zoom
             fit_size = pygame.Vector2(int(map_rect.width * self._base_zoom), 
                                     int(map_rect.height * self._base_zoom))
             self.offset = pygame.Vector2((screen_rect.width - fit_size.x) // 2, (screen_rect.height - fit_size.y) // 2)
 
-            self.map_transform(self._base_zoom, self.offset)
+            self.map_transform(self._scale, self.offset)
 
             # fit_size = pygame.Vector2(int(map_rect.width * self._base_zoom), 
             #                         int(map_rect.height * self._base_zoom))
@@ -180,54 +180,30 @@ class Map:
         screen_rect = pygame.Rect((0,0), self.size)
         map_rect = pygame.Rect((0,0), self._map_annotated.get_size())
         
-        source_rect = pygame.Rect(self._screen_to_canvas((int(self.offset.x), int(self.offset.y))), 
-                                  screen_rect.scale_by(scale_s2m).size)
+        source_rect = pygame.Rect(-pos * scale_s2m, pygame.Vector2(screen_rect.size) * scale_s2m) #.scale_by(scale_s2m).size)
         source_rect_clipped = source_rect.clip(map_rect)
+        source_rect_clipped_offset = (-pygame.Vector2(source_rect.topleft) + pygame.Vector2(source_rect_clipped.topleft)) * scale_m2s
         
-        dest_rect = source_rect_clipped.scale_by(scale_m2s).move_to(topleft=pos)
+        # we need to set the position equal to the _complement_ of what would be clipped
+        dest_rect = source_rect_clipped.scale_by(scale_m2s).move_to(topleft=source_rect_clipped_offset)
         # dest_rect = pygame.Rect((0, 0), pygame.Vector2(source_rect_clipped.size) * scale_m2s)
-        dest_rect_clipped_offset = (pygame.Vector2(source_rect.topleft) - pygame.Vector2(source_rect_clipped.topleft)) * scale_m2s
-        dest_rect_clipped = dest_rect.clip(screen_rect)
+        # dest_rect_clipped = dest_rect.clip(screen_rect)
+        dest_rect_clipped = dest_rect
+        # dest_rect_clipped_offset = (pygame.Vector2(dest_rect.topleft) - pygame.Vector2(dest_rect_clipped.topleft)) * scale_s2m   
+        print(f"{dest_rect=}")
+             
+        # source_rect_clipped_clipped = source_rect_clipped.clip(dest_rect_clipped.scale_by(scale_s2m).move_to(topleft=((0,0))))
+        # source_rect_clipped_clipped.move_ip(-dest_rect_clipped_offset)
+        
+        w, h = dest_rect.size
+        if w * h == 0:
+            return
         
         self.screen_offset = pygame.Vector2(dest_rect_clipped.topleft)
         map_clipped = self._map_annotated.subsurface(source_rect_clipped)
         self.map_scaled = pygame.transform.scale(map_clipped, dest_rect_clipped.size)      
         
-        aspect_ratio_src = source_rect_clipped.width / source_rect_clipped.height
-        aspect_ratio_dest = dest_rect_clipped.width / dest_rect_clipped.height
-        print (f"Aspect ratio src {aspect_ratio_src} dest {aspect_ratio_dest}")
         
-        # screen_rect = pygame.Rect((0,0), self.size)
-        # map_rect = pygame.Rect((0,0), self._map_annotated.get_size())
-        
-        # screen_ratio = screen_rect.width / screen_rect.height
-        
-        # self.map_offset = self.offset
-        
-        # Destination rect
-        # screen_max_dimm = max(screen_rect.width, screen_rect.height)  
-        # fit_size = pygame.Vector2(min(int(screen_rect.width * scale), screen_max_dimm),  
-        #                           min(int(screen_rect.height * scale), screen_max_dimm) )   
-        # self.screen_offset = pygame.Vector2((screen_rect.width - fit_size.x) // 2, (screen_rect.height - fit_size.y) // 2)     
-        # map_proj_dest = pygame.Rect(self.offset, screen_rect.size)
-        
-        
-        #source rect 
-        # map_src_size = pygame.Vector2(min(map_rect.width, map_rect.width * scale),
-        #                               min(map_rect.height, map_rect.height * scale)) 
-                
-        # map_proj_src = pygame.Rect(self.map_offset, map_src_size)
-
-        # print(f"screen rect {screen_rect} map_proj_dest {map_proj_dest}")
-        # print(f"map rect {map_rect} map_proj_src {map_proj_src}")
-        
-        # map_proj_src = map_proj_src.clip(map_rect)
-        # map_clipped = self._map_annotated.subsurface(map_proj_src)
-        
-        # self.map_scaled = pygame.transform.scale(map_clipped, fit_size)
-        # self._map_quick_scaled.fill(pygame.Color("orange"))
-        # self._map_quick_scaled.blit(self.map_scaled, (0,0))
-
     def zoom(self, mousepos, y: float):
         factor = 1.10
         maxZoom = 40
@@ -298,7 +274,7 @@ class Map:
         
     def _draw_scale(self):
         
-        bottom_extra_padding = 50 # move this up above the UI buttons TODO: move this into the UI to make it less messy
+        bottom_extra_padding = 0 # move this up above the UI buttons TODO: move this into the UI to make it less messy
         scale_height_px = 50
         padding = 10
         color = pygame.Color("white")
@@ -399,7 +375,7 @@ if __name__ == "__main__" :
     
     map = Map(_display_surf)
     
-    print("offsetX, offsetY ", map._offsetX, map._offsetY)
+    print("offsetX, offsetY ", map.offset.x, map.offset.y)
     print("map size ", map._map_scaled.get_size())
     
     top_left = map._world_to_canvas((0,1024*1000))
