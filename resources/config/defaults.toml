@@ -1,13 +1,19 @@
 [server]
-address = "bms.uoaf.net" # Address to connect to the server on
+address = "localhost" # Address to connect to the server on
 port = 42674 # Port to connect to the server on
-retries = 5 # Number of times to retry connecting to the server
+retries = 0 # Number of times to retry connecting to the server, set to 0 for unlimited retries
 
 [window]
-size = [ 0, 0 ] # [width, height]
+size = [ 0, 0 ] # [width, height] # Set to 0, 0 to use borderless window
 location = [ 0, 0 ] # [x, y]
 
 [map]
+# Current Included default maps are:
+#   KTO - Korea
+#   Balkans - Balkans
+#   Israel - Israel
+#   MidEast - Middle East 128
+# Feel free to contribute with new map 4k textures and they can be added to the release
 theatre = "KTO" # Theatre to load the map for on startup
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
 background_color = [ 50, 50, 50 ] # [r, g, b] # Background color for the map

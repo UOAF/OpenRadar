@@ -10,7 +10,8 @@ from bms_math import *
 #TODO Move to config
 THEATRE_MAPS_BUILTIN = [{"name": "Balkans", "path": "resources/maps/balkans_4k_airbases.png", "size": 1024},
                         {"name": "KTO", "path": "resources/maps/Korea.jpg", "size": 1024},
-                        {"name": "Israel", "path": "resources/maps/Israel.jpg", "size": 1024}]
+                        {"name": "Israel", "path": "resources/maps/Israel.jpg", "size": 1024},
+                        {"name": "MidEast", "path": "resources/maps/MidEast128Map.png", "size": 1024},]
 
 class Map:
     def __init__(self, displaysurface: pygame.Surface):

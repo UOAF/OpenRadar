@@ -1,4 +1,3 @@
-from re import T
 from typing import Union, Dict, Optional
 
 import pygame
