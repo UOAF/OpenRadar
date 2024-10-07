@@ -40,7 +40,7 @@ class Map:
         
         self._base_zoom = 1
         self._zoom = 0
-        self._scale = 1
+        self._scale_c2s = 1
         
         self.ini: FalconBMSIni | None = None
         self._load_ini()   
@@ -102,7 +102,6 @@ class Map:
             self._map_annotated.blit(self.ini_surface, (0,0))        
         self._map_annotated.convert()
         # self._scale_map() #TODO: remove this and replace with new
-
     
     def on_loop(self):
         pass
@@ -124,14 +123,23 @@ class Map:
         self.prerender_map()
             
     def pan(self, panVector: tuple[float,float] = (0,0) ):
-        # self._offsetX = (self._offsetX - panVector[0]) 
-        # self._offsetY = (self._offsetY - panVector[1])
-        
+
         self.offset += pygame.Vector2(panVector)
         
-        self.map_transform(self._scale, self.offset)
+        # Pan Limits
+        pan_border = 100
+        screen_size = pygame.Vector2(self.size)
+        map_size = pygame.Vector2(self._map_annotated.get_size()) * self._scale_c2s
         
-        #TODO Pan limits
+        x_left = -map_size.x + pan_border
+        x_right = screen_size.x - pan_border
+        y_top = -map_size.y + pan_border
+        y_bottom = screen_size.y - pan_border
+        
+        self.offset.x = pygame.math.clamp(self.offset.x, x_left, x_right)
+        self.offset.y = pygame.math.clamp(self.offset.y, y_top,  y_bottom)
+        
+        self.map_transform(self._scale_c2s, self.offset)
         
     def resize(self, width, height):
         self.size = self.width, self.height = width, height - 74 # 74 is the height of the UI panel #TODO parameterize this
@@ -143,34 +151,12 @@ class Map:
             screen_rect = pygame.Rect((0,0), self.size)
             map_rect = pygame.Rect((0,0), self._map_annotated.get_size())
             self._base_zoom = min(screen_rect.width / map_rect.width, screen_rect.height / map_rect.height) # Assumes map is square
-            self._scale = self._base_zoom
+            self._scale_c2s = self._base_zoom
             fit_size = pygame.Vector2(int(map_rect.width * self._base_zoom), 
                                     int(map_rect.height * self._base_zoom))
             self.offset = pygame.Vector2((screen_rect.width - fit_size.x) // 2, (screen_rect.height - fit_size.y) // 2)
 
-            self.map_transform(self._scale, self.offset)
-
-            # fit_size = pygame.Vector2(int(map_rect.width * self._base_zoom), 
-            #                         int(map_rect.height * self._base_zoom))
-            # self.offset = pygame.Vector2((screen_rect.width - fit_size.x) // 2, (screen_rect.height - fit_size.y) // 2)
-
-
-    # def fitInView(self, scale=True):
-        
-    #     if self._map_annotated is not None:
-    #         maprect = pygame.Rect((0,0), self._map_annotated.get_size())
-    #         self._base_zoom = min(self.width / maprect.width, self.height / maprect.height)
-
-    #         newSize = int(maprect.width * self._base_zoom), int(maprect.height * self._base_zoom)
-    #         newrect = pygame.Rect((0,0), (int(maprect.width / self._base_zoom), int(maprect.height / self._base_zoom)))
-            
-    #         self._map_scaled = pygame.transform.scale(self._map_annotated, newSize)
-            
-            
-    #         #Center
-    #         self._offsetX, self._offsetY = ((self.size[0] - newSize[0]) / 2), ((self.size[1] - newSize[1]) / 2) 
-                
-    #     self._zoom = 0
+            self.map_transform(self._scale_c2s, self.offset)
             
     def map_transform(self, scale_m2s: float, pos: pygame.Vector2):
         scale_s2m = 1.0 / scale_m2s
@@ -180,54 +166,49 @@ class Map:
         screen_rect = pygame.Rect((0,0), self.size)
         map_rect = pygame.Rect((0,0), self._map_annotated.get_size())
         
-        source_rect = pygame.Rect(-pos * scale_s2m, pygame.Vector2(screen_rect.size) * scale_s2m) #.scale_by(scale_s2m).size)
+        source_rect = pygame.Rect(-pos * scale_s2m, pygame.Vector2(screen_rect.size) * scale_s2m) 
         source_rect_clipped = source_rect.clip(map_rect)
         source_rect_clipped_offset = (-pygame.Vector2(source_rect.topleft) + pygame.Vector2(source_rect_clipped.topleft)) * scale_m2s
         
         # we need to set the position equal to the _complement_ of what would be clipped
         dest_rect = source_rect_clipped.scale_by(scale_m2s).move_to(topleft=source_rect_clipped_offset)
-        # dest_rect = pygame.Rect((0, 0), pygame.Vector2(source_rect_clipped.size) * scale_m2s)
-        # dest_rect_clipped = dest_rect.clip(screen_rect)
-        dest_rect_clipped = dest_rect
-        # dest_rect_clipped_offset = (pygame.Vector2(dest_rect.topleft) - pygame.Vector2(dest_rect_clipped.topleft)) * scale_s2m   
-        print(f"{dest_rect=}")
-             
-        # source_rect_clipped_clipped = source_rect_clipped.clip(dest_rect_clipped.scale_by(scale_s2m).move_to(topleft=((0,0))))
-        # source_rect_clipped_clipped.move_ip(-dest_rect_clipped_offset)
+        dest_rect_clipped = dest_rect      
         
-        w, h = dest_rect.size
-        if w * h == 0:
+        if dest_rect_clipped.width < 1 or dest_rect_clipped.height < 1:
             return
         
         self.screen_offset = pygame.Vector2(dest_rect_clipped.topleft)
         map_clipped = self._map_annotated.subsurface(source_rect_clipped)
-        self.map_scaled = pygame.transform.scale(map_clipped, dest_rect_clipped.size)      
+        self.map_scaled = pygame.transform.smoothscale(map_clipped, dest_rect_clipped.size)      
         
         
     def zoom(self, mousepos, y: float):
         factor = 1.10
         maxZoom = 40
-        if y > 0:
-            self._zoom_level += 1
-        else:
-            self._zoom_level -= 1
-            
+        delta_zoom = 1 if y > 0 else -1
+        self._zoom_level += delta_zoom
+        
+        self._zoom_level = min(self._zoom_level, maxZoom)
+        self._zoom_level = max(self._zoom_level, 0)
         if self._zoom_level > maxZoom:
             self._zoom_level = maxZoom
         elif self._zoom_level > 0:
-            
-            oldcanvasmousepos = self._screen_to_canvas(mousepos)
 
+            oldscale = self._scale_c2s
+            
             # Scale
-            self._scale = (self._base_zoom * (factor ** self._zoom_level))
-
-            self.map_transform(self._scale, self.offset)
+            self._scale_c2s = (self._base_zoom * (factor ** self._zoom_level))
             
-            # Pan to keep mouse in the same place
-            newcanvasmousepos = self._screen_to_canvas(mousepos)
+            newscale = self._scale_c2s
             
-            # self._offsetX = self._offsetX - (oldcanvasmousepos[0] - newcanvasmousepos[0]) * self._scale
-            # self._offsetY = self._offsetY - (oldcanvasmousepos[1] - newcanvasmousepos[1]) * self._scale
+            oldmouspos = pygame.Vector2(screen_to_canvas(mousepos, oldscale, (self.offset.x, self.offset.y)))
+            newmousepos = pygame.Vector2(screen_to_canvas(mousepos, newscale, (self.offset.x, self.offset.y)))
+            
+            mouse_delta_canvas = newmousepos - oldmouspos
+            mouse_delta_screen = mouse_delta_canvas * self._scale_c2s
+            self.offset += mouse_delta_screen
+            
+            self.map_transform(self._scale_c2s, self.offset)
                        
             
         elif self._zoom_level <= 0:
@@ -235,42 +216,6 @@ class Map:
             self._zoom_level = 0
         else:
             self._zoom_level = 0
-
-    # def zoom(self, mousepos, y: float):
-    #     factor = 1.10
-    #     maxZoom = 20
-    #     if y > 0:
-    #         self._zoom += 1
-    #     else:
-    #         self._zoom -= 1
-            
-    #     if self._zoom > maxZoom:
-    #         self._zoom = maxZoom
-    #     elif self._zoom > 0:
-            
-    #         oldcanvasmousepos = self._screen_to_canvas(mousepos)
-
-    #         # Scale
-    #         self._scale = (self._base_zoom * (factor ** self._zoom))
-    #         self._scale_map()
-    #         self.map_transform(self._scale, (self._offsetX, self._offsetY))
-            
-    #         # Pan to keep mouse in the same place
-    #         newcanvasmousepos = self._screen_to_canvas(mousepos)
-            
-    #         self._offsetX = self._offsetX - (oldcanvasmousepos[0] - newcanvasmousepos[0]) * self._scale
-    #         self._offsetY = self._offsetY - (oldcanvasmousepos[1] - newcanvasmousepos[1]) * self._scale
-            
-    #     elif self._zoom <= 0:
-    #         self.fitInView()
-    #     else:
-    #         self._zoom = 0
-          
-    # def _scale_map(self):
-    #     sourceMapSize = self._map_source.get_size()
-    #     newSize = (int(sourceMapSize[0] * self._scale), 
-    #             int(sourceMapSize[1] * self._scale))
-    #     self._map_scaled = pygame.transform.scale(self._map_annotated, newSize)  
         
     def _draw_scale(self):
         
@@ -281,7 +226,7 @@ class Map:
         graduations_nm = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
         
         scale_width_px = int(self.width / 4) # 25% of width
-        scale_width_m = (scale_width_px / self._scale) / self._map_annotated.get_width() * self.theater_max_meter
+        scale_width_m = (scale_width_px / self._scale_c2s) / self._map_annotated.get_width() * self.theater_max_meter
         scale_width_nm = scale_width_m / NM_TO_METERS
         possible_graduations = [i for i in graduations_nm if i < scale_width_nm]
         if len(possible_graduations) == 0:
@@ -290,7 +235,7 @@ class Map:
             max_graduation_nm = max(possible_graduations)
                 
         max_graduation_m = max_graduation_nm * NM_TO_METERS
-        max_graduation_px = (max_graduation_m / self.theater_max_meter) * self._map_annotated.get_width() * self._scale
+        max_graduation_px = (max_graduation_m / self.theater_max_meter) * self._map_annotated.get_width() * self._scale_c2s
         
         scale_rect = pygame.Rect(0, 0, scale_width_px, scale_height_px)
         
@@ -342,13 +287,13 @@ class Map:
         Returns:
             float: The number of pixels per meter.
         """
-        return self._map_annotated.get_width() / self.theater_max_meter * self._scale
+        return self._map_annotated.get_width() / self.theater_max_meter * self._scale_c2s
         
     def _canvas_to_screen(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        return canvas_to_screen(canvasCoords, self._scale, (self.offset.x, self.offset.y))
+        return canvas_to_screen(canvasCoords, self._scale_c2s, (self.offset.x, self.offset.y))
         
     def _screen_to_canvas(self, screenCoords: tuple[int,int] = (0,0)) -> tuple[float,float]:
-        return screen_to_canvas(screenCoords, self._scale, (self.offset.x, self.offset.y))
+        return screen_to_canvas(screenCoords, self._scale_c2s, (self.offset.x, self.offset.y))
     
     def _canvas_to_world(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
         return canvas_to_world(canvasCoords, self._map_source.get_size())
@@ -357,10 +302,10 @@ class Map:
         return world_to_canvas(worldCoords, self._map_source.get_size())
     
     def _screen_to_world(self, screenCoords: tuple[int,int]) -> tuple[float,float]:
-        return screen_to_world(screenCoords, self._map_source.get_size(), self._scale, (self.offset.x, self.offset.y))
+        return screen_to_world(screenCoords, self._map_source.get_size(), self._scale_c2s, (self.offset.x, self.offset.y))
                                       
     def _world_to_screen(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        return world_to_screen(worldCoords, self._map_source.get_size(), self._scale, (self.offset.x, self.offset.y))
+        return world_to_screen(worldCoords, self._map_source.get_size(), self._scale_c2s, (self.offset.x, self.offset.y))
     
     def _world_distance(self, worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
         return world_distance(worldCoords1, worldCoords2)

@@ -20,10 +20,10 @@ class GameObject:
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         self.data: ACMIObject = object
         self.color = color
-        self.force_color: pygame.Color | None = None
         self.visible = True
         self.locked_target: GameObject | None = None
         self.override_name: str | None = None
+        self.override_color: pygame.Color | None = None
         
         global font
         if font is None:
@@ -97,7 +97,7 @@ class Bullseye(MapAnnotation):
     
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(50,50,50,100)):
         super().__init__(object, color)
-        self.force_color = pygame.Color(50,50,50,100)
+        self.override_color = pygame.Color(50,50,50,100)
 
     def draw(self,  surface: pygame.Surface, pos: tuple[float, float], px_per_nm: float, line_width: int = 2) -> None:
             """
@@ -112,8 +112,8 @@ class Bullseye(MapAnnotation):
                 return  # Don't draw if not visible
             
             color = self.color
-            if self.force_color is not None:
-                color = self.force_color
+            if self.override_color is not None:
+                color = self.override_color
             
             px_per_ring =  px_per_nm * self.BULLSEYE_RING_NM
 
@@ -139,8 +139,8 @@ class groundUnit(GameObject):
             return
 
         color = self.color
-        if self.force_color is not None:
-            color = self.force_color
+        if self.override_color is not None:
+            color = self.override_color
             
         size = 5           
         
@@ -179,8 +179,8 @@ class airUnit(GameObject):
             return  # Don't draw if not visible
         
         color = self.color
-        if self.force_color is not None:
-            color = self.force_color
+        if self.override_color is not None:
+            color = self.override_color
     
         size = 14
 
@@ -269,8 +269,8 @@ class missile(airUnit):
             return  # Don't draw if not visible
 
         color = self.color
-        if self.force_color is not None:
-            color = self.force_color              
+        if self.override_color is not None:
+            color = self.override_color              
         
         size = 12
         
@@ -332,8 +332,8 @@ class surfaceVessel(groundUnit):
             return  # Don't draw if not visible
 
         color = self.color
-        if self.force_color is not None:
-            color = self.force_color       
+        if self.override_color is not None:
+            color = self.override_color       
         
         size = 20
         # Define ship shape around origin        

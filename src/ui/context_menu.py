@@ -3,6 +3,7 @@ from typing import Union, Optional, Dict
 from matplotlib.pylab import f
 import pygame
 
+from pygame_gui import UI_COLOUR_PICKER_COLOUR_PICKED
 from pygame_gui.core import ObjectID, UIElement
 from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.core.interfaces import IContainerLikeInterface
@@ -45,6 +46,8 @@ class ContextMenu(UIPanel):
         self.unit = unit
         self.callsign_entry = None
         self.awaiting_callsign = False
+        self.color_entry = None
+        self.awaiting_color = False
         
         button_height = 30
         button_width, _ = self.get_container().get_size()
@@ -89,7 +92,11 @@ class ContextMenu(UIPanel):
         self.awaiting_callsign = True
 
     def change_color(self):
-        pass
+        self.color_entry = UIColourPickerDialog(pygame.Rect((0,0), (200,100)), 
+                                                manager=self.ui_manager, 
+                                                window_title="Select new color", 
+                                                object_id="#color_dialog")
+        self.awaiting_color = True
 
     def process_event(self, event: pygame.Event) -> bool:
         consumed = super().process_event(event)
@@ -107,7 +114,7 @@ class ContextMenu(UIPanel):
             mouse_y = event.pos[1]
             x1, y1 = self.rect.topleft
             x2, y2 = self.rect.bottomright
-            if not (x1 <= mouse_x <= x2 and y1 <= mouse_y <= y2) and not self.awaiting_callsign:
+            if not (x1 <= mouse_x <= x2 and y1 <= mouse_y <= y2) and not (self.awaiting_callsign or self.awaiting_color):
                 self.kill()
                 
         # Callsign Entry Events
@@ -122,5 +129,9 @@ class ContextMenu(UIPanel):
             self.awaiting_callsign = False
     
         # Color Picker Events
-    
+        if event.type == UI_COLOUR_PICKER_COLOUR_PICKED and event.ui_element == self.color_entry:
+            self.unit.override_color = event.colour
+            self.awaiting_color = False
+            self.kill()
+
         return consumed
