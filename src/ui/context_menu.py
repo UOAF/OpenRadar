@@ -1,6 +1,5 @@
 from typing import Union, Optional, Dict
 
-from matplotlib.pylab import f
 import pygame
 
 from pygame_gui import UI_COLOUR_PICKER_COLOUR_PICKED

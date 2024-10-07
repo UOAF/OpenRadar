@@ -4,7 +4,7 @@ name: Build exe
 
 # Controls when the action will run.
 on:
-  workflow_dispatch:
+  [push, workflow_dispatch]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -32,5 +32,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenRadar_${{github.sha}}.exe
+          name: OpenRadar.exe
           path: dist/OpenRadar.exe
+          
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+            files: |
+                dist/OpenRadar.exe
