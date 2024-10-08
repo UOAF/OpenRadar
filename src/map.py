@@ -161,9 +161,7 @@ class Map:
             
     def map_transform(self, scale_m2s: float, pos: pygame.Vector2):
         scale_s2m = 1.0 / scale_m2s
-        
-        print(f"Map transform scale {scale_m2s} pos {pos}")
-        
+                
         screen_rect = pygame.Rect((0,0), self.size)
         map_rect = pygame.Rect((0,0), self._map_annotated.get_size())
         
