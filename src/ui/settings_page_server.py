@@ -88,7 +88,6 @@ class SettingsPageServer(UIScrollingContainer):
         consumed = super().process_event(event)
         
         if event.type == DATA_THREAD_STATUS:
-            print(f"SettingsPageServer.process_event: {event.status}")
             thread_state: ThreadState = event.status
             thread_info: str = event.info
             color = thread_state.status_color
