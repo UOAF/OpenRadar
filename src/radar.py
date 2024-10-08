@@ -26,11 +26,11 @@ class Radar(Map):
         _gamestate (GameState): The game state object.
         font (pygame.font.Font): The font used for rendering text on the radar.
     """
-    def __init__(self, displaysurface: pygame.Surface, ui_manager: pygame_gui.UIManager):
+    def __init__(self, displaysurface: pygame.Surface, ui_manager: pygame_gui.UIManager, gamestate: GameState):
         super().__init__(displaysurface)
         self._display_surf = displaysurface
         self._radar_surf = pygame.Surface(self._display_surf.get_size(), pygame.SRCALPHA)
-        self._gamestate = GameState()
+        self._gamestate: GameState = gamestate
         self._drawBRAA = False
         self.unitFont = pygame.font.SysFont('Comic Sans MS', 14)
         self.cursorFont = pygame.font.SysFont('Comic Sans MS', 12)

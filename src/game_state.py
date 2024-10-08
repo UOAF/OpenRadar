@@ -35,8 +35,8 @@ class GameState:
         parser (AcmiParse.ACMIFileParser): ACMI parser to parse incoming data.
     """
 
-    def __init__(self):      
-        self.data_queue: queue.Queue[str] = queue.Queue()
+    def __init__(self, data_queue: queue.Queue[str]):      
+        self.data_queue: queue.Queue[str] = data_queue
         self.global_vars = dict()
         
         self.reference_time: datetime.datetime | None = None
@@ -46,13 +46,6 @@ class GameState:
         self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
-
-        # Create the Tacview RT Relemetry client
-        self.tac_client = TRTTClientThread(self.data_queue) #TODO move to somewhere more sensible
-        self.tac_client.start()
-
-    def __del__(self):
-        self.tac_client.stop()
         
     def get_bullseye_pos(self):
         if '7fffffffffffffff' not in self.objects[Bullseye]:

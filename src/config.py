@@ -4,14 +4,11 @@ from pathlib import Path
 
 import sys
 
-
 CONFIG_DEFAULTS = Path("resources/config/defaults.toml")
 DEFAULT_CONFIG_FILE = Path("config.toml")
 
-
 class RadarConfig:
     def __init__(self, config_file: Path = DEFAULT_CONFIG_FILE, bundle_dir: Path = Path('.')):
-        
         
         self.config_file_path = config_file
         self.config_defaults_path = bundle_dir / CONFIG_DEFAULTS
@@ -64,8 +61,6 @@ class RadarConfig:
     def save(self):
         with self.config_file_path.open('w') as f:
             f.write(tomlkit.dumps(self.config))
-
-
 
 if 'app_config' not in globals():
     

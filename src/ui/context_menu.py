@@ -11,7 +11,8 @@ from pygame_gui._constants import UI_BUTTON_PRESSED, UI_WINDOW_CLOSE
 
 from pygame_gui.windows import UIColourPickerDialog
 
-from ui.ui_text_entry_dialog import UITextEntryDialog, UI_TEXT_ENTRY_DIALOG_TEXT_SUBMITTED
+from ui.ui_text_entry_dialog import UITextEntryDialog
+from messages import UI_TEXT_ENTRY_DIALOG_TEXT_SUBMITTED
 import game_objects
 
 class ContextMenu(UIPanel):

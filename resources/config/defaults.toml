@@ -2,10 +2,12 @@
 address = "localhost" # Address to connect to the server on
 port = 42674 # Port to connect to the server on
 retries = 0 # Number of times to retry connecting to the server, set to 0 for unlimited retries
+autoconnect = true # Automatically connect to the server on startup (true/false)
+password = "" # Password to use when connecting to the server (leave blank for no password "")
 
 [window]
-size = [ 0, 0 ] # [width, height] # Set to 0, 0 to use borderless window
-location = [ 0, 0 ] # [x, y]
+size = [ 0, 0 ] # [width, height] in pixels # Set to 0, 0 to use borderless window
+location = [ 0, 0 ] # [x, y] in pixels
 
 [map]
 # Current Included default maps are:

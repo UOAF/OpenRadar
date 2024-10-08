@@ -1,13 +1,20 @@
-import warnings
+from concurrent.futures import thread
+import re
 from typing import Union, Optional, Dict
 
 import pygame
 
+from pygame_gui import UI_BUTTON_PRESSED
 from pygame_gui.core import ObjectID, UIElement
 
-from pygame_gui.elements import UIButton, UITextBox, UIScrollingContainer, UITextEntryLine
+from pygame_gui.elements import UIButton, UITextBox, UIScrollingContainer, UITextEntryLine, UILabel
 from pygame_gui.core.interfaces import IContainerLikeInterface, IUIContainerInterface
 from pygame_gui.core.interfaces import IUIManagerInterface, IUIElementInterface
+
+import config
+from trtt_client import ThreadState
+
+from messages import DATA_THREAD_STATUS, UI_SETTINGS_PAGE_SERVER_CONNECT, UI_SETTINGS_PAGE_SERVER_DISCONNECT, UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS
 
 class SettingsPageServer(UIScrollingContainer):
 
@@ -31,65 +38,75 @@ class SettingsPageServer(UIScrollingContainer):
                          object_id=object_id,
                          anchors=anchors,
                          visible=visible)
-        
-        self.cancel_button = UIButton(relative_rect=pygame.Rect(-10, -40, -1, 30),
-                                      text='pygame-gui.Cancel',
+       
+        container_top = self.get_container().get_relative_rect().top 
+        container_width = self.get_container().get_size()[0] - 10
+        container_height = self.get_container().get_size()[1] - 50        
+        self.server_address_field = UITextEntryLine(relative_rect=pygame.Rect(self.get_container().get_relative_rect().left, 
+                                                                              self.get_container().get_relative_rect().top+10, 
+                                                                              container_width//2, 40),
+                                                    initial_text='localhost:42674',
+                                                    placeholder_text='Server address:port',
+                                                    manager=self.ui_manager,
+                                                    container=self,
+                                                    object_id='#server_address_field',
+                                                    anchors={'left': 'left',
+                                                             'top': 'top'})
+
+        self.server_info_text = UITextBox(relative_rect=pygame.Rect(0, self.get_container().get_relative_rect().top+10, 
+                                                                   container_width//2, 30),
+                                         html_text='Not connected',
+                                         manager=self.ui_manager,
+                                         container=self,
+                                         object_id='#server_info_text',
+                                         anchors={'left': 'left',
+                                                  'top': 'top',
+                                                  'left_target': self.server_address_field})
+
+        self.connect_button = UIButton(relative_rect=pygame.Rect(0, 0, -1, 30),
+                                      text='Connect',
                                       manager=self.ui_manager,
                                       container=self,
-                                      object_id='#cancel_button',
+                                      object_id='#connect_button',
                                       anchors={'left': 'right',
                                                'right': 'right',
-                                               'top': 'bottom',
-                                               'bottom': 'bottom'})
+                                               'top_target': self.server_info_text,})
 
-        self.confirm_button = UIButton(relative_rect=pygame.Rect(-10, -40, -1, 30),
-                                       text="do it",
+        self.disconnect_button = UIButton(relative_rect=pygame.Rect(0, 0, -1, 30),
+                                       text="Disconnect",
                                        manager=self.ui_manager,
                                        container=self,
-                                       object_id='#confirm_button',
+                                       object_id='#disconnect_button',
                                        anchors={'left': 'right',
-                                                'right': 'right',
-                                                'top': 'bottom',
-                                                'bottom': 'bottom',
-                                                'left_target': self.cancel_button,
-                                                'right_target': self.cancel_button})
-
-        text_width = self.get_container().get_size()[0] - 10
-        text_height = self.get_container().get_size()[1] - 50
-        self.confirmation_text = UITextBox(html_text="herllo world",
-                                           relative_rect=pygame.Rect(5, 5,
-                                                                     text_width,
-                                                                     text_height),
-                                           manager=self.ui_manager,
-                                           container=self,
-                                           anchors={'left': 'left',
-                                                    'right': 'right',
-                                                    'top': 'top',
-                                                    'bottom': 'bottom'})
-
-    def init_server_button(self):
-        server_button_rect = pygame.Rect((0, 0), (100, 40))
-        server_button_rect.bottomleft = (10, -5)
-        self.server_button = UIButton(relative_rect=server_button_rect,
-                                            text='Server',
-                                            manager=self.ui_manager,
-                                            container=self,
-                                            anchors={'left': 'left',
-                                                     'bottom': 'bottom'})
+                                               'right': 'right',
+                                               'top_target': self.server_info_text,
+                                               'right_target': self.connect_button})
         
-
-        server_address_text_rect = pygame.Rect((0, 0), (180, 40))
-        self.server_address_text = UITextEntryLine(relative_rect=server_address_text_rect,
-                                                                      manager=self.ui_manager,
-                                                                      container=self,
-                                                                      anchors={'left': 'left',
-                                                                               'top': 'top'})
+        pygame.event.post(pygame.event.Event(UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS))
         
-    # def handle_server_button(self, event):
-    #     if self.server_panel.visible:
-    #         self.server_panel.hide()
-    #         self.server_button.unselect()
-    #     else:
-    #         self.server_panel.show()
-    #         self.server_button.select()
+    def process_event(self, event: pygame.Event) -> bool:
+        consumed = super().process_event(event)
         
+        if event.type == DATA_THREAD_STATUS:
+            print(f"SettingsPageServer.process_event: {event.status}")
+            thread_state: ThreadState = event.status
+            thread_info: str = event.info
+            color = thread_state.status_color
+            self.server_info_text.set_text(f'<font color="{color}">{thread_state.status_msg}</font>  {thread_info}')
+            consumed = True
+            
+        elif event.type == UI_BUTTON_PRESSED:
+            if event.ui_element == self.connect_button:
+                
+                ip, port = self.server_address_field.get_text().rsplit(':', 1)
+                if port is None or port == "":
+                    port = 42674
+                    self.server_address_field.set_text(f"{ip}:{port}")
+                event_data = {'server':ip, 'port': int(port)}
+                pygame.event.post(pygame.event.Event(UI_SETTINGS_PAGE_SERVER_CONNECT, event_data))
+                consumed = True
+            elif event.ui_element == self.disconnect_button:
+                pygame.event.post(pygame.event.Event(UI_SETTINGS_PAGE_SERVER_DISCONNECT))
+                consumed = True
+        
+        return consumed

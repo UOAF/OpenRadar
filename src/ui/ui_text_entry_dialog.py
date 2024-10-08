@@ -13,9 +13,7 @@ from pygame_gui.core import ObjectID
 from pygame_gui.elements import UIWindow, UIButton, UITextEntryLine
 from pygame_gui.elements import UILabel
 
-from pygame.event import custom_type
-
-UI_TEXT_ENTRY_DIALOG_TEXT_SUBMITTED = custom_type()
+from messages import UI_TEXT_ENTRY_DIALOG_TEXT_SUBMITTED
 
 class UITextEntryDialog(UIWindow):
     """

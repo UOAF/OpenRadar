@@ -62,6 +62,8 @@ class SettingsWindow(UIWindow):
             relative_rect=pygame.Rect((0,0), tab_contents_size),
             manager=manager,
             container=self.settings_tabs.get_tab_container(self.server_tab),
+            object_id= ObjectID(class_id='@settings_tab_container',
+                                object_id='#server_settings_page'),
             anchors={'left': 'left',
                     'right': 'left',
                     'top': 'top',
@@ -86,6 +88,5 @@ class SettingsWindow(UIWindow):
         
         if event.type == UI_WINDOW_RESIZED and event.ui_element == self:
             self.settings_tabs.set_dimensions(event.internal_size)
-        
         
         return result

@@ -1,11 +1,17 @@
-import pygame
-import pygame_gui
 import os
 import sys
-import config
-from radar import Radar
-from ui.user_interface import UserInterface
 import math
+import queue
+
+import pygame
+import pygame_gui
+
+import config
+
+from radar import Radar
+from game_state import GameState
+from ui.user_interface import UserInterface
+from trtt_client import TRTTClientThread
 
 MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1
@@ -46,7 +52,16 @@ class App:
         
         manager_json_path = str( (config.bundle_dir / "resources/ui_theme.json").absolute() )
         self.ui_manager = pygame_gui.UIManager((self.size[0], self.size[1]), manager_json_path)
-        self._radar = Radar(self._display_surf, self.ui_manager)
+
+        # Create the Tacview RT Relemetry client
+        self.data_queue: queue.Queue[str] = queue.Queue()
+        
+        self.data_client = TRTTClientThread(self.data_queue) #TODO move to somewhere more sensible
+        self.data_client.start()
+        
+        self.gamestate = GameState(self.data_queue)
+        
+        self._radar = Radar(self._display_surf, self.ui_manager, self.gamestate)
           
         self._UI = UserInterface(self._display_surf, self.ui_manager)
         self._UI.handlers = self._UI.handlers | { # TODO: move the event handlers into the Radar Class
@@ -76,6 +91,7 @@ class App:
 
         if self._UI.on_event(event): return
         if self.ui_manager.process_events(event): return
+        if self.data_client.process_events(event): return
 
         handler = self.event_handlers.get(event.type)
         if handler:
@@ -186,3 +202,5 @@ class App:
         fps_t = self.font.render(fps , True, pygame.Color("RED"))
         self._display_surf.blit(fps_t,(0,0))
             
+    def __del__(self):
+        self.data_client.stop()        

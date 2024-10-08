@@ -26,5 +26,19 @@
         "path": "resources/icons/layer-group64.png"
       }
     }
+  },
+  "#settings_window.settings_tab_container":
+  {
+    "misc":{
+      "shadow_width": "0",
+      "border_width": "0"
+    }
+  },
+  "#server_info_text":
+  {
+    "misc":{
+      "shadow_width": "0",
+      "border_width": "0"
+    }
   }
 }
