@@ -58,8 +58,8 @@ class TRTTClientThread(threading.Thread):
         self.set_status(ThreadState.DISCONNECTED, "Not connected")
         
         self.server = None
-        server = config.app_config.get("server", "address", str) # type: ignore
-        port = config.app_config.get("server", "port", int) # type: ignore
+        server = str(config.app_config.get("server", "address", str)) # type: ignore
+        port = int(config.app_config.get("server", "port", int)) # type: ignore
         if server is None:
             self.set_status(ThreadState.FAILED, "No server address set")
         elif port is None:
@@ -68,15 +68,16 @@ class TRTTClientThread(threading.Thread):
             self.server = (server, port)
             
         autoconnect = config.app_config.get("server", "autoconnect", bool) # type: ignore
-        if autoconnect and self.server is not None:
-            self.connecting = True
-            
+
+        
         self.tacview_password = str(config.app_config.get("server", "password", str)) # type: ignore
             
         self.num_retries = int( config.app_config.get("server", "retries", int) ) # type: ignore
         self.servername = ""
         self.clientsocket = None
-
+        
+        if autoconnect and self.server is not None:
+            self.connect(server, port)
 
     def run(self):
         
