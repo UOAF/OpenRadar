@@ -1,4 +1,4 @@
-UOAF OpenRadar v0.1.1 for BMS Falcon 4.0
+UOAF OpenRadar v0.1.2 for BMS Falcon 4.0
 
 ## Getting Started
 1. Download OpenRadar.exe from the release on github
