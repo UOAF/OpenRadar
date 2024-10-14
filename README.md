@@ -7,8 +7,7 @@ UOAF OpenRadar v0.1.2 for BMS Falcon 4.0
     set g_bTacviewRealTime 1
     set g_nTacviewPort 42674
     ```
-3. Run OpenRadar.exe and it will generate a config.toml file in the same directory
-4. Edit the config.toml file and add the server information, the Radar will connect automatically on startup
+3. Run OpenRadar.exe and connect to the server in the settings page
 
 ## Work in Progress
 This project is a work in progress. Features and functionalities are continuously being developed and improved. Some features will be incomplete or not functional. Your feedback and contributions are highly appreciated to help us enhance the tool.

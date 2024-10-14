@@ -188,7 +188,6 @@ class Radar(Map):
         consumed = False
         
         if event.type == RADAR_SERVER_DISCONNECTED:
-            print("Radar: Server disconnected")
             self._gamestate.clear_state()
             consumed = True
         

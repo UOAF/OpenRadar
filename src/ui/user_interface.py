@@ -13,7 +13,6 @@ class UserInterface:
         
         self.handlers = {}
         
-        print("UserInterface.__init__")
         self.bottom_ui_panel = BottomUIPanel(
             relative_rect= pygame.Rect(0, -74, self.width, 74),
             manager=self.ui_manager,
