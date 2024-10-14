@@ -165,3 +165,9 @@ class GameState:
             updateObj.locked_target = None
             
         #TODO handle objects not in CLASS_MAP
+        
+    def clear_state(self) -> None:
+        """
+        Clear the game state.
+        """
+        self.__init__(self.data_queue)

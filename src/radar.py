@@ -8,8 +8,9 @@ from map import Map
 from game_objects import *
 
 from bms_math import METERS_TO_FT
-
+from messages import RADAR_SERVER_CONNECTED, RADAR_SERVER_DISCONNECTED
 from ui.context_menu import ContextMenu
+
 
 RADAR_CONTACT_SIZE_PX = 12
 
@@ -173,3 +174,22 @@ class Radar(Map):
             
         if obj is not None:
            menu = ContextMenu( (mouse_pos[0], mouse_pos[1]), obj, manager=self.ui_manager)
+           
+    def process_events(self, event: pygame.event.Event) -> bool:
+        """
+        Processes events for the radar display.
+
+        Args:
+            event (pygame.event.Event): The event to process.
+
+        Returns:
+            bool: Whether the event was processed.
+        """
+        consumed = False
+        
+        if event.type == RADAR_SERVER_DISCONNECTED:
+            print("Radar: Server disconnected")
+            self._gamestate.clear_state()
+            consumed = True
+        
+        return consumed

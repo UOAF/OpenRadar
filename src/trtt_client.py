@@ -10,6 +10,7 @@ import pygame
 
 import config
 from messages import UI_SETTINGS_PAGE_SERVER_CONNECT, UI_SETTINGS_PAGE_SERVER_DISCONNECT, DATA_THREAD_STATUS, UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS
+from messages import RADAR_SERVER_CONNECTED, RADAR_SERVER_DISCONNECTED
 @dataclass
 class ThreadStatus:
     status_enum: int 
@@ -114,8 +115,10 @@ class TRTTClientThread(threading.Thread):
                     self.disconnect()
                 
                 self.set_status(ThreadState.CONNECTED, "")
+                pygame.event.post(pygame.event.Event(RADAR_SERVER_CONNECTED))
                 self.process_data(buf) # blocking call
                 self.set_status(ThreadState.DISCONNECTED, "Disconnected from server")
+                pygame.event.post(pygame.event.Event(RADAR_SERVER_DISCONNECTED))
 
 
             sleep(1)
@@ -149,6 +152,9 @@ class TRTTClientThread(threading.Thread):
         self.queue.put(None)   
                 
     def performHandshake(self, buf: Buffer, password: str = "") -> bool:
+        
+        if self.clientsocket is None:
+            return False
         
         handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
         self.clientsocket.sendall(handshake)

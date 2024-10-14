@@ -92,6 +92,7 @@ class App:
         if self._UI.on_event(event): return
         if self.ui_manager.process_events(event): return
         if self.data_client.process_events(event): return
+        if self._radar.process_events(event): return
 
         handler = self.event_handlers.get(event.type)
         if handler:
