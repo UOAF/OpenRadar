@@ -32,12 +32,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenRadar.exe
-          path: dist/OpenRadar.exe
+          name: OpenRadar_${{  github.ref_name }}.exe
+          path: dist/OpenRadar_${{  github.ref_name }}.exe
           
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
             files: |
-                dist/OpenRadar.exe
+                dist/OpenRadar_${{  github.ref_name }}.exe
