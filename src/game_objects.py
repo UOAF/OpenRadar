@@ -18,6 +18,7 @@ class GameObject:
     
     #font = pygame.font.SysFont("Courier New Regular", 18)
     # font = pygame.font.SysFont("Lucida Sans Typewriter", 18)
+    hide_class = True
    
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         self.data: ACMIObject = object
@@ -84,6 +85,17 @@ class GameObject:
     def draw(self, surface: pygame.Surface, position, px_per_meter, target_pos=None) -> None:
         return
     
+    def is_visible(self, surface: pygame.Surface, pos) -> bool:
+        
+        if self.hide_class or not self.visible: # if class is hidden or object is hidden
+            return False
+        
+        elif surface.get_rect().collidepoint(pos) == False: # if object is not on screen
+            return False
+        
+        return True
+    
+    
 class MapAnnotation(GameObject):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         super().__init__(object, color)
@@ -119,7 +131,7 @@ class Bullseye(MapAnnotation):
                 line_width (int, optional): The size of the bullseye in pixels. Defaults to 2.
             """
             if self.hide_class or not self.visible:
-                return  # Don't draw if not visible
+                return  # Don't draw if hidden
             
             color = self.color
             if self.override_color is not None:
@@ -145,8 +157,8 @@ class groundUnit(GameObject):
         
     def draw(self, surface: pygame.Surface, pos, px_per_nm, target=None) -> None:
         
-        if self.hide_class:
-            return
+        if not self.is_visible(surface, pos):
+            return  # Don't draw if not visible
 
         color = self.color
         if self.override_color is not None:
@@ -185,13 +197,13 @@ class airUnit(GameObject):
 
         # pos = self._world_to_screen((contact.T.U, contact.T.V))
     
-        if self.hide_class or not self.visible:
+        if not self.is_visible(surface, pos):
             return  # Don't draw if not visible
         
         color = self.color
         if self.override_color is not None:
             color = self.override_color
-    
+
         size = 14
 
         # Draw Square
@@ -275,7 +287,7 @@ class missile(airUnit):
     
     def draw(self, surface: pygame.Surface, pos, px_per_nm, target_pos=None):
         
-        if self.hide_class or not self.visible:
+        if not self.is_visible(surface, pos):
             return  # Don't draw if not visible
 
         color = self.color
@@ -338,7 +350,7 @@ class surfaceVessel(groundUnit):
         
     def draw(self, surface: pygame.Surface, pos, px_per_nm, target=None) -> None:
         
-        if self.hide_class or not self.visible:
+        if not self.is_visible(surface, pos):
             return  # Don't draw if not visible
 
         color = self.color
