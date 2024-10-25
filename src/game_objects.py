@@ -2,7 +2,6 @@ import pygame
 
 import numpy as np
 
-import tomlkit
 import config
 
 from bms_math import *
@@ -39,7 +38,7 @@ class GameObject:
         for i in config.app_config.get("map", "unit_color_switching", list):
             print(self.color, "==", i[0])
             if self.color == pygame.Color(i[0]):
-                if type(i[1]) != tomlkit.items.Array:
+                if isinstance(i[1], list):
                     self.color = pygame.Color(i[1])
                 else:
                     self.color = pygame.Color(i[1][0], i[1][1], i[1][2])
