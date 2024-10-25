@@ -36,7 +36,6 @@ class GameObject:
 
         # Switch the object's color from its default to a respective replacement color
         for i in config.app_config.get("map", "unit_color_switching", list):
-            print(self.color, "==", i[0])
             if self.color == pygame.Color(i[0]):
                 if isinstance(i[1], list):
                     self.color = pygame.Color(i[1])
