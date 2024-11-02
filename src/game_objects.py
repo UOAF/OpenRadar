@@ -2,6 +2,8 @@ import pygame
 
 import numpy as np
 
+import config
+
 from bms_math import *
 from typing import Callable, Any
 from acmi_parse import ACMIObject
@@ -30,7 +32,15 @@ class GameObject:
             font = pygame.font.SysFont("couriernewbold", 22)
         self.font = font
         
-        self.color = pygame.Color(self.data.Color) 
+        self.color = pygame.Color(self.data.Color)
+
+        # Switch the object's color from its default to a respective replacement color
+        for i in config.app_config.get("map", "unit_color_switching", list):
+            if self.color == pygame.Color(i[0]):
+                if isinstance(i[1], list):
+                    self.color = pygame.Color(i[1])
+                else:
+                    self.color = pygame.Color(i[1][0], i[1][1], i[1][2])
         
     def get_display_name(self) -> str:
 
