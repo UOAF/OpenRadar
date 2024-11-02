@@ -1,6 +1,6 @@
+from re import S
 import warnings
 from typing import Union, Optional, Dict
-
 
 import pygame
 
@@ -10,6 +10,7 @@ from pygame_gui.core.interfaces import IUIManagerInterface
 from pygame_gui.elements import UIWindow, UIButton, UITextBox, UITabContainer, UILabel
 from pygame_gui.core.gui_type_hints import RectLike
 
+from ui.settings_page_radar import SettingsPageRadar
 from ui.settings_page_server import SettingsPageServer
 
 class SettingsWindow(UIWindow):
@@ -52,6 +53,7 @@ class SettingsWindow(UIWindow):
 
 
         self.server_tab = self.settings_tabs.add_tab("Server", "server_tab")
+        self.radar_tab = self.settings_tabs.add_tab("Radar", "radar_tab")
         
         tab_contents_size = (0,0)
         tab_panel = self.settings_tabs.get_tab_container()
@@ -69,6 +71,20 @@ class SettingsWindow(UIWindow):
                     'top': 'top',
                     'bottom': 'top'}     
         )
+        
+        self.radar_tab = SettingsPageRadar(
+            relative_rect=pygame.Rect((0,0), tab_contents_size),
+            manager=manager,
+            container=self.settings_tabs.get_tab_container(self.radar_tab),
+            object_id= ObjectID(class_id='@settings_tab_container',
+                                object_id='#radar_settings_page'),
+            anchors={'left': 'left',
+                    'right': 'left',
+                    'top': 'top',
+                    'bottom': 'top'}
+        )
+        
+        
 
         # for i in range(4):
         #     tab = self.settings_tabs.add_tab(f"Tab{i}", f"tab{i}")
