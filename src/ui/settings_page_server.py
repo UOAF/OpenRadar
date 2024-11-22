@@ -97,7 +97,12 @@ class SettingsPageServer(UIScrollingContainer):
         elif event.type == UI_BUTTON_PRESSED:
             if event.ui_element == self.connect_button:
                 
-                ip, port = self.server_address_field.get_text().rsplit(':', 1)
+                ip, port = None, None
+                text = self.server_address_field.get_text()
+                if ":" in text:
+                    ip, port = text.rsplit(':', 1)
+                else:
+                    ip = text
                 if port is None or port == "":
                     port = 42674
                     self.server_address_field.set_text(f"{ip}:{port}")
