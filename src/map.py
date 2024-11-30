@@ -29,19 +29,16 @@ class Map:
         self.screen_offset = pygame.Vector2(0,0)
         
         self.ini_surface = pygame.Surface(self.size)
-        self.map_alpha = 100
+        self.map_alpha = int(config.app_config.get("map", "map_alpha", int)) # type: ignore
         self.background_color = tuple (config.app_config.get("map", "background_color", tuple[int,int,int])) # type: ignore    
         self.font = pygame.font.SysFont('Comic Sans MS', 10)     
         active_theatre = config.app_config.get("map", "theatre", str)
         theatre = next((x for x in THEATRE_MAPS_BUILTIN if x["name"] == active_theatre), None)
-            
-        self._map_scaled = pygame.Surface((0,0))
-        self._zoom_levels = dict() #Cache for scaled map images #TODO use if zoom needs optimization0
-        # self._offsetX, self._offsetY = (0,0)
-        
+
         self._base_zoom = 1
         self._zoom = 0
         self._scale_c2s = 1
+        self.max_zoom_level = int(config.app_config.get("map", "max_zoom_level", int)) # type: ignore
         
         self.ini: FalconBMSIni | None = None
         self._load_ini()   
@@ -128,7 +125,7 @@ class Map:
         self.offset += pygame.Vector2(panVector)
         
         # Pan Limits
-        pan_border = 100
+        pan_border = 100 # TODO configure
         screen_size = pygame.Vector2(self.size)
         map_size = pygame.Vector2(self._map_annotated.get_size()) * self._scale_c2s
         
@@ -183,14 +180,13 @@ class Map:
         
     def zoom(self, mousepos, y: float):
         factor = 1.10
-        maxZoom = 40
         delta_zoom = 1 if y > 0 else -1
         self._zoom_level += delta_zoom
         
-        self._zoom_level = min(self._zoom_level, maxZoom)
+        self._zoom_level = min(self._zoom_level, self.max_zoom_level)
         self._zoom_level = max(self._zoom_level, 0)
-        if self._zoom_level > maxZoom:
-            self._zoom_level = maxZoom
+        if self._zoom_level > self.max_zoom_level:
+            self._zoom_level = self.max_zoom_level
         elif self._zoom_level > 0:
 
             oldscale = self._scale_c2s
@@ -320,8 +316,7 @@ if __name__ == "__main__" :
     map = Map(_display_surf)
     
     print("offsetX, offsetY ", map.offset.x, map.offset.y)
-    print("map size ", map._map_scaled.get_size())
-    
+
     top_left = map._world_to_canvas((0,1024*1000))
     top_left_screen = map._canvas_to_screen(top_left)
     print(f"Top Left: {top_left} Screen: {top_left_screen}")

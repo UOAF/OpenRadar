@@ -19,8 +19,12 @@ location = [ 0, 0 ] # [x, y] in pixels
 theatre = "KTO" # Theatre to load the map for on startup
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
 background_color = [ 50, 50, 50 ] # [r, g, b] # Background color for the map
+<<<<<<< HEAD
 # Colors that want to be switched from the Tacview default to a custom value, for better visibility.
 # Accepts the format [defaultcolor, newcolor], where the first arguments is a color String, and the second a color String or [r, g, b] array
 unit_color_switching = [
     ["Blue", [0, 225, 255]]
 ]
+=======
+max_zoom_level = 50 # Maximum zoom level for the map
+>>>>>>> 6c1ecb0 (Make max map zoom configurable)
