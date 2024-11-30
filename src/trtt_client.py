@@ -94,7 +94,7 @@ class TRTTClientThread(threading.Thread):
                     print("Uh oh server")
                 elif (retries < self.num_retries or self.num_retries == 0):
                     try:
-                        self.clientsocket.connect(self.server)
+                        self.clientsocket.connect(self.server) #TODO: Fix race condition with disconnect (clientsocket can be none here)
                         self.connecting = False
                         self.connected = True
                     except ConnectionRefusedError:
