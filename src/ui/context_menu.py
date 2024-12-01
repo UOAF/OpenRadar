@@ -133,5 +133,11 @@ class ContextMenu(UIPanel):
             self.unit.override_color = event.colour
             self.awaiting_color = False
             self.kill()
+            
+        if self.color_entry is not None and (event.type == UI_WINDOW_CLOSE and
+                                             event.ui_element == self.color_entry):
+            self.color_entry = None
+            self.awaiting_color = False
+
 
         return consumed
