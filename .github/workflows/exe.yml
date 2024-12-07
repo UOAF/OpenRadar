@@ -30,6 +30,9 @@ jobs:
       - name: Build binaries
         run: pyinstaller OpenRadar.spec
 
+      - name: Rename exe
+        run: cp dist/OpenRadar.exe dist/OpenRadar_${{  github.ref_name }}.exe
+
       - uses: actions/upload-artifact@v4
         with:
           name: OpenRadar_${{  github.ref_name }}.exe
