@@ -23,9 +23,9 @@ class GameObject:
     hide_class = True
 
     start_time = 0
-    last_time = 0
-    last_display_time = 0
     elapsed_time = 0
+    last_update_time = 0 # last time update was executed
+    UPDATE_FREQ_SEC = 2
    
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         self.data: ACMIObject = object
@@ -64,12 +64,11 @@ class GameObject:
         
     def update(self, object: ACMIObject):
 
-        self.last_time = self.elapsed_time
+        # Update the object's data in certain freq seconds
         self.elapsed_time = time.time() - self.start_time
-        update_freq_sec = 2
-        if (self.elapsed_time - self.last_display_time) < update_freq_sec:
+        if (self.elapsed_time - self.last_update_time) < self.UPDATE_FREQ_SEC:
             return
-        self.last_display_time = self.elapsed_time
+        self.last_update_time = self.elapsed_time
 
         self.data.update(object.properties)
 
