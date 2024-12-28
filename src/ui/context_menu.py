@@ -130,7 +130,7 @@ class ContextMenu(UIPanel):
     
         # Color Picker Events
         if event.type == UI_COLOUR_PICKER_COLOUR_PICKED and event.ui_element == self.color_entry:
-            self.unit.override_color = event.colour
+            self.unit.override_color = pygame.Color(event.colour)
             self.awaiting_color = False
             self.kill()
             
