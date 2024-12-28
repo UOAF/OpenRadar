@@ -12,7 +12,7 @@ UOAF OpenRadar v0.1.3 for BMS Falcon 4.0
 ## Compile Workflow
 
 1. install python.
-2. `> pip install pyinstaller pygame pygame_gui tomlkit numpy`
+2. `> pip install -r .\requirements.txt`
 3. `> pyinstaller .\OpenRadar.spec`
 4. compiled exe will be generated to `dist` directly.
 
