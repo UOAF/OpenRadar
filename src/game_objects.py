@@ -1,3 +1,5 @@
+import time
+
 import pygame
 
 import numpy as np
@@ -19,6 +21,11 @@ class GameObject:
     #font = pygame.font.SysFont("Courier New Regular", 18)
     # font = pygame.font.SysFont("Lucida Sans Typewriter", 18)
     hide_class = True
+
+    start_time = 0
+    last_time = 0
+    last_display_time = 0
+    elapsed_time = 0
    
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
         self.data: ACMIObject = object
@@ -27,6 +34,8 @@ class GameObject:
         self.locked_target: GameObject | None = None
         self.override_name: str | None = None
         self.override_color: pygame.Color | None = None
+
+        self.start_time = time.time()
         
         global font
         if font is None:
@@ -54,6 +63,14 @@ class GameObject:
         return f"{self.data.Type}"
         
     def update(self, object: ACMIObject):
+
+        self.last_time = self.elapsed_time
+        self.elapsed_time = time.time() - self.start_time
+        update_freq_sec = 2
+        if (self.elapsed_time - self.last_display_time) < update_freq_sec:
+            return
+        self.last_display_time = self.elapsed_time
+
         self.data.update(object.properties)
 
     def get_pos(self) -> tuple[float,float]:
