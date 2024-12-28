@@ -5,6 +5,7 @@ import queue
 
 import pygame
 import pygame_gui
+from ui.imgui_hello import ImguiUI
 
 import config
 
@@ -13,8 +14,13 @@ from game_state import GameState
 from ui.user_interface import UserInterface
 from trtt_client import TRTTClientThread
 
+import OpenGL.GL as gl
+import pygame.locals as pyloc
+
 MOUSEDRAGBUTTON = 3
 MOUSEBRAABUTTON = 1
+
+
 
 class App:
     """
@@ -47,7 +53,10 @@ class App:
         pygame.display.set_icon(icon)
         
         config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int,int]) # type: ignore
-        self._display_surf = pygame.display.set_mode(config_size, pygame.RESIZABLE)
+        pygame.display.set_mode(config_size, pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE)
+        # self._display_surf = pygame.display.set_mode(config_size, pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE)
+        self._display_surf = pygame.Surface(config_size)
+        
         self.size = self.width, self.height = self._display_surf.get_size() # This needs to be done seperatly as 0,0 size is handled in the display code
         
         manager_json_path = str( (config.bundle_dir / "resources/ui_theme.json").absolute() )
@@ -83,7 +92,50 @@ class App:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
-         
+        
+        self._ImguiUI = ImguiUI(self.size)
+        
+        ## OPENGL
+        
+        # Set up OpenGL
+        # set pygame screen
+        info = pygame.display.Info()
+
+        # basic opengl configuration
+        gl.glViewport(0, 0, info.current_w, info.current_h)
+        gl.glDepthRange(0, 1)
+        gl.glMatrixMode(gl.GL_PROJECTION)
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glLoadIdentity()
+        gl.glShadeModel(gl.GL_SMOOTH)
+        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
+        gl.glClearDepth(1.0)
+        gl.glDisable(gl.GL_DEPTH_TEST)
+        gl.glDisable(gl.GL_LIGHTING)
+        gl.glDepthFunc(gl.GL_LEQUAL)
+        gl.glHint(gl.GL_PERSPECTIVE_CORRECTION_HINT, gl.GL_NICEST)
+        gl.glEnable(gl.GL_BLEND)
+        self.texID = gl.glGenTextures(1)
+     
+     
+    ###
+    ### Function to convert a PyGame Surface to an OpenGL Texture
+    ### Maybe it's not necessary to perform each of these operations
+    ### every time.
+    ###
+    def surfaceToTexture(self, pygame_surface ):
+        global texID
+        rgb_surface = pygame.image.tostring( pygame_surface, 'RGB')
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.texID)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP)
+        surface_rect = pygame_surface.get_rect()
+        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, surface_rect.width, surface_rect.height, 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE, rgb_surface)
+        gl.glGenerateMipmap(gl.GL_TEXTURE_2D)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
+             
     def on_event(self, event: pygame.event.Event):
         """
         Handles the various events triggered by the user.
@@ -93,6 +145,7 @@ class App:
         if self.ui_manager.process_events(event): return
         if self.data_client.process_events(event): return
         if self._radar.process_events(event): return
+        if self._ImguiUI.on_event(event): return
 
         handler = self.event_handlers.get(event.type)
         if handler:
@@ -157,15 +210,36 @@ class App:
         if self._radar._gamestate.current_time is not None:
             self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%SZ"))
         self._radar.on_loop()
-        pass
+        self._ImguiUI.update()
     
     def on_render(self):
         """
         Renders the application
         """
+        self._display_surf.fill((0,0,0))
         self._radar.on_render()
         self.fps_counter()
         self.ui_manager.draw_ui(self._display_surf)
+        
+        
+        # prepare to render the texture-mapped rectangle
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glLoadIdentity()
+        gl.glDisable(gl.GL_LIGHTING)
+        gl.glEnable(gl.GL_TEXTURE_2D)
+        #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        #glClearColor(0, 0, 0, 1.0)
+
+        # draw texture openGL Texture
+        self.surfaceToTexture( self._display_surf )
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.texID)
+        gl.glBegin(gl.GL_QUADS)
+        gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, 1)
+        gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, -1)
+        gl.glTexCoord2f(1, 1); gl.glVertex2f(1, -1)
+        gl.glTexCoord2f(1, 0); gl.glVertex2f(1, 1)
+        gl.glEnd()     
+        self._ImguiUI.render()
         pygame.display.flip()
     
     def on_cleanup(self):
