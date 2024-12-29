@@ -5,6 +5,7 @@ import pygame
 import bms_math
 
 
+
 def load_texture(filename: str):
     map_image = pygame.image.load(filename)
     texture_id = gl.glGenTextures(1)
@@ -22,8 +23,10 @@ class MapGL:
     def __init__(self, display_size):
         self.display_size = display_size
         self.texture_filename = "resources/maps/Korea.jpg"
-        self.map_size = 1024  # in KM
-        self.map_size_ft = self.map_size * bms_math.BMS_FT_PER_KM
+        self.map_size_px = 4096 # in pixels
+        self.map_size_km = 1024 # in KM
+        self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
+        self.px_per_ft = self.map_size_px / self.map_size_ft
         self.pan_x = 0
         self.pan_y = 0
         self.zoom_level = 1.0
@@ -36,18 +39,14 @@ class MapGL:
         self.viewport()
 
     def on_render(self):
-        # self.viewport()
-        # self.viewport(*self.display_size)
-        # w, h = self.display_size
-        # gl.glMatrixMode(gl.GL_PROJECTION)
-        # gl.glLoadIdentity()
-        # glu.gluOrtho2D(0, w, 0, h)
-        half_map_size_ft = self.map_size_ft / 2
 
+        half_map_size_ft = self.map_size_ft / 2
+        w, h = self.display_size
+        gl.glViewport(self.pan_x, self.pan_y, w*2, h*2)
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
         gl.glScalef(self.zoom_level, self.zoom_level, 1)
-        gl.glTranslatef(self.pan_x, self.pan_y, 0)
+        # gl.glTranslatef(self.pan_x, self.pan_y, 0)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture_id)
         gl.glBegin(gl.GL_QUADS)
         gl.glTexCoord2f(0, 0)
@@ -60,17 +59,21 @@ class MapGL:
         gl.glVertex2f(half_map_size_ft, half_map_size_ft)
         gl.glEnd()
 
-    def pan(self, dx, dy):
-        print(f"panning by {dx}, {dy}")
-        w, h = self.display_size
-        self.pan_x += dx / w
-        self.pan_y += dy / h
 
-    def zoom(self, mouse_pos, factor):
+    def zoom_at(self, mouse_pos, factor):
+        self.pan(-mouse_pos[0], -mouse_pos[1])
+        self.zoom(factor)
+        self.pan(mouse_pos[0], mouse_pos[1])
+
+    def pan(self, dx_screen, dy_screen): 
+        self.pan_x += dx_screen
+        self.pan_y -= dy_screen
+
+    def zoom(self, factor):
         self.zoom_level += (factor / 10)
         self.zoom_level = max(0.01, self.zoom_level)
-        self.pan_x *= factor
-        self.pan_y *= factor
+        # self.pan_x *= factor
+        # self.pan_y *= factor
 
     def viewport(self):
         w, h = self.display_size

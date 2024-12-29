@@ -97,7 +97,7 @@ class App:
         self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
         
-        # self._ImguiUI = ImguiUserInterface(self.size)
+        self._ImguiUI = ImguiUserInterface(self.size)
         
         ## OPENGL
         
@@ -149,7 +149,7 @@ class App:
         if self.ui_manager.process_events(event): return
         if self.data_client.process_events(event): return
         if self._radar.process_events(event): return
-        # if self._ImguiUI.on_event(event): return
+        if self._ImguiUI.on_event(event): pass
 
         handler = self.event_handlers.get(event.type)
         if handler:
@@ -171,7 +171,7 @@ class App:
     def handle_mouse_wheel(self, event):
         if event.y != 0:
             self._radar.zoom(pygame.mouse.get_pos(), event.y)
-            self._map_gl.zoom(pygame.mouse.get_pos(), event.y)
+            self._map_gl.zoom_at(pygame.mouse.get_pos(), event.y)
 
     def handle_mouse_button_down(self, event):
         if event.button == MOUSEDRAGBUTTON:
@@ -217,7 +217,7 @@ class App:
         if self._radar._gamestate.current_time is not None:
             self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%SZ"))
         self._radar.on_loop()
-        # self._ImguiUI.update()
+        self._ImguiUI.update()
     
     def on_render(self):
         """
@@ -248,7 +248,7 @@ class App:
         # gl.glEnd()     
         
         self._map_gl.on_render()
-        # self._ImguiUI.render()
+        self._ImguiUI.render()
         pygame.display.flip()
     
     def on_cleanup(self):
