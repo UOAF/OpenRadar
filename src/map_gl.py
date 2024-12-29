@@ -1,6 +1,8 @@
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
+from numpy import half
 import pygame
+import bms_math
 
 
 def load_texture(filename: str):
@@ -20,6 +22,8 @@ class MapGL:
     def __init__(self, display_size):
         self.display_size = display_size
         self.texture_filename = "resources/maps/Korea.jpg"
+        self.map_size = 1024  # in KM
+        self.map_size_ft = self.map_size * bms_math.BMS_FT_PER_KM
         self.pan_x = 0
         self.pan_y = 0
         self.zoom_level = 1.0
@@ -38,6 +42,7 @@ class MapGL:
         # gl.glMatrixMode(gl.GL_PROJECTION)
         # gl.glLoadIdentity()
         # glu.gluOrtho2D(0, w, 0, h)
+        half_map_size_ft = self.map_size_ft / 2
 
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
@@ -46,13 +51,13 @@ class MapGL:
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture_id)
         gl.glBegin(gl.GL_QUADS)
         gl.glTexCoord2f(0, 0)
-        gl.glVertex2f(-1, 1)
+        gl.glVertex2f(-half_map_size_ft, half_map_size_ft)
         gl.glTexCoord2f(0, 1)
-        gl.glVertex2f(-1, -1)
+        gl.glVertex2f(-half_map_size_ft, -half_map_size_ft)
         gl.glTexCoord2f(1, 1)
-        gl.glVertex2f(1, -1)
+        gl.glVertex2f(half_map_size_ft, -half_map_size_ft)
         gl.glTexCoord2f(1, 0)
-        gl.glVertex2f(1, 1)
+        gl.glVertex2f(half_map_size_ft, half_map_size_ft)
         gl.glEnd()
 
     def pan(self, dx, dy):
@@ -69,11 +74,14 @@ class MapGL:
 
     def viewport(self):
         w, h = self.display_size
+        aspect = w / h
         gl.glViewport(0, 0, w, h)
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
-        glu.gluOrtho2D(-w / h / 2, w / h / 2, -0.5, 0.5)
-        # glu.gluOrtho2D(0, w, 0, h)
+        glu.gluOrtho2D(-aspect / 2, aspect / 2, -0.5, 0.5)
+        scale = 1/self.map_size_ft
+        gl.glScalef(scale, scale, 1)
+
 
     # def setup(self):
     #     gl.glMatrixMode(gl.GL_MODELVIEW)
