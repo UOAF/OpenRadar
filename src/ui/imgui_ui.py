@@ -38,15 +38,21 @@ class ImguiUserInterface:
         with imgui.begin_main_menu_bar() as main_menu_bar:
             if main_menu_bar.opened:
                 # first menu dropdown
-                with imgui.begin_menu('File', True) as file_menu:
-                    if file_menu.opened:
-                        imgui.menu_item('New', 'Ctrl+N', False, True)
-                        imgui.menu_item('Open ...', 'Ctrl+O', False, True)
-
+                with imgui.begin_menu('Map', True) as map_menu:
+                    if map_menu.opened:
                         # submenu
-                        with imgui.begin_menu('Open Recent', True) as open_recent_menu:
+                        with imgui.begin_menu('Load', True) as open_recent_menu:
                             if open_recent_menu.opened:
-                                imgui.menu_item('doc.txt', None, False, True)
+                                imgui.menu_item('', None, False, True)
+                        imgui.menu_item('Clear', '', False, True)
+                with imgui.begin_menu('Ini', True) as ini_menu:
+                    if ini_menu.opened:
+                        # submenu
+                        with imgui.begin_menu('Load', True) as open_recent_menu:
+                            if open_recent_menu.opened:
+                                imgui.menu_item('', None, False, True)
+                        imgui.menu_item('Clear', '', False, True)
+                        
 
     def ui_bottom_bar(self):
         
