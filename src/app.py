@@ -5,7 +5,7 @@ import queue
 
 import pygame
 import pygame_gui
-from ui.imgui_hello import ImguiUI
+from ui.imgui_ui import ImguiUserInterface
 
 import config
 
@@ -93,7 +93,7 @@ class App:
         self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
         
-        self._ImguiUI = ImguiUI(self.size)
+        self._ImguiUI = ImguiUserInterface(self.size)
         
         ## OPENGL
         
