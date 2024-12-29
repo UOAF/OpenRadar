@@ -1,18 +1,23 @@
 import imgui
 from imgui.integrations.pygame import PygameRenderer
 
-def menu_bar():
-    pass
+def TextCentered(text: str):
+    window_width, window_height = imgui.get_window_size()
+    text_width, text_height = imgui.calc_text_size(text)
+    imgui.set_cursor_pos_x((window_width - text_width) * 0.5)
+    imgui.set_cursor_pos_y((window_height - text_height) * 0.5)
+    imgui.text(text)
 
 class ImguiUserInterface:
     def __init__(self, size):
         self.size = size
         
         imgui.create_context()
-        imgui.get_io().display_size = self.size
-        imgui.get_io().fonts.get_tex_data_as_rgba32()
+        io = imgui.get_io()
+        io.display_size = self.size
+        io.fonts.add_font_from_file_ttf("resources/fonts/ProggyClean.ttf", 18) #TODO make this work with the exe bundle
         self.impl = PygameRenderer()
-        
+            
     def on_event(self, event):
         return self.impl.process_event(event)
     
@@ -25,14 +30,10 @@ class ImguiUserInterface:
     def update(self):
         self.impl.process_inputs()
         imgui.new_frame()
-        
-        with imgui.begin("Your first window!", True):
-            imgui.text("Hello world5!")
+        self.ui_main_menu()
+        self.ui_bottom_bar()
 
-        
-        imgui.begin("Bottom Bar", True, flags=imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE | imgui.WINDOW_NO_COLLAPSE)
-        imgui.text("This is the bottom bar")
-        imgui.end()
+    def ui_main_menu(self):
         
         with imgui.begin_main_menu_bar() as main_menu_bar:
             if main_menu_bar.opened:
@@ -47,4 +48,18 @@ class ImguiUserInterface:
                             if open_recent_menu.opened:
                                 imgui.menu_item('doc.txt', None, False, True)
 
+    def ui_bottom_bar(self):
         
+        bottom_flags = (imgui.WINDOW_NO_TITLE_BAR | 
+                        imgui.WINDOW_NO_RESIZE | 
+                        imgui.WINDOW_NO_MOVE | 
+                        imgui.WINDOW_NO_COLLAPSE)
+        width = imgui.get_io().display_size[0]
+        height = 80
+        
+        imgui.set_next_window_size(width, height)
+        imgui.set_next_window_position(0, imgui.get_io().display_size[1] - height)
+        with imgui.begin("Bottom Bar", True, flags=bottom_flags):
+            TextCentered("This is the bottom bar")
+
+            
