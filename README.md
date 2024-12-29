@@ -9,6 +9,19 @@ UOAF OpenRadar v0.1.3 for BMS Falcon 4.0
     ```
 3. Run OpenRadar.exe and connect to the server in the settings page
 
+## Compile Workflow
+
+1. install python.
+2. `> pip install -r .\requirements.txt`
+3. `> pyinstaller .\OpenRadar.spec`
+4. compiled exe will be generated to `dist` directly.
+
+### TIPS
+
+- to check scripts install directly `> python -m site --user-site`
+then locate to `../Scripts` from there, you will find pyinstaller.exe
+so you can add environment path to the directly.
+
 ## Work in Progress
 This project is a work in progress. Features and functionalities are continuously being developed and improved. Some features will be incomplete or not functional. Your feedback and contributions are highly appreciated to help us enhance the tool.
 
