@@ -3,5 +3,8 @@
     "python.analysis.autoImportCompletions": true,
     "python.analysis.extraPaths": [
         "./src"
+    ],
+    "yapf.args": [
+        "--style={column_limit: 120}"
     ]
 }

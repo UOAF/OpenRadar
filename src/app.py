@@ -14,6 +14,8 @@ from game_state import GameState
 from ui.user_interface import UserInterface
 from trtt_client import TRTTClientThread
 
+from map_gl import MapGL
+
 import OpenGL.GL as gl
 import pygame.locals as pyloc
 
@@ -71,6 +73,8 @@ class App:
         self.gamestate = GameState(self.data_queue)
         
         self._radar = Radar(self._display_surf, self.ui_manager, self.gamestate)
+        
+        self._map_gl = MapGL(self.size)
           
         self._UI = UserInterface(self._display_surf, self.ui_manager)
         self._UI.handlers = self._UI.handlers | { # TODO: move the event handlers into the Radar Class
@@ -93,7 +97,7 @@ class App:
         self.font = pygame.font.SysFont("Arial", 18) 
         self._running = True
         
-        self._ImguiUI = ImguiUserInterface(self.size)
+        # self._ImguiUI = ImguiUserInterface(self.size)
         
         ## OPENGL
         
@@ -115,7 +119,7 @@ class App:
         gl.glDepthFunc(gl.GL_LEQUAL)
         gl.glHint(gl.GL_PERSPECTIVE_CORRECTION_HINT, gl.GL_NICEST)
         gl.glEnable(gl.GL_BLEND)
-        self.texID = gl.glGenTextures(1)
+        # self.texID = gl.glGenTextures(1)
      
      
     ###
@@ -145,7 +149,7 @@ class App:
         if self.ui_manager.process_events(event): return
         if self.data_client.process_events(event): return
         if self._radar.process_events(event): return
-        if self._ImguiUI.on_event(event): return
+        # if self._ImguiUI.on_event(event): return
 
         handler = self.event_handlers.get(event.type)
         if handler:
@@ -161,11 +165,13 @@ class App:
         self.size = self.width, self.height = event.x, event.y
         self._radar.resize(self.width, self.height)
         self._UI.resize(self.width, self.height)
+        self._map_gl.resize(self.size)
         config.app_config.set("window", "size", self.size)
 
     def handle_mouse_wheel(self, event):
         if event.y != 0:
             self._radar.zoom(pygame.mouse.get_pos(), event.y)
+            self._map_gl.zoom(pygame.mouse.get_pos(), event.y)
 
     def handle_mouse_button_down(self, event):
         if event.button == MOUSEDRAGBUTTON:
@@ -180,6 +186,7 @@ class App:
             difX = event.pos[0] - self._startPan[0]
             difY = event.pos[1] - self._startPan[1]
             self._radar.pan((difX,difY)) 
+            self._map_gl.pan(difX, difY)
             self._startPan = event.pos
         if self.mouseBRAADown:
             self._radar.braa(True, self._startBraa, event.pos)
@@ -210,7 +217,7 @@ class App:
         if self._radar._gamestate.current_time is not None:
             self._UI.bottom_ui_panel.clock_label.set_text(self._radar._gamestate.current_time.strftime("%H:%M:%SZ"))
         self._radar.on_loop()
-        self._ImguiUI.update()
+        # self._ImguiUI.update()
     
     def on_render(self):
         """
@@ -222,24 +229,26 @@ class App:
         self.ui_manager.draw_ui(self._display_surf)
         
         
+        gl.glClearColor(1.0, 0.0, 1.0, 1.0)
         # prepare to render the texture-mapped rectangle
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        gl.glLoadIdentity()
+        # gl.glLoadIdentity()
         gl.glDisable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_TEXTURE_2D)
         #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        #glClearColor(0, 0, 0, 1.0)
 
         # draw texture openGL Texture
-        self.surfaceToTexture( self._display_surf )
-        gl.glBindTexture(gl.GL_TEXTURE_2D, self.texID)
-        gl.glBegin(gl.GL_QUADS)
-        gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, 1)
-        gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, -1)
-        gl.glTexCoord2f(1, 1); gl.glVertex2f(1, -1)
-        gl.glTexCoord2f(1, 0); gl.glVertex2f(1, 1)
-        gl.glEnd()     
-        self._ImguiUI.render()
+        # self.surfaceToTexture( self._display_surf )
+        # gl.glBindTexture(gl.GL_TEXTURE_2D, self.texID)
+        # gl.glBegin(gl.GL_QUADS)
+        # gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, 1)
+        # gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, -1)
+        # gl.glTexCoord2f(1, 1); gl.glVertex2f(1, -1)
+        # gl.glTexCoord2f(1, 0); gl.glVertex2f(1, 1)
+        # gl.glEnd()     
+        
+        self._map_gl.on_render()
+        # self._ImguiUI.render()
         pygame.display.flip()
     
     def on_cleanup(self):
