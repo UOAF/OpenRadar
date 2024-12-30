@@ -22,10 +22,8 @@ class MapGL:
     def __init__(self, display_size):
         self.display_size = display_size
         self.texture_filename = "resources/maps/Korea.jpg"
-        # self.map_size_px = 4096  # in pixels
         self.map_size_km = 1024  # in KM
         self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
-        # self.px_per_ft = self.map_size_px / self.map_size_ft
         self.pan_x_screen = 0
         self.pan_y_screen = 0
         self.zoom_level = 1.0
@@ -58,12 +56,6 @@ class MapGL:
         gl.glVertex2f(self.map_size_ft, 0)
         gl.glEnd()
 
-    # def zoom_at(self, mouse_pos, factor):
-    #     x, y = mouse_pos
-    #     self.pan(-x, -y)
-    #     self.zoom(factor)
-    #     self.pan(x, y)
-
     def pan(self, dx_screen, dy_screen):
         self.pan_x_screen += dx_screen
         self.pan_y_screen -= dy_screen
@@ -89,28 +81,20 @@ class MapGL:
         return point_screen
 
     def zoom_at(self, mouse_pos, factor):
-        mouse_world = self.screen_to_world(pygame.Vector2(*mouse_pos))
-        # pan_x_world_old = self.pan_x_screen * self.zoom_level / self.px_per_ft
-        # pan_y_world_old = self.pan_x_screen * self.zoom_level / self.px_per_ft
+        # adjust the pan so that the world position of the mouse is preserved before and after zoom
+        mouse_world_old = self.screen_to_world(pygame.Vector2(*mouse_pos))
 
         self.zoom_level += (factor / 10)
         self.zoom_level = max(0.05, self.zoom_level)
 
-        # pan_x_world = self.pan_x_screen * self.zoom_level / self.px_per_ft
-        # pan_y_world = self.pan_x_screen * self.zoom_level / self.px_per_ft
-
-        # delta_x_world = pan_x_world_old - pan_x_world
-        # delta_y_world = pan_y_world_old - pan_y_world
-
-        # delta_x_screen = delta_x_world * self.px_per_ft / self.zoom_level
-        # delta_y_screen = delta_y_world * self.px_per_ft / self.zoom_level
-        # self.pan_x_screen += delta_x_screen
-        # self.pan_y_screen += delta_y_screen
-
-        # zoom is centered on center of texture
-
-        # self.pan_x *= factor
-        # self.pan_y *= factor
+        mouse_world_new = self.screen_to_world(pygame.Vector2(*mouse_pos))
+        delta_world = mouse_world_new - mouse_world_old
+        w, h = self.display_size
+        ratio = h / self.map_size_ft
+        delta_screen = delta_world * ratio * self.zoom_level
+        x, y = delta_screen
+        self.pan_x_screen += x
+        self.pan_y_screen += y
 
     def viewport(self):
         w, h = self.display_size
@@ -121,9 +105,3 @@ class MapGL:
         scale = 1 / self.map_size_ft
         glu.gluOrtho2D(0, aspect, 0, 1)
         gl.glScalef(scale, scale, 1)
-
-    # def setup(self):
-    #     gl.glMatrixMode(gl.GL_MODELVIEW)
-    #     gl.glLoadIdentity()
-    #     gl.glTranslatef(self.pan_x, self.pan_y, 0.0)
-    #     gl.glScalef(self.zoom_level, self.zoom_level, 1.0)
