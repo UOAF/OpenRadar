@@ -75,8 +75,9 @@ class MapGL:
         print("Hello from MapGL")
         
     def default_map(self):
-        grey = np.array([[535830592]], dtype=np.uint32) # 10000001000000100000011111111
-        self.texture_id = load_texture_data(grey)
+        grey = np.array([[535830592]], dtype=np.uint32) # 11111111100000010000001000000
+        grey_pixel = np.array([[[128, 128, 128, 255]]], dtype=np.uint8)
+        self.texture_id = load_texture_data(grey_pixel)
         self.map_size_km = 1024  # in KM
         self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
 
