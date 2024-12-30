@@ -53,7 +53,7 @@ class App:
         pygame.display.set_icon(icon)
 
         config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int, int])  # type: ignore
-        pygame.display.set_mode(config_size, pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE, vsync=0)
+        pygame.display.set_mode(config_size, pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE, vsync=1)
 
         # # self._display_surf = pygame.display.set_mode(config_size, pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE)
         self._display_surf = pygame.Surface(config_size)
