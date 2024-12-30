@@ -43,7 +43,7 @@ class MapGL:
         gl.glLoadIdentity()
         w, h = self.display_size
         #
-        ratio = min(w, h) / self.map_size_ft
+        ratio = h / self.map_size_ft
         gl.glScalef(self.zoom_level, self.zoom_level, 1)
         gl.glTranslatef(self.pan_x_screen / self.zoom_level / ratio, self.pan_y_screen / self.zoom_level / ratio, 0)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture_id)
@@ -68,10 +68,28 @@ class MapGL:
         self.pan_x_screen += dx_screen
         self.pan_y_screen -= dy_screen
 
-    def screen_to_world(self, point: pygame.Vector2):
-        pass
+    def screen_to_world(self, point_screen: pygame.Vector2):
+        w, h = self.display_size
+        ratio = h / self.map_size_ft
+        pan = pygame.Vector2(self.pan_x_screen, -self.pan_y_screen)
+        point_screen_with_pan = point_screen - pan
+        point_screen_with_pan.y = h - point_screen_with_pan.y
+        result = point_screen_with_pan / ratio / self.zoom_level
+        return result
+
+    def world_to_screen(self, point_world: pygame.Vector2):
+        w, h = self.display_size
+        ratio = h / self.map_size_ft
+
+        point_screen_with_pan = point_world * ratio * self.zoom_level
+        point_screen_with_pan.y = h - point_screen_with_pan.y
+
+        pan = pygame.Vector2(self.pan_x_screen, -self.pan_y_screen)
+        point_screen = point_screen_with_pan + pan
+        return point_screen
 
     def zoom_at(self, mouse_pos, factor):
+        mouse_world = self.screen_to_world(pygame.Vector2(*mouse_pos))
         # pan_x_world_old = self.pan_x_screen * self.zoom_level / self.px_per_ft
         # pan_y_world_old = self.pan_x_screen * self.zoom_level / self.px_per_ft
 
