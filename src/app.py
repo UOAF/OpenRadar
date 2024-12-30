@@ -74,8 +74,6 @@ class App:
 
         self._radar = Radar(self._display_surf, self.ui_manager, self.gamestate)
 
-        self._map_gl = MapGL(self.size)
-
         self._UI = UserInterface(self._display_surf, self.ui_manager)
         self._UI.handlers = self._UI.handlers | { # TODO: move the event handlers into the Radar Class
             pygame_gui.UI_BUTTON_PRESSED : {
@@ -96,8 +94,9 @@ class App:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("Arial", 18)
         self._running = True
-
-        self._ImguiUI = ImguiUserInterface(self.size)
+        
+        self._map_gl = MapGL(self.size)
+        self._ImguiUI = ImguiUserInterface(self.size, self._map_gl)
 
         ## OPENGL
 
