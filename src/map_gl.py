@@ -5,7 +5,6 @@ import pygame
 import bms_math
 
 
-
 def load_texture(filename: str):
     map_image = pygame.image.load(filename)
     texture_id = gl.glGenTextures(1)
@@ -14,7 +13,7 @@ def load_texture(filename: str):
     gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
     texture_format = gl.GL_RGB
     gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, texture_format, *map_image.size, 0, texture_format, gl.GL_UNSIGNED_BYTE,
-                    pygame.image.tobytes(map_image, "RGB", flipped=False))
+                    pygame.image.tobytes(map_image, "RGB", flipped=True))
     return texture_id
 
 
@@ -23,12 +22,12 @@ class MapGL:
     def __init__(self, display_size):
         self.display_size = display_size
         self.texture_filename = "resources/maps/Korea.jpg"
-        self.map_size_px = 4096 # in pixels
-        self.map_size_km = 1024 # in KM
+        # self.map_size_px = 4096  # in pixels
+        self.map_size_km = 1024  # in KM
         self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
-        self.px_per_ft = self.map_size_px / self.map_size_ft
-        self.pan_x = 0
-        self.pan_y = 0
+        # self.px_per_ft = self.map_size_px / self.map_size_ft
+        self.pan_x_screen = 0
+        self.pan_y_screen = 0
         self.zoom_level = 1.0
         self.texture_id = load_texture(self.texture_filename)
         self.viewport()
@@ -39,39 +38,59 @@ class MapGL:
         self.viewport()
 
     def on_render(self):
-
         half_map_size_ft = self.map_size_ft / 2
-        w, h = self.display_size
-        gl.glViewport(self.pan_x, self.pan_y, w*2, h*2)
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glLoadIdentity()
+        w, h = self.display_size
+        #
+        ratio = min(w, h) / self.map_size_ft
         gl.glScalef(self.zoom_level, self.zoom_level, 1)
-        # gl.glTranslatef(self.pan_x, self.pan_y, 0)
+        gl.glTranslatef(self.pan_x_screen / self.zoom_level / ratio, self.pan_y_screen / self.zoom_level / ratio, 0)
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture_id)
         gl.glBegin(gl.GL_QUADS)
         gl.glTexCoord2f(0, 0)
-        gl.glVertex2f(-half_map_size_ft, half_map_size_ft)
+        gl.glVertex2f(0, 0)
         gl.glTexCoord2f(0, 1)
-        gl.glVertex2f(-half_map_size_ft, -half_map_size_ft)
+        gl.glVertex2f(0, self.map_size_ft)
         gl.glTexCoord2f(1, 1)
-        gl.glVertex2f(half_map_size_ft, -half_map_size_ft)
+        gl.glVertex2f(self.map_size_ft, self.map_size_ft)
         gl.glTexCoord2f(1, 0)
-        gl.glVertex2f(half_map_size_ft, half_map_size_ft)
+        gl.glVertex2f(self.map_size_ft, 0)
         gl.glEnd()
 
+    # def zoom_at(self, mouse_pos, factor):
+    #     x, y = mouse_pos
+    #     self.pan(-x, -y)
+    #     self.zoom(factor)
+    #     self.pan(x, y)
+
+    def pan(self, dx_screen, dy_screen):
+        self.pan_x_screen += dx_screen
+        self.pan_y_screen -= dy_screen
+
+    def screen_to_world(self, point: pygame.Vector2):
+        pass
 
     def zoom_at(self, mouse_pos, factor):
-        self.pan(-mouse_pos[0], -mouse_pos[1])
-        self.zoom(factor)
-        self.pan(mouse_pos[0], mouse_pos[1])
+        # pan_x_world_old = self.pan_x_screen * self.zoom_level / self.px_per_ft
+        # pan_y_world_old = self.pan_x_screen * self.zoom_level / self.px_per_ft
 
-    def pan(self, dx_screen, dy_screen): 
-        self.pan_x += dx_screen
-        self.pan_y -= dy_screen
-
-    def zoom(self, factor):
         self.zoom_level += (factor / 10)
-        self.zoom_level = max(0.01, self.zoom_level)
+        self.zoom_level = max(0.05, self.zoom_level)
+
+        # pan_x_world = self.pan_x_screen * self.zoom_level / self.px_per_ft
+        # pan_y_world = self.pan_x_screen * self.zoom_level / self.px_per_ft
+
+        # delta_x_world = pan_x_world_old - pan_x_world
+        # delta_y_world = pan_y_world_old - pan_y_world
+
+        # delta_x_screen = delta_x_world * self.px_per_ft / self.zoom_level
+        # delta_y_screen = delta_y_world * self.px_per_ft / self.zoom_level
+        # self.pan_x_screen += delta_x_screen
+        # self.pan_y_screen += delta_y_screen
+
+        # zoom is centered on center of texture
+
         # self.pan_x *= factor
         # self.pan_y *= factor
 
@@ -81,10 +100,9 @@ class MapGL:
         gl.glViewport(0, 0, w, h)
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
-        glu.gluOrtho2D(-aspect / 2, aspect / 2, -0.5, 0.5)
-        scale = 1/self.map_size_ft
+        scale = 1 / self.map_size_ft
+        glu.gluOrtho2D(0, aspect, 0, 1)
         gl.glScalef(scale, scale, 1)
-
 
     # def setup(self):
     #     gl.glMatrixMode(gl.GL_MODELVIEW)
