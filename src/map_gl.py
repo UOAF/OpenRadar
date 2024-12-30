@@ -68,9 +68,9 @@ class MapGL:
             
         print(f"Map dir: {map_dir/ filename}")
 
-        if os.path.exists(filename):
+        if os.path.isfile(filename):
             path = filename
-        elif os.path.exists(map_dir / filename):
+        elif os.path.isfile(map_dir / filename):
             path = map_dir / filename
         else:
             print(f"Map file {filename} not found")

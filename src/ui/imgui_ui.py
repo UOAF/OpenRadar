@@ -6,6 +6,9 @@ import datetime
 from map_gl import MapGL
 import config
 
+from os_uils import open_file_dialog
+
+
 def TextCentered(text: str):
     window_width, window_height = imgui.get_window_size()
     text_width, text_height = imgui.calc_text_size(text)
@@ -28,7 +31,11 @@ class ImguiUserInterface:
         self._fps = 0
         self._time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
         self._fps_history = [0] * 10000
-        self.fps_enabled = False
+        self.fps_window_open = False
+
+        self.map_selection_dialog_size = 1
+        self.map_selection_dialog_path = ""
+        self.map_selection_dialog_open = False
 
     def on_event(self, event):
         return self.impl.process_event(event)
@@ -63,6 +70,7 @@ class ImguiUserInterface:
         imgui.new_frame()
         self.ui_main_menu()
         self.ui_bottom_bar()
+        self.map_selection_dialog()
 
     def ui_main_menu(self):
 
@@ -80,7 +88,9 @@ class ImguiUserInterface:
                                 with imgui.begin_menu('Load', True) as open_recent_menu:
                                     if open_recent_menu.opened:
                                         self.map_list_menu()
-                                        
+                                        if imgui.menu_item('Custom', '', False, True)[0]:
+                                            self.map_selection_dialog_open = True
+
                                 if imgui.menu_item('Clear', '', False, True)[0]:
                                     self.map_gl.clear_map()
 
@@ -91,16 +101,16 @@ class ImguiUserInterface:
                                     print("Load ini")
                                 if imgui.menu_item('Clear', '', False, True)[0]:
                                     print("Clear ini")
-                
+
                 # Windows Dropdown
                 with imgui.begin_menu('Windows', True) as windows_menu:
                     if windows_menu.opened:
-                        fps_menu = imgui.menu_item('FPS', '', self.fps_enabled, True)
+                        fps_menu = imgui.menu_item('FPS', '', self.fps_window_open, True)
                         if fps_menu[0]:
-                            self.fps_enabled = not self.fps_enabled
-                    if self.fps_enabled:
+                            self.fps_window_open = not self.fps_window_open
+                    if self.fps_window_open:
                         self.fps_counter()
-                        
+
     def map_list_menu(self):
         maps = self.map_gl.list_maps()
         for theatre, data in maps.items():
@@ -109,7 +119,33 @@ class ImguiUserInterface:
                     for map_entry in data["maps"]:
                         if imgui.menu_item(map_entry["style"], None, False, True)[0]:
                             self.map_gl.load_map(map_entry["path"], data["theatre_size_km"])
-        
+
+    def map_selection_dialog(self):
+
+        if self.map_selection_dialog_open:
+            imgui.open_popup("Map Selection")
+            if imgui.begin_popup_modal("Map Selection", True)[0]:
+
+                # Create input text field with folder path
+                imgui.input_text("", self.map_selection_dialog_path, 256, imgui.INPUT_TEXT_READ_ONLY)
+
+                # Button with folder icon
+                imgui.same_line()
+                if imgui.button("Select Map"):
+                    # Open folder dialog
+                    selected_folder = open_file_dialog()
+                    if selected_folder:  # Update the path if selected
+                        self.map_selection_dialog_path = selected_folder
+
+                sizes = ["512", "1024", "4096"]
+                _, self.map_selection_dialog_size = imgui.combo("Theatre Size (km)",
+                                                                self.map_selection_dialog_size, sizes)
+
+                if imgui.button("Confirm"):
+                    self.map_gl.load_map(self.map_selection_dialog_path, int(sizes[self.map_selection_dialog_size]))
+                    self.map_selection_dialog_open = False
+                    imgui.close_current_popup()
+                imgui.end_popup()
 
     def ui_bottom_bar(self):
 
