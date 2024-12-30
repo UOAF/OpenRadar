@@ -1,11 +1,13 @@
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
 import pygame
+import os
 import bms_math
 import numpy as np
 import json
 
 import config
+
 
 def load_texture(filename: str):
     map_image = pygame.image.load(filename)
@@ -18,16 +20,18 @@ def load_texture(filename: str):
                     pygame.image.tobytes(map_image, "RGBA", flipped=True))
     return texture_id
 
+
 def load_texture_data(data: np.ndarray):
     texture_id = gl.glGenTextures(1)
     gl.glBindTexture(gl.GL_TEXTURE_2D, texture_id)
     gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
     gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
     texture_format = gl.GL_RGBA
-    gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, texture_format, data.shape[1], data.shape[0], 0, texture_format, gl.GL_UNSIGNED_BYTE,
-                    data)
+    gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, texture_format, data.shape[1], data.shape[0], 0, texture_format,
+                    gl.GL_UNSIGNED_BYTE, data)
     return texture_id
 
+map_dir = config.bundle_dir / "resources/maps"
 class MapGL:
 
     def __init__(self, display_size):
@@ -38,48 +42,68 @@ class MapGL:
         self.pan_x_screen = 0
         self.pan_y_screen = 0
         self.zoom_level = 1.0
-        
-        self.default_map()
+        self.texture_id = None
+
+        self.load_default_map()
         self.viewport()
-        
-        
+
     def list_maps(self):
-        map_dir = config.bundle_dir / "resources/maps"
+
         with open(map_dir / "maps.json") as f:
-            maps = json.load(f)       
-        
-        for theatre, data in maps.items():
-            print(theatre, print (data["theatre_size_km"]))
-            for map_entry in data["maps"]:
-                print ("  ", map_entry["style"], map_entry["path"])
-                map_entry["path"] = map_dir / map_entry["path"]
+            maps = json.load(f)
+
+        # # Expand map paths to full paths
+        # for theatre, data in maps.items():
+        #     for map_entry in data["maps"]:
+        #         map_entry["path"] = map_dir / map_entry["path"]
+
         return maps
-        
-        
+
     def load_map(self, filename, map_size_km):
+        
+        print(f"Loading map {filename} {map_size_km}")
         if self.texture_id is not None:
             gl.glDeleteTextures([self.texture_id])
-            self.texture_id = None        
-        self.texture_id = load_texture(filename)
-        
+            self.texture_id = None
+            
+        print(f"Map dir: {map_dir/ filename}")
+
+        if os.path.exists(filename):
+            path = filename
+        elif os.path.exists(map_dir / filename):
+            path = map_dir / filename
+        else:
+            print(f"Map file {filename} not found")
+            self.default_grey_map()
+            return
+
+        self.texture_id = load_texture(path)
+
         self.map_size_km = map_size_km
         self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
         
+        config.app_config.set("map", "default_map", str(filename))
+        config.app_config.set("map", "default_map_size_km", map_size_km)       
+
     def clear_map(self):
         if self.texture_id is not None:
             gl.glDeleteTextures([self.texture_id])
             self.texture_id = None
-        self.default_map()
-        
-    def say_hi(self):
-        print("Hello from MapGL")
-        
-    def default_map(self):
-        grey = np.array([[535830592]], dtype=np.uint32) # 11111111100000010000001000000
+        self.default_grey_map()
+
+    def load_default_map(self):
+        config_default_map = config.app_config.get_str("map", "default_map")
+        config_default_map_size = config.app_config.get_int("map", "default_map_size_km")
+        print(f"Loading default map {config_default_map} {config_default_map_size}")
+        self.load_map(config_default_map, config_default_map_size)
+
+    def default_grey_map(self):
         grey_pixel = np.array([[[128, 128, 128, 255]]], dtype=np.uint8)
         self.texture_id = load_texture_data(grey_pixel)
-        self.map_size_km = 1024  # in KM
+        self.map_size_km = 1024
         self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
+        config.app_config.set("map", "default_map", "none")
+        config.app_config.set("map", "default_map_size_km", 1024)
 
     def resize(self, display_size):
         ### This is the function that needs to be called when the window is resized
