@@ -1,7 +1,10 @@
 import imgui
 from imgui.integrations.pygame import PygameRenderer
 import numpy as np
+import datetime
 
+from map_gl import MapGL
+import config
 
 def TextCentered(text: str):
     window_width, window_height = imgui.get_window_size()
@@ -13,8 +16,9 @@ def TextCentered(text: str):
 
 class ImguiUserInterface:
 
-    def __init__(self, size):
+    def __init__(self, size, map_gl: MapGL):
         self.size = size
+        self.map_gl: MapGL = map_gl
 
         imgui.create_context()
         io = imgui.get_io()
@@ -22,7 +26,7 @@ class ImguiUserInterface:
         io.fonts.add_font_from_file_ttf("resources/fonts/ProggyClean.ttf", 18)  #TODO make this work with the exe bundle
         self.impl = PygameRenderer()
         self._fps = 0
-        self._time = ""
+        self._time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
         self._fps_history = [0] * 10000
         self.fps_enabled = False
 
@@ -55,30 +59,30 @@ class ImguiUserInterface:
         self.impl.process_inputs()
         self._fps_history.append(self._fps)
         self._fps_history.pop(0)
-        
-        
+
         imgui.new_frame()
         self.ui_main_menu()
         self.ui_bottom_bar()
-
 
     def ui_main_menu(self):
 
         with imgui.begin_main_menu_bar() as main_menu_bar:
             if main_menu_bar.opened:
-                
+
                 # File Dropdown
                 with imgui.begin_menu('File', True) as file_menu:
                     if file_menu.opened:
-                        
+
                         # Map submenu
                         with imgui.begin_menu('Map', True) as map_menu:
                             if map_menu.opened:
                                 # submenu
                                 with imgui.begin_menu('Load', True) as open_recent_menu:
                                     if open_recent_menu.opened:
-                                        imgui.menu_item('', None, False, True)
+                                        self.map_list_menu()
+                                        
                                 imgui.menu_item('Clear', '', False, True)
+
                         # Ini submenu
                         with imgui.begin_menu('Ini', True) as ini_menu:
                             if ini_menu.opened:
@@ -95,22 +99,32 @@ class ImguiUserInterface:
                             self.fps_enabled = not self.fps_enabled
                     if self.fps_enabled:
                         self.fps_counter()
+                        
+    def map_list_menu(self):
+        maps = self.map_gl.list_maps()
+        for theatre, data in maps.items():
+            with imgui.begin_menu(theatre, True) as theatre_menu:
+                if theatre_menu.opened:
+                    for map_entry in data["maps"]:
+                        if imgui.menu_item(map_entry["style"], None, False, True)[0]:
+                            self.map_gl.load_map(map_entry["path"], data["theatre_size_km"])
+        
 
     def ui_bottom_bar(self):
 
         bottom_flags = (imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE
                         | imgui.WINDOW_NO_COLLAPSE)
         width = imgui.get_io().display_size[0]
-        height = 80
+        height = 50
 
         imgui.set_next_window_size(width, height)
         imgui.set_next_window_position(0, imgui.get_io().display_size[1] - height)
         with imgui.begin("Bottom Bar", True, flags=bottom_flags):
-            TextCentered("This is the bottom bar")
+            TextCentered(self.time.strftime("%H:%M:%SZ"))
 
     def fps_counter(self):
-        
-          with imgui.begin("FPS"):      
+
+        with imgui.begin("FPS"):
             fps_history = np.array(self._fps_history, np.float32)
             imgui.plot_lines("FPS", fps_history, graph_size=(0, 100))
             imgui.text(f"FPS: {self.fps:.2f}")

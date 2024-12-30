@@ -1,0 +1,25 @@
+{
+    "Balkans": {"theatre_size_km": 1024, "maps": [
+        {"style": "4k Airbases", "path": "balkans_4k_airbases.png"}
+    ]},
+    "Baltic": {"theatre_size_km": 1024, "maps": [
+        {"style": "Standard", "path": "BalticMap.jpg"}
+    ]},
+    "CoastalFront": {"theatre_size_km": 1024, "maps": [
+        {"style": "Standard", "path": "CoastalFront.png"},
+        {"style": "White", "path": "CoastalFrontWhite.png"}
+    ]},
+    "Georgia": {"theatre_size_km": 1024, "maps": [
+        {"style": "Standard", "path": "GeorgiaMap.png"},
+        {"style": "White", "path": "GeorgiaWhite.png"}
+    ]},
+    "Israel": {"theatre_size_km": 1024, "maps": [
+        {"style": "Standard", "path": "Israel.jpg"}
+    ]},
+    "KTO": {"theatre_size_km": 1024, "maps": [
+        {"style": "Standard", "path": "Korea.jpg"}
+    ]},
+    "MidEast": {"theatre_size_km": 1024, "maps": [
+        {"style": "Standard", "path": "MidEast128Map.png"}
+    ]}
+}
