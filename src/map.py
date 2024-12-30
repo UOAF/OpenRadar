@@ -1,7 +1,7 @@
 import pygame
 
 from bms_ini import FalconBMSIni
-from os_uils import open_file_dialog
+from os_utils import open_file_dialog
 
 import config
 

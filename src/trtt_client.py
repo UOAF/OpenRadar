@@ -6,8 +6,6 @@ from time import sleep
 from dataclasses import dataclass
 from enum import Enum, auto
 
-import pygame
-
 import config
 from messages import UI_SETTINGS_PAGE_SERVER_CONNECT, UI_SETTINGS_PAGE_SERVER_DISCONNECT, DATA_THREAD_STATUS, UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS
 from messages import RADAR_SERVER_CONNECTED, RADAR_SERVER_DISCONNECTED
@@ -115,10 +113,10 @@ class TRTTClientThread(threading.Thread):
                     self.disconnect()
                 
                 self.set_status(ThreadState.CONNECTED, "")
-                pygame.event.post(pygame.event.Event(RADAR_SERVER_CONNECTED))
+                # pygame.event.post(pygame.event.Event(RADAR_SERVER_CONNECTED))
                 self.process_data(buf) # blocking call
                 self.set_status(ThreadState.DISCONNECTED, "Disconnected from server")
-                pygame.event.post(pygame.event.Event(RADAR_SERVER_DISCONNECTED))
+                # pygame.event.post(pygame.event.Event(RADAR_SERVER_DISCONNECTED))
 
 
             sleep(1)
@@ -180,23 +178,23 @@ class TRTTClientThread(threading.Thread):
         self.status = status
         self.state_info = info
         event_data = {'status': self.status, 'info': self.state_info}
-        pygame.event.post(pygame.event.Event(DATA_THREAD_STATUS, event_data))
+        # pygame.event.post(pygame.event.Event(DATA_THREAD_STATUS, event_data))
         
-    def process_events(self, event: pygame.event.Event) -> bool:
+    # def process_events(self, event: pygame.event.Event) -> bool:
         
-        consumed = False
+    #     consumed = False
         
-        if event.type == UI_SETTINGS_PAGE_SERVER_CONNECT:
-            ip, port = event.server, event.port
-            self.connect(ip, port)
-            consumed = True
+    #     if event.type == UI_SETTINGS_PAGE_SERVER_CONNECT:
+    #         ip, port = event.server, event.port
+    #         self.connect(ip, port)
+    #         consumed = True
                 
-        elif event.type == UI_SETTINGS_PAGE_SERVER_DISCONNECT:
-            self.disconnect()
-            consumed = True
+    #     elif event.type == UI_SETTINGS_PAGE_SERVER_DISCONNECT:
+    #         self.disconnect()
+    #         consumed = True
 
-        elif event.type == UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS:
-            event_data = {'status': self.status, 'info': self.state_info}
-            pygame.event.post(pygame.event.Event(DATA_THREAD_STATUS, event_data))
+    #     elif event.type == UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS:
+    #         event_data = {'status': self.status, 'info': self.state_info}
+    #         pygame.event.post(pygame.event.Event(DATA_THREAD_STATUS, event_data))
             
-        return consumed
+    #     return consumed
