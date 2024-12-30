@@ -10,16 +10,12 @@ size = [ 0, 0 ] # [width, height] in pixels # Set to 0, 0 to use borderless wind
 location = [ 0, 0 ] # [x, y] in pixels
 
 [map]
-# Current Included default maps are:
-#   KTO - Korea
-#   Balkans - Balkans
-#   Israel - Israel
-#   MidEast - Middle East 128
-# Feel free to contribute with new map 4k textures and they can be added to the release
-theatre = "KTO" # Theatre to load the map for on startup
+# Current Included default maps are listed in resources/maps/maps.json
+# Feel free to contribute with new map textures and they can be added to the release
+default_map = "Korea.jpg" # Map to load on startup
+default_map_size_km = 1024 # Size of the map in kilometers
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
 background_color = [ 50, 50, 50 ] # [r, g, b] # Background color for the map
-max_zoom_level = 50 # Maximum zoom level for the map
 # Colors that want to be switched from the Tacview default to a custom value, for better visibility.
 # Accepts the format [defaultcolor, newcolor], where the first arguments is a color String, and the second a color String or [r, g, b] array
 unit_color_switching = [

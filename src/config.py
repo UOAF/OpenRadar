@@ -40,6 +40,12 @@ class RadarConfig:
             raise TypeError(f"Config value {key} in heading {heading} in {self.config_file_path} is not castable to correct \
                               type, Expected: {requested_type}, given: {type(val)}")
             
+    def get_int(self, heading, key) -> int:
+        return int(self.get(heading, key, int)) # type: ignore
+    
+    def get_str(self, heading, key) -> str:
+        return str(self.get(heading, key, str)) # type: ignore
+            
     def set(self, heading, key, value):
         if heading not in self.config:
             self.config[heading] = tomlkit.table()
