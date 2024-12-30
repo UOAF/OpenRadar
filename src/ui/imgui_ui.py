@@ -81,7 +81,8 @@ class ImguiUserInterface:
                                     if open_recent_menu.opened:
                                         self.map_list_menu()
                                         
-                                imgui.menu_item('Clear', '', False, True)
+                                if imgui.menu_item('Clear', '', False, True)[0]:
+                                    self.map_gl.clear_map()
 
                         # Ini submenu
                         with imgui.begin_menu('Ini', True) as ini_menu:
