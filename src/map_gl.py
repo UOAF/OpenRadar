@@ -51,12 +51,7 @@ class MapGL:
 
         with open(map_dir / "maps.json") as f:
             maps = json.load(f)
-
-        # # Expand map paths to full paths
-        # for theatre, data in maps.items():
-        #     for map_entry in data["maps"]:
-        #         map_entry["path"] = map_dir / map_entry["path"]
-
+            
         return maps
 
     def load_map(self, filename, map_size_km):
