@@ -12,7 +12,7 @@ def get_glfw_dll():
 
 
 def get_opengl_dlls():
-    return os.path.join(os.path.dirname(glfw_path), 'DLLS', '*.dll')
+    return os.path.join(os.path.dirname(opengl_path), 'DLLS', '*.dll')
 
 
 a = Analysis(
