@@ -6,8 +6,8 @@ autoconnect = true # Automatically connect to the server on startup (true/false)
 password = "" # Password to use when connecting to the server (leave blank for no password "")
 
 [window]
-size = [ 0, 0 ] # [width, height] in pixels # Set to 0, 0 to use borderless window
-location = [ 0, 0 ] # [x, y] in pixels
+size = [ 1920, 1060 ] # [width, height] in pixels # Set to 0, 0 to use borderless window
+location = [ 0, 20 ] # [x, y] in pixels
 
 [map]
 # Current Included default maps are listed in resources/maps/maps.json
@@ -22,3 +22,5 @@ unit_color_switching = [
     ["Blue", [0, 225, 255]]
 ]
 
+[notepad]
+notes = "" # Notes stored in the user notepad
