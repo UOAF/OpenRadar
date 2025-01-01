@@ -15,7 +15,6 @@ import moderngl as mgl
 import config
 from ui.imgui_ui import ImguiUserInterface
 from game_state import GameState
-from ui.user_interface import UserInterface
 from trtt_client import TRTTClientThread
 from map_gl import MapGL
 
