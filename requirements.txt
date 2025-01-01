@@ -8,3 +8,4 @@ moderngl~=5.12.0
 glfw~=2.8.0
 pyglm~=2.7.3
 pillow~=11.0.0
+pygame-ce~=2.5.2
