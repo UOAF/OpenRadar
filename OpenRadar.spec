@@ -3,6 +3,7 @@
 block_cipher = None
 
 from glfw import __file__ as glfw_path
+from OpenGL import __file__ as opengl_path
 import os
 
 
@@ -10,10 +11,14 @@ def get_glfw_dll():
     return os.path.join(os.path.dirname(glfw_path), 'glfw3.dll')
 
 
+def get_opengl_dlls():
+    return os.path.join(os.path.dirname(glfw_path), 'DLLS', '*.dll')
+
+
 a = Analysis(
     ['src\\OpenRadar.py'],
     pathex=[],
-    binaries=[(get_glfw_dll(), '.')],
+    binaries=[(get_glfw_dll(), '.'), (get_opengl_dlls(), '.')],
     datas=[],
     hiddenimports=[],
     hookspath=[],
