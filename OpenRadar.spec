@@ -11,14 +11,12 @@ def get_glfw_dll():
     return os.path.join(os.path.dirname(glfw_path), 'glfw3.dll')
 
 
-def get_opengl_dlls():
-    return os.path.join(os.path.dirname(opengl_path), 'DLLS', '*.dll')
-
-
 a = Analysis(
     ['src\\OpenRadar.py'],
     pathex=[],
-    binaries=[(get_glfw_dll(), '.'), (get_opengl_dlls(), '.')],
+    binaries=[
+        (get_glfw_dll(), '.'),
+    ],
     datas=[],
     hiddenimports=[],
     hookspath=[],

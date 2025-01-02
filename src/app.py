@@ -225,8 +225,8 @@ class App:
             gl.glQueryCounter(self.end_query, timer_query.GL_TIMESTAMP)
             glfw.swap_buffers(self.window)
             glfw.poll_events()
-            gl.glGetQueryObjectui64v(self.start_query, gl.GL_QUERY_RESULT, ctypes.byref(start_time_ns))
-            gl.glGetQueryObjectui64v(self.end_query, gl.GL_QUERY_RESULT, ctypes.byref(end_time_ns))
+            # gl.glGetQueryObjectui64v(self.start_query, gl.GL_QUERY_RESULT, ctypes.byref(start_time_ns))
+            # gl.glGetQueryObjectui64v(self.end_query, gl.GL_QUERY_RESULT, ctypes.byref(end_time_ns))
             self.frame_time = end_time_ns.value - start_time_ns.value
 
         self.on_cleanup()
