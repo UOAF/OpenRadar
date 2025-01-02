@@ -1,12 +1,13 @@
 import imgui
-from imgui.integrations.pygame import PygameRenderer
+import glfw
+from imgui.integrations.glfw import GlfwRenderer
 import numpy as np
 import datetime
 
 from map_gl import MapGL
 import config
 
-from os_uils import open_file_dialog
+from os_utils import open_file_dialog
 
 
 def TextCentered(text: str):
@@ -19,7 +20,7 @@ def TextCentered(text: str):
 
 class ImguiUserInterface:
 
-    def __init__(self, size, map_gl: MapGL):
+    def __init__(self, size, window, map_gl: MapGL):
         self.size = size
         self.map_gl: MapGL = map_gl
 
@@ -27,11 +28,13 @@ class ImguiUserInterface:
         io = imgui.get_io()
         io.display_size = self.size
         io.fonts.add_font_from_file_ttf("resources/fonts/ProggyClean.ttf", 18)  #TODO make this work with the exe bundle
-        self.impl = PygameRenderer()
+        self.impl = GlfwRenderer(window, attach_callbacks=False)
         self._time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
         self._fps = 0
-        self._fps_history = [0] * 10000
+        self._fps_history = [0] * 100
+        self._frame_time = 0.0
+        self._frame_time_history = [0] * 100
 
         self.fps_window_open = False
         self.layers_window_open = False
@@ -68,10 +71,21 @@ class ImguiUserInterface:
     def time(self, time):
         self._time = time
 
+    @property
+    def frame_time(self):
+        return self._frame_time
+
+    @frame_time.setter
+    def frame_time(self, t):
+        self._frame_time = t
+
     def update(self):
         self.impl.process_inputs()
         self._fps_history.append(self._fps)
         self._fps_history.pop(0)
+
+        self._frame_time_history.append(self._frame_time)
+        self._frame_time_history.pop(0)
 
         imgui.new_frame()
         self.ui_main_menu()
@@ -183,6 +197,9 @@ class ImguiUserInterface:
         fps_history = np.array(self._fps_history, np.float32)
         imgui.plot_lines("FPS", fps_history, graph_size=(0, 100))
         imgui.text(f"FPS: {self.fps:.2f}")
+        frame_time_history = np.array(self._frame_time_history, np.float32)
+        imgui.plot_lines("Frame time", frame_time_history, graph_size=(0, 100))
+        imgui.text(f"Frame time: {np.mean(frame_time_history):.0f} ns")
         imgui.end()
 
         if not open:
