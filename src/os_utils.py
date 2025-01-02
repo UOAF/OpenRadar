@@ -1,5 +1,6 @@
 import subprocess
 import winreg
+import pathlib
 
 def open_file_dialog():
     
@@ -42,3 +43,6 @@ def get_bms_path_reg():
         return None
     # Return the latest BMS version path, this could also be used to get the current installed BMS version
     return sorted(bms_installs, key=lambda x: x[0])[-1][1]
+
+def from_path(p: pathlib.Path) -> str:
+    return str(p.absolute())
