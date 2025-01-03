@@ -4,10 +4,10 @@ from imgui.integrations.glfw import GlfwRenderer
 import numpy as np
 import datetime
 
-from map_gl import MapGL
+from draw.map_gl import MapGL
 import config
 
-from os_utils import open_file_dialog
+from util.os_utils import open_file_dialog
 
 
 def TextCentered(text: str):

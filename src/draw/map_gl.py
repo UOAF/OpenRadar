@@ -1,15 +1,15 @@
+import os
+import json
+
+import glm
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
-import os
-import bms_math
-import numpy as np
-import json
-import glm
-
-import config
 import moderngl as mgl
+import numpy as np
 from PIL import Image
 
+import config
+import util.bms_math as bms_math
 
 class Texture:
 
@@ -54,8 +54,8 @@ class MapGL:
         self.display_size = display_size
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
-        vert_shader = open(os.path.join(shader_dir, "vertex.glsl")).read()
-        frag_shader = open(os.path.join(shader_dir, "frag.glsl")).read()
+        vert_shader = open(os.path.join(shader_dir, "map_vertex.glsl")).read()
+        frag_shader = open(os.path.join(shader_dir, "map_frag.glsl")).read()
         self.shader = self._mgl_context.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
 
         self.map_size_km = 1024  # in KM

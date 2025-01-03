@@ -1,11 +1,11 @@
 import pygame
 
-from bms_ini import FalconBMSIni
-from os_utils import open_file_dialog
+from util.bms_ini import FalconBMSIni
+from util.os_utils import open_file_dialog
 
 import config
 
-from bms_math import *
+from util.bms_math import *
 
 #TODO Move to config
 THEATRE_MAPS_BUILTIN = [{"name": "Balkans", "path": "resources/maps/balkans_4k_airbases.png", "size": 1024},

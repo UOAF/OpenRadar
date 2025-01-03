@@ -4,7 +4,7 @@ import numpy as np
 
 import config
 
-from bms_math import *
+from util.bms_math import *
 from typing import Callable, Any
 from acmi_parse import ACMIObject
 from pygame_utils import draw_dashed_line
