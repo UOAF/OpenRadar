@@ -1,7 +1,7 @@
 import configparser
 import pygame
 
-from bms_math import BMS_FT_PER_M, world_to_canvas
+from util.bms_math import BMS_FT_PER_M, world_to_canvas
 
 BMS_NUM_LINES = 4
 BMS_LINE_POINTS = 6

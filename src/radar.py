@@ -7,7 +7,7 @@ from map import Map
 
 from game_objects import *
 
-from bms_math import METERS_TO_FT
+from util.bms_math import METERS_TO_FT
 from messages import RADAR_SERVER_CONNECTED, RADAR_SERVER_DISCONNECTED
 from ui.context_menu import ContextMenu
 

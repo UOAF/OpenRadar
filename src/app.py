@@ -1,9 +1,9 @@
 import os
 import sys
 import queue
-from os_utils import from_path
 import ctypes
 
+from arrow import get
 import glfw
 import imgui
 import glm
@@ -11,12 +11,18 @@ from OpenGL.GL.ARB import timer_query
 from PIL import Image
 import OpenGL.GL as gl
 import moderngl as mgl
+import numpy as np
 
 import config
 from ui.imgui_ui import ImguiUserInterface
 from game_state import GameState
 from trtt_client import TRTTClientThread
-from map_gl import MapGL
+from draw.map_gl import MapGL
+
+from draw.polygon import PolygonRenderer
+from util.os_utils import from_path
+
+from util.bms_math import THEATRE_DEFAULT_SIZE_FT
 
 VSYNC_ENABLE = True
 MOUSEDRAGBUTTON = 1
@@ -116,6 +122,23 @@ class App:
 
         self._running = True
         self._map_gl = MapGL(self.size, self.mgl_ctx)
+        self._polygon_renderer = PolygonRenderer(self.size, self.mgl_ctx, self._map_gl)
+        
+        ### Test code for drawing a circle
+        def get_circle_points(radius, num_points):
+            # Generate angles evenly spaced around the circle
+            angles = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
+            
+            # Calculate x and y coordinates
+            x = radius * np.cos(angles)
+            y = radius * np.sin(angles)
+            
+            # Combine into pairs of (x, y) points
+            points = np.column_stack((x, y))
+            return points
+        self.circle = get_circle_points(THEATRE_DEFAULT_SIZE_FT//4, 100)
+        ### End test
+        
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl)
 
     def handle_error(self, err, desc):
@@ -197,6 +220,10 @@ class App:
         self.mgl_ctx.clear(.2, .3, .3)
 
         self._map_gl.on_render()
+        
+        ### Test code for drawing a circle
+        self._polygon_renderer.draw(self.circle, (1.0, 0.0, 0.0, 1.0), 200)
+        
         self._ImguiUI.render()
 
     def on_cleanup(self):
