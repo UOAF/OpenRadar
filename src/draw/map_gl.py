@@ -76,10 +76,6 @@ class MapGL:
 
     def load_map(self, filename, map_size_km):
 
-        print(f"Loading map {filename} {map_size_km}")
-
-        print(f"Map dir: {map_dir/ filename}")
-
         if os.path.isfile(filename):
             texture_path = filename
         elif os.path.isfile(map_dir / filename):
@@ -111,7 +107,6 @@ class MapGL:
     def load_default_map(self):
         config_default_map = config.app_config.get_str("map", "default_map")
         config_default_map_size = config.app_config.get_int("map", "default_map_size_km")
-        print(f"Loading default map {config_default_map} {config_default_map_size}")
         self.load_map(config_default_map, config_default_map_size)
 
     def default_grey_map(self):
