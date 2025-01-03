@@ -43,5 +43,6 @@ class PolygonRenderer:
         ssbo = self._mgl_context.buffer(vertices.astype('f4').tobytes())
         ssbo.bind_to_storage_buffer(0)
         vao = self._mgl_context.vertex_array(self.program, [])
+        vao.render(mgl.TRIANGLES, vertices=vertices.size*6)
 
         

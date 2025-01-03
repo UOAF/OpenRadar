@@ -132,11 +132,21 @@ class App:
             # Calculate x and y coordinates
             x = radius * np.cos(angles)
             y = radius * np.sin(angles)
+            z = np.zeros(num_points)
+            w = np.ones(num_points)
             
             # Combine into pairs of (x, y) points
-            points = np.column_stack((x, y))
+            points = np.column_stack((x, y, z, w))
+            
+            #insert the last point twice at the beginning and the first point twice at the end to close the circle
+            first_pt = points[0]
+            last_pt = points[-1]
+            points = np.append(points, [first_pt]*2, axis=0)
+            points = np.insert(points, 0, [last_pt]*2, axis=0)
+
             return points
-        self.circle = get_circle_points(THEATRE_DEFAULT_SIZE_FT//4, 100)
+        self.circle = get_circle_points(1000000, 100)
+        
         ### End test
         
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl)
@@ -222,7 +232,7 @@ class App:
         self._map_gl.on_render()
         
         ### Test code for drawing a circle
-        self._polygon_renderer.draw(self.circle, (1.0, 0.0, 0.0, 1.0), 200)
+        self._polygon_renderer.draw(self.circle, (1.0, 0.0, 0.0, 1.0), 20)
         
         self._ImguiUI.render()
 
