@@ -5,6 +5,9 @@ layout(std430, binding = 0) buffer TVertex
    vec4 vertex[]; 
 };
 
+in vec2 i_offset; // This varies per instance 
+in vec2 i_scale; // This varies per instance
+
 uniform mat4  u_mvp;
 uniform vec2  u_resolution;
 uniform float u_thickness;
@@ -17,7 +20,9 @@ void main()
     vec4 va[4];
     for (int i=0; i<4; ++i)
     {
-        va[i] = u_mvp * vertex[line_i+i];
+        vec4 offset = vec4(i_offset, 0, 0);
+        vec4 scale = vec4(i_scale, 1, 1);
+        va[i] = u_mvp * ((scale * vertex[line_i+i]) + offset);
         va[i].xyz /= va[i].w;
         va[i].xy = (va[i].xy + 1.0) * 0.5 * u_resolution;
     }
