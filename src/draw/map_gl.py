@@ -2,14 +2,13 @@ import os
 import json
 
 import glm
-import OpenGL.GL as gl
-import OpenGL.GLU as glu
 import moderngl as mgl
 import numpy as np
 from PIL import Image
 
 import config
 import util.bms_math as bms_math
+from draw.scene import Scene
 
 class Texture:
 
@@ -49,23 +48,19 @@ map_dir = config.bundle_dir / "resources/maps"
 
 class MapGL:
 
-    def __init__(self, display_size, mgl_context: mgl.Context):
+    def __init__(self, display_size, scene: Scene, mgl_context: mgl.Context):
         self._mgl_context = mgl_context
         self.display_size = display_size
+        self.scene = scene
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
         vert_shader = open(os.path.join(shader_dir, "map_vertex.glsl")).read()
         frag_shader = open(os.path.join(shader_dir, "map_frag.glsl")).read()
         self.shader = self._mgl_context.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
 
-        self.map_size_km = 1024  # in KM
-        self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
-        self._pan_screen = glm.vec2(0.0)
-        self.zoom_level = 1.0
+        self.map_size_ft = bms_math.THEATRE_DEFAULT_SIZE_FT
 
         self.load_default_map()
-
-        self.resize(self.display_size)
 
     def list_maps(self):
 
@@ -93,8 +88,7 @@ class MapGL:
 
         self.mesh = Mesh(self.shader, quad.astype('f4'), self.texture.texture)
 
-        self.map_size_km = map_size_km
-        self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
+        self.map_size_ft = map_size_km * bms_math.BMS_FT_PER_KM
 
         config.app_config.set("map", "default_map", str(filename))
         config.app_config.set("map", "default_map_size_km", map_size_km)
@@ -112,76 +106,15 @@ class MapGL:
     def default_grey_map(self):
         gray_pixel = bytearray([0x80, 0x80, 0x80, 0xFF])
         self.texture = Texture((1, 1), gray_pixel)
-        self.map_size_km = 1024
-        self.map_size_ft = self.map_size_km * bms_math.BMS_FT_PER_KM
+
+        self.map_size_ft = bms_math.THEATRE_DEFAULT_SIZE_FT
         config.app_config.set("map", "default_map", "none")
         config.app_config.set("map", "default_map_size_km", 1024)
 
-    def resize(self, display_size):
-        ### This is the function that needs to be called when the window is resized
-        self.display_size = display_size
-        gl.glViewport(0, 0, *display_size)
-        self.camera = self.make_camera_matrix()
-
-    def make_camera_matrix(self):
-        w, h = self.display_size
-        aspect = w / h
-
-        proj = glm.ortho(0.0, aspect, 0.0, 1.0, -1.0, 1.0)
-        scale = 1 / self.map_size_ft
-        scale = glm.mat4(scale)
-        scale[2][2] = scale[3][3] = 1.0
-        scaled = proj * scale
-
-        test_vec = glm.vec4(3358699.50, 3358699.50, 0.0, 1.0)
-        return scaled
-
     def on_render(self):
-        half_map_size_ft = self.map_size_ft / 2
+
         scale = self.map_size_ft
-        self.shader['camera'].write(self.camera)
-        _, h = self.display_size
-        pan_scale = h / self.map_size_ft
-        pan = self._pan_screen / pan_scale
+        self.shader['camera'].write(self.scene.get_mvp())
 
-        self.mesh.render(scale * self.zoom_level, (pan.x, pan.y, 0.0))
-
-    def pan(self, dx_screen, dy_screen):
-        delta = glm.vec2(dx_screen, -dy_screen)
-        self._pan_screen += delta
-
-    def screen_to_world(self, point_screen: glm.vec2):
-        w, h = self.display_size
-        ratio = h / self.map_size_ft
-        point_screen.y = h - point_screen.y
-        pan = self._pan_screen
-        point_screen_with_pan = point_screen - pan
-        result = point_screen_with_pan / ratio / self.zoom_level
-        return result
-
-    def world_to_screen(self, point_world: glm.vec2):
-        w, h = self.display_size
-        ratio = h / self.map_size_ft
-
-        point_screen_with_pan = point_world * ratio * self.zoom_level
-
-        pan = glm.vec2(self._pan_screen)
-        pan.y *= -1.0
-        point_screen = point_screen_with_pan + pan
-        point_screen.y = h - point_screen.y
-        return point_screen
-
-    def zoom_at(self, mouse_pos, factor):
-        # adjust the pan so that the world position of the mouse is preserved before and after zoom
-        mouse_world_old = self.screen_to_world(glm.vec2(*mouse_pos))
-
-        self.zoom_level += (factor / 10)
-        self.zoom_level = max(0.05, self.zoom_level)
-
-        mouse_world_new = self.screen_to_world(glm.vec2(*mouse_pos))
-        delta_world = mouse_world_new - mouse_world_old
-        w, h = self.display_size
-        ratio = h / self.map_size_ft
-        delta_screen = delta_world * ratio * self.zoom_level
-        x, y = delta_screen
-        self._pan_screen += glm.vec2(x, y)
+        # self.mesh.render(scale * self.zoom_level, (pan.x, pan.y, 0.0))
+        self.mesh.render(scale, (0.0, 0.0, 0.0))
