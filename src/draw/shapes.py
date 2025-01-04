@@ -77,3 +77,4 @@ def get_semicircle_points(radius, num_points):
 circle = get_circle_points(1, 100)
 square = get_square_points()
 semicircle = get_semicircle_points(1, 50)
+diamond = get_diamond_points()

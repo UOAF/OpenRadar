@@ -5,6 +5,7 @@ import numpy as np
 import datetime
 
 from draw.map_gl import MapGL
+from draw.annotations import MapAnnotations
 import config
 
 from util.os_utils import open_file_dialog
@@ -17,12 +18,12 @@ def TextCentered(text: str):
     imgui.set_cursor_pos_y((window_height - text_height) * 0.5)
     imgui.text(text)
 
-
 class ImguiUserInterface:
 
-    def __init__(self, size, window, map_gl: MapGL):
+    def __init__(self, size, window, map_gl: MapGL, annotations: MapAnnotations):
         self.size = size
         self.map_gl: MapGL = map_gl
+        self.annotations = annotations
 
         imgui.create_context()
         io = imgui.get_io()
@@ -122,9 +123,9 @@ class ImguiUserInterface:
                         with imgui.begin_menu('Ini', True) as ini_menu:
                             if ini_menu.opened:
                                 if imgui.menu_item('Load', None, False, True)[0]:
-                                    print("Load ini")
+                                    self.annotations.load_ini(open_file_dialog())
                                 if imgui.menu_item('Clear', '', False, True)[0]:
-                                    print("Clear ini")
+                                    self.annotations.clear()
 
                         if imgui.menu_item('Settings', None, self.settings_window_open, True)[0]:
                             self.settings_window_open = not self.settings_window_open

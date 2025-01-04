@@ -3,7 +3,6 @@ import sys
 import queue
 import ctypes
 
-from arrow import get
 import glfw
 import imgui
 import glm
@@ -19,6 +18,7 @@ from game_state import GameState
 from trtt_client import TRTTClientThread
 from draw.map_gl import MapGL
 from draw.scene import Scene
+from draw.annotations import MapAnnotations
 
 from draw.polygon import PolygonRenderer
 import draw.shapes as shapes
@@ -29,7 +29,6 @@ from util.bms_math import THEATRE_DEFAULT_SIZE_FT
 VSYNC_ENABLE = True
 MOUSEDRAGBUTTON = 1
 MOUSEBRAABUTTON = 0
-
 
 class Clock:
 
@@ -125,10 +124,12 @@ class App:
         self.size = self.width, self.height = config_size
         self.scene = Scene(self.size, self.mgl_ctx)
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
-        
+
         self._polygon_renderer = PolygonRenderer(self.mgl_ctx, self.scene)
+        self._annotations =  MapAnnotations(self._polygon_renderer, self.mgl_ctx)
+        self._annotations.load_ini("Data/test.ini")  # type: ignore
         
-        self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl)
+        self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations)
 
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
@@ -210,8 +211,8 @@ class App:
 
         self._map_gl.on_render()
         
-
-        self._polygon_renderer.draw(shapes.semicircle, (1.0, 0.0, 0.0, 1.0), 20)
+        self._polygon_renderer.test_draw(shapes.semicircle, (1.0, 0.0, 0.0, 1.0), 20)
+        self._annotations.draw_circles()
         
         self._ImguiUI.render()
 

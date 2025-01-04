@@ -1,5 +1,5 @@
 import configparser
-import pygame
+# import pygame
 
 from util.bms_math import BMS_FT_PER_M, world_to_canvas
 
@@ -14,7 +14,7 @@ class FalconBMSIni:
         self.lines = []
         self.threats = []
         self.load()
-        self.font = pygame.font.SysFont("Arial", 18) #TODO: render this in the screen surface to not have variable font size with map zoom
+        # self.font = pygame.font.SysFont("Arial", 18) #TODO: render this in the screen surface to not have variable font size with map zoom
 
     def load(self):
         with open(self.file_path, "r") as f:
@@ -26,43 +26,43 @@ class FalconBMSIni:
         self.get_stpt_lines()
         self.get_ppt_threats()
         
-    def get_surf(self, size, color=(255, 255, 0)) -> pygame.Surface:
+    # def get_surf(self, size, color=(255, 255, 0)) -> pygame.Surface:
         
-        surface = pygame.Surface(size, pygame.SRCALPHA)
-        surface.fill((0, 0, 0, 0))
+    #     surface = pygame.Surface(size, pygame.SRCALPHA)
+    #     surface.fill((0, 0, 0, 0))
         
-        for line in self.lines:
-            self.draw_line(surface, line, color)
+    #     for line in self.lines:
+    #         self.draw_line(surface, line, color)
             
-        for threat in self.threats:
-            self.draw_threat(surface, threat, color)
+    #     for threat in self.threats:
+    #         self.draw_threat(surface, threat, color)
         
-        return surface
+    #     return surface
         
-    def draw_line(self, surface, line, color):
+    # def draw_line(self, surface, line, color):
         
-        for i in range(0, len(line)-1):
-            if (line[i][0] < 1 or line[i+1][0] < 1):
-                continue
+    #     for i in range(0, len(line)-1):
+    #         if (line[i][0] < 1 or line[i+1][0] < 1):
+    #             continue
             
-            point1 = world_to_canvas(line[i], surface.get_size())
-            point2 = world_to_canvas(line[i+1], surface.get_size())
+    #         point1 = world_to_canvas(line[i], surface.get_size())
+    #         point2 = world_to_canvas(line[i+1], surface.get_size())
         
-            pygame.draw.line(surface, color, point1, point2, width=2)
+    #         pygame.draw.line(surface, color, point1, point2, width=2)
         
-    def draw_threat(self, surface, threat, color):
+    # def draw_threat(self, surface, threat, color):
         
-        threat_pos = world_to_canvas(threat[0], surface.get_size())
-        threat_radius = world_to_canvas((threat[1], 0), surface.get_size())[0]
+    #     threat_pos = world_to_canvas(threat[0], surface.get_size())
+    #     threat_radius = world_to_canvas((threat[1], 0), surface.get_size())[0]
         
-        pygame.draw.circle(surface, color, threat_pos, int(threat_radius), width=3)
+    #     pygame.draw.circle(surface, color, threat_pos, int(threat_radius), width=3)
         
-        threat_text = self.font.render(f"{str(threat[2])}", True, color)
+    #     threat_text = self.font.render(f"{str(threat[2])}", True, color)
 
-        textrect = pygame.Rect((0,0),threat_text.get_size())
-        textrect.center = threat_pos
+    #     textrect = pygame.Rect((0,0),threat_text.get_size())
+    #     textrect.center = threat_pos
 
-        surface.blit(threat_text, textrect)
+    #     surface.blit(threat_text, textrect)
         
     def print(self):
         
