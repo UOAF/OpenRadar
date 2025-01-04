@@ -18,8 +18,10 @@ from ui.imgui_ui import ImguiUserInterface
 from game_state import GameState
 from trtt_client import TRTTClientThread
 from draw.map_gl import MapGL
+from draw.scene import Scene
 
 from draw.polygon import PolygonRenderer
+import draw.shapes as shapes
 from util.os_utils import from_path
 
 from util.bms_math import THEATRE_DEFAULT_SIZE_FT
@@ -94,9 +96,6 @@ class App:
         self.start_query = queries[0]
         self.end_query = queries[1]
 
-        self.mgl_ctx = mgl.create_context()
-        self.size = self.width, self.height = config_size
-
         # Create the Tacview RT Relemetry client
         self.data_queue: queue.Queue[str] = queue.Queue()
 
@@ -121,33 +120,13 @@ class App:
             assert (result is None)
 
         self._running = True
-        self._map_gl = MapGL(self.size, self.mgl_ctx)
-        self._polygon_renderer = PolygonRenderer(self.size, self.mgl_ctx, self._map_gl)
         
-        ### Test code for drawing a circle
-        def get_circle_points(radius, num_points):
-            # Generate angles evenly spaced around the circle
-            angles = np.linspace(0, 2 * np.pi, num_points, endpoint=False)
-            
-            # Calculate x and y coordinates
-            x = radius * np.cos(angles)
-            y = radius * np.sin(angles)
-            z = np.zeros(num_points)
-            w = np.ones(num_points)
-            
-            # Combine into pairs of (x, y) points
-            points = np.column_stack((x, y, z, w))
-            
-            #insert the last point twice at the beginning and the first point twice at the end to close the circle
-            first_pt = points[0]
-            last_pt = points[-1]
-            points = np.append(points, [first_pt]*2, axis=0)
-            points = np.insert(points, 0, [last_pt]*2, axis=0)
-
-            return points
-        self.circle = get_circle_points(1000000, 100)
+        self.mgl_ctx = mgl.create_context()
+        self.size = self.width, self.height = config_size
+        self.scene = Scene(self.size, self.mgl_ctx)
+        self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
         
-        ### End test
+        self._polygon_renderer = PolygonRenderer(self.mgl_ctx, self.scene)
         
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl)
 
@@ -162,7 +141,7 @@ class App:
 
     def handle_window_resized(self, window, width, height):
         self.size = self.width, self.height = width, height
-        self._map_gl.resize(self.size)
+        self.scene.resize(self.size)
         config.app_config.set("window", "size", self.size)
         self._ImguiUI.impl.resize_callback(window, width, height)
 
@@ -172,7 +151,7 @@ class App:
             return
         if scroll_y != 0.0:
             pos = glfw.get_cursor_pos(self.window)
-            self._map_gl.zoom_at(pos, scroll_y)
+            self.scene.zoom_at(pos, scroll_y)
 
     def handle_mouse_button(self, window, button, action, mods):
         if imgui.get_io().want_capture_mouse:
@@ -199,7 +178,7 @@ class App:
         elif button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False
             p_screen = glm.vec2(*pos)
-            p = self._map_gl.screen_to_world(glm.vec2(*pos))
+            p = self.scene.screen_to_world(glm.vec2(*pos))
 
     def handle_mouse_motion(self, window, xpos, ypos):
         if imgui.get_io().want_capture_mouse:
@@ -208,7 +187,7 @@ class App:
         if self.mouseDragDown:  # dragging
             difX = xpos - self._startPan[0]
             difY = ypos - self._startPan[1]
-            self._map_gl.pan(difX, difY)
+            self.scene.pan(difX, difY)
             self._startPan = (xpos, ypos)
         # if self.mouseBRAADown:
         #     self._radar.braa(True, self._startBraa, event.pos)
@@ -231,8 +210,8 @@ class App:
 
         self._map_gl.on_render()
         
-        ### Test code for drawing a circle
-        self._polygon_renderer.draw(self.circle, (1.0, 0.0, 0.0, 1.0), 20)
+
+        self._polygon_renderer.draw(shapes.semicircle, (1.0, 0.0, 0.0, 1.0), 20)
         
         self._ImguiUI.render()
 
