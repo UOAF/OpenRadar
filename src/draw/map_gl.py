@@ -92,6 +92,7 @@ class MapGL:
 
         config.app_config.set("map", "default_map", str(filename))
         config.app_config.set("map", "default_map_size_km", map_size_km)
+        self.scene.set_size(self.map_size_ft)
 
     def clear_map(self):
         if self.texture is not None:
@@ -109,7 +110,8 @@ class MapGL:
 
         self.map_size_ft = bms_math.THEATRE_DEFAULT_SIZE_FT
         config.app_config.set("map", "default_map", "none")
-        config.app_config.set("map", "default_map_size_km", 1024)
+        config.app_config.set("map", "default_map_size_km", bms_math.THEATRE_DEFAULT_SIZE_KM)
+        self.scene.set_size(self.map_size_ft)
 
     def on_render(self):
 

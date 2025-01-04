@@ -7,10 +7,10 @@ layout(std430, binding = 0) buffer TVertex
 
 in vec2 i_offset; // This varies per instance 
 in vec2 i_scale; // This varies per instance
+in float i_width; // This varies per instance
 
 uniform mat4  u_mvp;
 uniform vec2  u_resolution;
-uniform float u_thickness;
 
 void main()
 {
@@ -37,7 +37,7 @@ void main()
         vec2 v_miter = normalize(nv_line + vec2(-v_pred.y, v_pred.x));
 
         pos = va[1];
-        pos.xy += v_miter * u_thickness * (tri_i == 1 ? -0.5 : 0.5) / dot(v_miter, nv_line);
+        pos.xy += v_miter * i_width * (tri_i == 1 ? -0.5 : 0.5) / dot(v_miter, nv_line);
     }
     else
     {
@@ -45,7 +45,7 @@ void main()
         vec2 v_miter = normalize(nv_line + vec2(-v_succ.y, v_succ.x));
 
         pos = va[2];
-        pos.xy += v_miter * u_thickness * (tri_i == 5 ? 0.5 : -0.5) / dot(v_miter, nv_line);
+        pos.xy += v_miter * i_width * (tri_i == 5 ? 0.5 : -0.5) / dot(v_miter, nv_line);
     }
 
     pos.xy = pos.xy / u_resolution * 2.0 - 1.0;
