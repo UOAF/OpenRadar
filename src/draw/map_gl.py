@@ -58,7 +58,7 @@ class MapGL:
         frag_shader = open(os.path.join(shader_dir, "map_frag.glsl")).read()
         self.shader = self._mgl_context.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
 
-        self.map_size_ft = bms_math.THEATRE_DEFAULT_SIZE_FT
+        self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
 
         self.load_default_map()
 
@@ -88,11 +88,11 @@ class MapGL:
 
         self.mesh = Mesh(self.shader, quad.astype('f4'), self.texture.texture)
 
-        self.map_size_ft = map_size_km * bms_math.BMS_FT_PER_KM
+        self.map_size_m = map_size_km * 1000
 
         config.app_config.set("map", "default_map", str(filename))
         config.app_config.set("map", "default_map_size_km", map_size_km)
-        self.scene.set_size(self.map_size_ft)
+        self.scene.set_size(self.map_size_m)
 
     def clear_map(self):
         if self.texture is not None:
@@ -108,14 +108,14 @@ class MapGL:
         gray_pixel = bytearray([0x80, 0x80, 0x80, 0xFF])
         self.texture = Texture((1, 1), gray_pixel)
 
-        self.map_size_ft = bms_math.THEATRE_DEFAULT_SIZE_FT
+        self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
         config.app_config.set("map", "default_map", "none")
         config.app_config.set("map", "default_map_size_km", bms_math.THEATRE_DEFAULT_SIZE_KM)
-        self.scene.set_size(self.map_size_ft)
+        self.scene.set_size(self.map_size_m)
 
     def on_render(self):
 
-        scale = self.map_size_ft
+        scale = self.map_size_m
         self.shader['camera'].write(self.scene.get_mvp())
 
         # self.mesh.render(scale * self.zoom_level, (pan.x, pan.y, 0.0))

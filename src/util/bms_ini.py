@@ -88,8 +88,8 @@ class FalconBMSIni:
             self.lines.append([None] * BMS_LINE_POINTS)
             for j in range(0, BMS_LINE_POINTS):
                 v,u = self.data["STPT"][f"linestpt_{i*BMS_LINE_POINTS+j}"].split(",")[0:2]
-                x = float(u)
-                y = float(v)
+                x = float(u) / BMS_FT_PER_M
+                y = float(v) / BMS_FT_PER_M
                 self.lines[i][j] = x, y
 
     def get_ppt_threats(self):
@@ -99,10 +99,10 @@ class FalconBMSIni:
         self.threats = []
         for i in range(0, BMS_NUM_THREATS):
             v,u,alt,radius,name = self.data["STPT"][f"ppt_{i}"].split(",")
-            x = float(u)
-            y = float(v)
+            x = float(u) / BMS_FT_PER_M
+            y = float(v) / BMS_FT_PER_M
             if float(radius) < 1: radius = 0
-            r = float(radius)
+            r = float(radius) / BMS_FT_PER_M
             name = name.strip()
             
             if x > 1 and y > 1:

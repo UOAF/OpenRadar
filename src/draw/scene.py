@@ -11,7 +11,8 @@ class Scene:
 
         self.display_size = display_size
         self.mgl_context = mgl_context
-        self.map_size_ft = bms_math.THEATRE_DEFAULT_SIZE_FT
+
+        self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
         self._pan_screen = glm.vec2(0.0)
         self.zoom_level = 1.0
         self.mvp = glm.mat4(1.0)
@@ -25,7 +26,7 @@ class Scene:
         return self.mvp
     
     def set_size(self, scene_size):
-        self.map_size_ft = scene_size
+        self.map_size_m = scene_size
         self.make_camera_matrix()      
         
     def resize(self, display_size):
@@ -39,7 +40,7 @@ class Scene:
         aspect = w / h
         projection_matrix = glm.ortho(0.0, aspect, 0.0, 1.0, -1.0, 1.0)
      
-        scale = 1 / self.map_size_ft
+        scale = 1 / self.map_size_m
         scale = glm.mat4(scale)
         scale[2][2] = scale[3][3] = 1.0
         projection_mat_scaled = projection_matrix * scale
@@ -61,7 +62,7 @@ class Scene:
         
     def screen_to_world(self, point_screen: glm.vec2):
         w, h = self.display_size
-        ratio = h / self.map_size_ft
+        ratio = h / self.map_size_m
         point_screen.y = h - point_screen.y
         pan = self._pan_screen
         point_screen_with_pan = point_screen - pan
@@ -70,12 +71,12 @@ class Scene:
     
     def screen_to_world_distance(self, distance_screen: glm.vec2|float):
         w, h = self.display_size
-        ratio = h / self.map_size_ft
+        ratio = h / self.map_size_m
         return distance_screen / ratio / self.zoom_level
     
     def world_to_screen(self, point_world: glm.vec2):
         w, h = self.display_size
-        ratio = h / self.map_size_ft
+        ratio = h / self.map_size_m
 
         point_screen_with_pan = point_world * ratio * self.zoom_level
 
@@ -95,7 +96,7 @@ class Scene:
         mouse_world_new = self.screen_to_world(glm.vec2(*mouse_pos))
         delta_world = mouse_world_new - mouse_world_old
         w, h = self.display_size
-        ratio = h / self.map_size_ft
+        ratio = h / self.map_size_m
         delta_screen = delta_world * ratio * self.zoom_level
         x, y = delta_screen
         self._pan_screen += glm.vec2(x, y)
