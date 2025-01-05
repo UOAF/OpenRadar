@@ -8,9 +8,12 @@ layout(std430, binding = 0) buffer TVertex
 in vec2 i_offset; // This varies per instance 
 in vec2 i_scale; // This varies per instance
 in float i_width; // This varies per instance
+in vec4 i_color; // This varies per instance
 
 uniform mat4  u_mvp;
 uniform vec2  u_resolution;
+
+varying vec4 v_color;
 
 void main()
 {
@@ -51,4 +54,6 @@ void main()
     pos.xy = pos.xy / u_resolution * 2.0 - 1.0;
     pos.xyz *= pos.w;
     gl_Position = pos;
+
+    v_color = i_color;
 }

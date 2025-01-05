@@ -15,12 +15,16 @@ location = [ 0, 20 ] # [x, y] in pixels
 default_map = "Korea.jpg" # Map to load on startup
 default_map_size_km = 1024 # Size of the map in kilometers
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
-background_color = [ 50, 50, 50 ] # [r, g, b] # Background color for the map
+background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
 # Colors that want to be switched from the Tacview default to a custom value, for better visibility.
 # Accepts the format [defaultcolor, newcolor], where the first arguments is a color String, and the second a color String or [r, g, b] array
 unit_color_switching = [
     ["Blue", [0, 225, 255]]
 ]
+
+[annotations]
+ini_width = 10 # Width ini file annotations are drawn in pixels
+ini_color = [ 255, 255, 0 ] # [r, g, b] # Color of the ini file annotations
 
 [notepad]
 notes = "" # Notes stored in the user notepad

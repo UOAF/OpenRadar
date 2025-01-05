@@ -207,13 +207,12 @@ class App:
         """
         Renders the application
         """
-        self.mgl_ctx.clear(.2, .3, .3)
+        self.mgl_ctx.clear(*config.app_config.get_color_normalized("map", "background_color"))
 
         self._map_gl.on_render()
         
-        self._polygon_renderer.test_draw(shapes.semicircle, (1.0, 0.0, 0.0, 1.0), 20)
-        self._annotations.draw_circles()
-        
+        self._annotations.draw()
+
         self._ImguiUI.render()
 
     def on_cleanup(self):

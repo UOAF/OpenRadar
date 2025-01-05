@@ -64,6 +64,21 @@ class RadarConfig:
 
     def get_list_int(self, heading, key) -> list[int]:
         return list(self.get_list(heading, key, int))
+    
+    def get_color(self, heading, key) -> tuple[int, int, int]:
+        if len(self.get_list_int(heading, key)) != 3:
+            raise ValueError(f"Color value {key} in heading {heading} in {self.config_file_path} is not a valid color")
+        return tuple(self.get_list_int(heading, key)) # type: ignore
+    
+    def get_color_normalized(self, heading, key) -> tuple[float, float, float]:
+        color = self.get_color(heading, key)
+        return tuple([c / 255 for c in color]) # type: ignore
+    
+    def set_color_from_normalized(self, heading, key, color: tuple[float, float, float]):
+        if len(color) != 3:
+            raise ValueError(f"Color value {key} in heading {heading} in {self.config_file_path} is not a valid color")
+        color = tuple([int(c * 255) for c in color]) # type: ignore
+        self.set(heading, key, color)
 
     def set(self, heading, key, value):
         if heading not in self.config:
