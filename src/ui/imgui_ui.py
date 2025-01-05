@@ -217,16 +217,18 @@ class ImguiUserInterface:
                 self.settings_tab_map()
                 imgui.end_tab_item()
             if imgui.begin_tab_item("Annotations").selected:
+                self.settings_tab_annotations()
                 imgui.end_tab_item()
         imgui.end_tab_bar()
         imgui.end()
 
         if not open:
             self.settings_window_open = False
+            config.app_config.save()
             
     def settings_tab_map(self):
         map_alpha = config.app_config.get_int("map", "map_alpha")
-        map_background_color = [float(c / 255) for c in config.app_config.get_list_int("map", "background_color")]
+        map_background_color = config.app_config.get_color_normalized("map", "background_color")
         
         bg_color_picker = imgui.color_edit3("Background Color", *map_background_color)
         imgui.same_line()
@@ -243,7 +245,20 @@ class ImguiUserInterface:
         if alpha_slider[0]:
             config.app_config.set("map", "map_alpha", alpha_slider[1])
         if bg_color_picker[0]:
-            config.app_config.set("map", "background_color", [int(c * 255) for c in bg_color_picker[1]])
+            config.app_config.set_color_from_normalized("map", "background_color", bg_color_picker[1])
+            
+    def settings_tab_annotations(self):
+        
+        ini_width = config.app_config.get_int("annotations", "ini_width")
+        ini_color = config.app_config.get_color_normalized("annotations", "ini_color")
+        
+        ini_color_picker = imgui.color_edit3("Ini Color", *ini_color)
+        ini_width_slider = imgui.slider_int("Ini Line Width", ini_width, 1, 40)
+        
+        if ini_width_slider[0]:
+            config.app_config.set("annotations", "ini_width", ini_width_slider[1])
+        if ini_color_picker[0]:
+            config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1])
 
     def layers_window(self):
         if not self.layers_window_open:

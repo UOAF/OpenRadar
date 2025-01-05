@@ -1,5 +1,6 @@
 import configparser
 # import pygame
+import os
 
 from util.bms_math import BMS_FT_PER_M, world_to_canvas
 
@@ -17,6 +18,9 @@ class FalconBMSIni:
         # self.font = pygame.font.SysFont("Arial", 18) #TODO: render this in the screen surface to not have variable font size with map zoom
 
     def load(self):
+        if not os.path.isfile(self.file_path):
+            print(f"File {self.file_path} not found")
+            return
         with open(self.file_path, "r") as f:
             data = f.read()
             
@@ -84,8 +88,8 @@ class FalconBMSIni:
             self.lines.append([None] * BMS_LINE_POINTS)
             for j in range(0, BMS_LINE_POINTS):
                 v,u = self.data["STPT"][f"linestpt_{i*BMS_LINE_POINTS+j}"].split(",")[0:2]
-                x = float(u) / BMS_FT_PER_M
-                y = float(v) / BMS_FT_PER_M
+                x = float(u)
+                y = float(v)
                 self.lines[i][j] = x, y
 
     def get_ppt_threats(self):
@@ -95,10 +99,10 @@ class FalconBMSIni:
         self.threats = []
         for i in range(0, BMS_NUM_THREATS):
             v,u,alt,radius,name = self.data["STPT"][f"ppt_{i}"].split(",")
-            x = float(u) / BMS_FT_PER_M
-            y = float(v) / BMS_FT_PER_M
+            x = float(u)
+            y = float(v)
             if float(radius) < 1: radius = 0
-            r = float(radius) / BMS_FT_PER_M
+            r = float(radius)
             name = name.strip()
             
             if x > 1 and y > 1:

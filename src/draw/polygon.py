@@ -36,33 +36,33 @@ class PolygonRenderer:
 
         self.program = self._mgl_context.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
 
-    def test_draw(self, vertices: Iterable, color: tuple[float, float, float, float], width: float):
+    # def test_draw(self, vertices: Iterable, color: tuple[float, float, float, float], width: float):
 
-        offsets = np.array([(100000, 100000), (200000, 200000), (300000, 300000)], dtype=np.float32)
-        scales = np.array([(364567, 364567), (121522, 121522), (48608.9, 48608.9)],
-                          dtype=np.float32)
-        thickness = np.array([5, 10, 20], dtype=np.float32)
-        vertices = np.array(vertices, dtype=np.float32)
-        colors = np.array([(0.0, 0.0, 1.0, 1.0), color, color], dtype=np.float32)
-        widths_px = np.array([width, width, width], dtype=np.float32)
+    #     offsets = np.array([(100000, 100000), (200000, 200000), (300000, 300000)], dtype=np.float32)
+    #     scales = np.array([(364567, 364567), (121522, 121522), (48608.9, 48608.9)],
+    #                       dtype=np.float32)
+    #     thickness = np.array([5, 10, 20], dtype=np.float32)
+    #     vertices = np.array(vertices, dtype=np.float32)
+    #     colors = np.array([(0.0, 0.0, 1.0, 1.0), color, color], dtype=np.float32)
+    #     widths_px = np.array([width, width, width], dtype=np.float32)
         
-        self.program['u_mvp'].write(self.scene.get_mvp())
-        self.program['u_resolution'] = self.scene.display_size
+    #     self.program['u_mvp'].write(self.scene.get_mvp())
+    #     self.program['u_resolution'] = self.scene.display_size
 
-        ssbo = self._mgl_context.buffer(vertices.astype('f4').tobytes())
-        ssbo.bind_to_storage_buffer(0)
+    #     ssbo = self._mgl_context.buffer(vertices.astype('f4').tobytes())
+    #     ssbo.bind_to_storage_buffer(0)
         
-        offset_buf = self._mgl_context.buffer(np.array(offsets, dtype=np.float32))
-        scales_buf = self._mgl_context.buffer(np.array(scales, dtype=np.float32))
-        colors_buf = self._mgl_context.buffer(np.array(color, dtype=np.float32))
-        widths_buf = self._mgl_context.buffer(np.array(widths_px, dtype=np.float32))
+    #     offset_buf = self._mgl_context.buffer(np.array(offsets, dtype=np.float32))
+    #     scales_buf = self._mgl_context.buffer(np.array(scales, dtype=np.float32))
+    #     colors_buf = self._mgl_context.buffer(np.array(color, dtype=np.float32))
+    #     widths_buf = self._mgl_context.buffer(np.array(widths_px, dtype=np.float32))
         
-        vao = self._mgl_context.vertex_array(self.program, [
-                                                            (offset_buf, '2f/i', 'i_offset'),
-                                                            (scales_buf, '2f/i', 'i_scale'),
-                                                            # (colors_buf, '4f/i', 'i_color'),
-                                                            (widths_buf, '1f/i', 'i_width')])
-        vao.render(mgl.TRIANGLES, vertices=vertices.size * 6, instances=3)
+    #     vao = self._mgl_context.vertex_array(self.program, [
+    #                                                         (offset_buf, '2f/i', 'i_offset'),
+    #                                                         (scales_buf, '2f/i', 'i_scale'),
+    #                                                         (colors_buf, '4f/i', 'i_color'),
+    #                                                         (widths_buf, '1f/i', 'i_width')])
+    #     vao.render(mgl.TRIANGLES, vertices=vertices.size * 6, instances=3)
         
     def draw_instances(self, unit_shape, offsets, scales, color, widths_px):
         
@@ -71,7 +71,7 @@ class PolygonRenderer:
              
         self.program['u_mvp'].write(self.scene.get_mvp())
         self.program['u_resolution'] = self.scene.display_size
-        self.program['u_color'] = color[0]
+        # self.program['u_color'] = color[0]
   
         verticies = np.array(unit_shape, dtype=np.float32)
         ssbo = self._mgl_context.buffer(verticies.astype('f4').tobytes())
@@ -86,12 +86,15 @@ class PolygonRenderer:
         vao = self._mgl_context.vertex_array(self.program, [
                                                             (offset_buf, '2f/i', 'i_offset'),
                                                             (scales_buf, '2f/i', 'i_scale'),
-                                                            # (colors_buf, '4f/i', 'i_color'),
+                                                            (colors_buf, '4f/i', 'i_color'),
                                                             (widths_buf, '1f/i', 'i_width')])
         
-        vao.render(mgl.TRIANGLES, vertices=len(offsets) * 6, instances=len(offsets))
+        vao.render(mgl.TRIANGLES, vertices=len(verticies) * len(offsets) * 6, instances=len(offsets))
 
     def draw_circles(self, offsets, scales, colors, widths_px):
-        
         self.draw_instances(shapes.circle, offsets, scales, colors, widths_px)
         
+    def draw_lines(self, lines, color, widths_px):
+        
+        pass
+    

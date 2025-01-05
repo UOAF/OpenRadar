@@ -1,11 +1,10 @@
-from glm import scale
+
 import moderngl as mgl
 
-from draw import shapes
 from draw.polygon import PolygonRenderer
 from util.bms_ini import FalconBMSIni
 
-
+import config
 
 
 class MapAnnotations:
@@ -24,12 +23,20 @@ class MapAnnotations:
         for threat in ini.threats:
             self.circles.append(threat)
             
+            
+    def draw(self):
+        self.draw_lines()
+        self.draw_circles()
+        self.draw_text()
         
     def draw_lines(self):
         # self.scene.draw_lines(self.lines)
         pass
     
     def draw_circles(self):
+        
+        if len(self.circles) == 0:
+            return
         
         offsets = []
         scales = []
@@ -38,9 +45,9 @@ class MapAnnotations:
         
         for circle in self.circles:
             offsets.append(circle[0])
-            scales.append(circle[1])
-            color.append((1.0, 0.0, 0.0, 1.0))
-            widths_px.append(20)
+            scales.append((circle[1], circle[1])) # scale by the same in x and y to stay a circle
+            color.append( (*config.app_config.get_color_normalized("annotations", "ini_color") , 1.0) )
+            widths_px.append( config.app_config.get_float("annotations", "ini_width") )
         
         self.renderer.draw_circles(offsets, scales, color, widths_px)
         pass
