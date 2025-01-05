@@ -142,7 +142,7 @@ def render_text(text, x, y, scale=18):
 
         # Calculate texture coordinates
         tex_x = atlas['left'] / atlas_width
-        tex_y = (glyph_top) / atlas_height
+        tex_y = glyph_top / atlas_height
         tex_w = (atlas['right'] - atlas['left']) / atlas_width
         tex_h = (glyph_top - glyph_bottom) / atlas_height
 

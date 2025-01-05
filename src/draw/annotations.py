@@ -1,34 +1,39 @@
-
 import moderngl as mgl
 import glm
 
 from draw.polygon import PolygonRenderer
 from util.bms_ini import FalconBMSIni
+from draw.text import TextRendererMsdf, make_text_renderer
+from draw.scene import Scene
 
 import config
 
 
 class MapAnnotations:
-    def __init__(self, polyrender: PolygonRenderer, mgl_context: mgl.Context):
+
+    def __init__(self, scene: Scene, polyrender: PolygonRenderer, mgl_context: mgl.Context):
         self.renderer = polyrender
         self.mgl_context = mgl_context
         self.annotations = []
         self.lines = []
         self.circles = []
-        
+        self.text_renderer = make_text_renderer(self.mgl_context, "atlas", scene)
+        self.scene = scene
+
     def load_ini(self, path):
         ini = FalconBMSIni(path)
         for line in ini.lines:
             self.lines.append(line)
-            
+
         for threat in ini.threats:
             self.circles.append(threat)
-            
+
     def draw(self):
+        self.text_renderer.init_frame()
         self.draw_lines()
         self.draw_circles()
-        self.draw_text()
-        
+        self.text_renderer.render()
+
     def draw_lines(self):
         if len(self.lines) == 0:
             return
@@ -53,28 +58,31 @@ class MapAnnotations:
 
         self.renderer.draw_lines(out_lines, colors, widths_px)
 
-    
+
     def draw_circles(self):
-        
+
         if len(self.circles) == 0:
             return
-        
+
         offsets = []
         scales = []
         color = []
         widths_px = []
-        
+
         for circle in self.circles:
-            offsets.append(circle[0])
-            scales.append((circle[1], circle[1])) # scale by the same in x and y to stay a circle
-            color.append( (*config.app_config.get_color_normalized("annotations", "ini_color") , 1.0) )
-            widths_px.append( config.app_config.get_float("annotations", "ini_width") )
-        
+            pos, r, name = circle
+            # ((x, y), r, name)
+            offsets.append(pos)
+            scales.append((r, r))  # scale by the same in x and y to stay a circle
+            color.append((*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0))
+            widths_px.append(config.app_config.get_float("annotations", "ini_width"))
+            self.text_renderer.draw_text(name, *pos)
+
         self.renderer.draw_circles(offsets, scales, color, widths_px)
-    
+
     def draw_text(self):
         pass
-    
+
     def clear(self):
         self.annotations = []
         self.lines = []

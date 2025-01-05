@@ -1,4 +1,3 @@
-
 import glm
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
@@ -6,7 +5,9 @@ import moderngl as mgl
 
 from util import bms_math
 
+
 class Scene:
+
     def __init__(self, display_size, mgl_context: mgl.Context):
 
         self.display_size = display_size
@@ -18,48 +19,46 @@ class Scene:
         self.mvp = glm.mat4(1.0)
         self.projection_matrix = glm.mat4(1.0)
         self.view_matrix = glm.mat4(1.0)
-        
+
         self.resize(self.display_size)
-        
-        
+
     def get_mvp(self):
         return self.mvp
-    
+
     def set_size(self, scene_size):
         self.map_size_m = scene_size
-        self.make_camera_matrix()      
-        
+        self.make_camera_matrix()
+
     def resize(self, display_size):
         ### This is the function that needs to be called when the window is resized
         self.display_size = display_size
         gl.glViewport(0, 0, *display_size)
         self.make_camera_matrix()
-        
+
     def make_camera_matrix(self):
         w, h = self.display_size
         aspect = w / h
         projection_matrix = glm.ortho(0.0, aspect, 0.0, 1.0, -1.0, 1.0)
-     
+
         scale = 1 / self.map_size_m
         scale = glm.mat4(scale)
         scale[2][2] = scale[3][3] = 1.0
         projection_mat_scaled = projection_matrix * scale
-        
-        x,y = self.screen_to_world_distance(self._pan_screen)           
+
+        x, y = self.screen_to_world_distance(self._pan_screen)
         viewmatrix = glm.mat4(1.0)
         viewmatrix = glm.scale(viewmatrix, glm.vec3(self.zoom_level, self.zoom_level, 1.0))
         viewmatrix = glm.translate(viewmatrix, glm.vec3(x, y, 0.0))
-        
+
         self.view_matrix = viewmatrix
         self.projection_matrix = projection_mat_scaled
         self.mvp = projection_mat_scaled * viewmatrix
-
 
     def pan(self, dx_screen, dy_screen):
         delta = glm.vec2(dx_screen, -dy_screen)
         self._pan_screen += delta
         self.make_camera_matrix()
-        
+
     def screen_to_world(self, point_screen: glm.vec2):
         w, h = self.display_size
         ratio = h / self.map_size_m
@@ -68,12 +67,12 @@ class Scene:
         point_screen_with_pan = point_screen - pan
         result = point_screen_with_pan / ratio / self.zoom_level
         return result
-    
-    def screen_to_world_distance(self, distance_screen: glm.vec2|float):
+
+    def screen_to_world_distance(self, distance_screen: glm.vec2 | float):
         w, h = self.display_size
         ratio = h / self.map_size_m
         return distance_screen / ratio / self.zoom_level
-    
+
     def world_to_screen(self, point_world: glm.vec2):
         w, h = self.display_size
         ratio = h / self.map_size_m
