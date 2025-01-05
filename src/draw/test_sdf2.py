@@ -96,19 +96,20 @@ quad = np.array([
 ],
                 dtype='f4')
 
-indices = np.array([0, 1, 2, 2, 3, 0], dtype='i4')
-
-vbo = context.buffer(quad.tobytes())
-ibo = context.buffer(indices.tobytes())
-vao = context.simple_vertex_array(program, vbo, 'in_position', 'in_texcoord', index_buffer=ibo)
+indices_for_quad = np.array([0, 1, 2, 2, 3, 0], dtype='i4')
 
 # Orthographic projection using glm
 projection = glm.ortho(0, window_width, window_height, 0, -1, 1)
 
 
 # Text rendering function
-def render_text(text, x, y, scale=32):
+def render_text(text, x, y, scale=18):
+    vertices = np.zeros(len(text) * 16, dtype='f4')
+    indices = np.zeros(len(text) * 6, dtype='i4')
     cursor_x = x
+    vert_idx = 0
+    idx_idx = 0
+    char_count = 0
     for char in text:
         if char == ' ':
             cursor_x += 0.5 * scale
@@ -157,13 +158,21 @@ def render_text(text, x, y, scale=32):
         ],
                         dtype='f4')
 
-        vbo.write(quad.tobytes())
+        # index buffer index
+        ib_idx = char_count * 6
+        vert_idx = char_count * 16
 
-        # Render glyph
-        vao.render(moderngl.TRIANGLES)
-
-        # Advance cursor
+        vertices[vert_idx:vert_idx + 16] = quad.flatten()
+        indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4)
         cursor_x += advance
+        char_count += 1
+
+    vbo = context.buffer(vertices.tobytes())
+    ibo = context.buffer(indices.tobytes())
+
+    # Render glyph
+    vao = context.simple_vertex_array(program, vbo, 'in_position', 'in_texcoord', index_buffer=ibo)
+    vao.render(moderngl.TRIANGLES)
 
 
 # Main rendering loop
@@ -171,12 +180,14 @@ while not glfw.window_should_close(window):
     glfw.poll_events()
 
     # Clear screen
-    context.clear(0.1, 0.1, 0.1, 1.0)
+    context.clear(0.2, 0.3, 0.2, 1.0)
+    context.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
+    context.enable(moderngl.BLEND)
 
     # Set uniform values
     program['projection'].write(np.array(projection.to_list(), dtype='f4'))
     # Render text
-    render_text("The quick brown fox jumps over the lazy dog!", x=100, y=200)
+    render_text("The quick brown fox jumps over the lazy dog!", x=20, y=200, scale=17)
 
     # Swap buffers
     glfw.swap_buffers(window)
