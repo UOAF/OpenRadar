@@ -11,7 +11,7 @@ if not glfw.init():
     raise Exception("GLFW cannot be initialized!")
 
 # Create a window
-window_width, window_height = 800, 600
+window_width, window_height = 1300, 600
 window = glfw.create_window(window_width, window_height, "SDF Text Rendering", None, None)
 if not window:
     glfw.terminate()
@@ -77,7 +77,7 @@ float median(float r, float g, float b) {
 void main() {
     vec3 msd = texture(sdf_texture, frag_texcoord).rgb;
     float sd = median(msd.r, msd.g, msd.b);
-    float screenPxDistance = 2.0*(sd - 0.5);
+    float screenPxDistance = 5.0*(sd - 0.5);
     float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
     vec4 bgColor = vec4(0.0, 0.0, 0.0, 0.0);
     vec4 fgColor = vec4(1.0, 1.0, 1.0, 1.0);
@@ -107,13 +107,16 @@ projection = glm.ortho(0, window_width, window_height, 0, -1, 1)
 
 
 # Text rendering function
-def render_text(text, x, y, scale=32.75):
+def render_text(text, x, y, scale=32):
     cursor_x = x
     for char in text:
+        if char == ' ':
+            cursor_x += 0.5 * scale
+            continue
         # Skip characters without glyph data
         index = ord(char) - 32
         if index < 0 or index >= len(glyphs):
-            print(f"Skipping unknown character: {char}")
+            # print(f"Skipping unknown character: {char}")
             continue
 
         glyph = glyphs[index]
@@ -143,14 +146,14 @@ def render_text(text, x, y, scale=32.75):
         tex_h = (glyph_top - glyph_bottom) / atlas_height
 
         # Debug: Print glyph metrics
-        print(f"Rendering '{char}': tex=({tex_x}, {tex_y}, {tex_w}, {tex_h})")
+        # print(f"Rendering '{char}': tex=({tex_x}, {tex_y}, {tex_w}, {tex_h})")
 
         # Set up vertex data
         quad = np.array([
-            [cursor_x + quad_x, y + quad_y, tex_x, tex_y],
-            [cursor_x + quad_w, y + quad_y, tex_x + tex_w, tex_y],
-            [cursor_x + quad_w, y + quad_h, tex_x + tex_w, tex_y - tex_h],
-            [cursor_x + quad_x, y + quad_h, tex_x, tex_y - tex_h],
+            [cursor_x + quad_x, y - quad_y, tex_x, tex_y - tex_h],
+            [cursor_x + quad_w, y - quad_y, tex_x + tex_w, tex_y - tex_h],
+            [cursor_x + quad_w, y - quad_h, tex_x + tex_w, tex_y],
+            [cursor_x + quad_x, y - quad_h, tex_x, tex_y],
         ],
                         dtype='f4')
 
@@ -173,7 +176,7 @@ while not glfw.window_should_close(window):
     # Set uniform values
     program['projection'].write(np.array(projection.to_list(), dtype='f4'))
     # Render text
-    render_text("55", x=100, y=200)
+    render_text("The quick brown fox jumps over the lazy dog!", x=100, y=200)
 
     # Swap buffers
     glfw.swap_buffers(window)
