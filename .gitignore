@@ -8,3 +8,4 @@ config.toml
 test.py
 output.txt
 imgui.ini
+renderdoc.cap
