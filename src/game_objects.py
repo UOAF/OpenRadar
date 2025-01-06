@@ -36,12 +36,12 @@ class GameObject:
         self.color = pygame.Color(self.data.Color)
 
         # Switch the object's color from its default to a respective replacement color
-        for i in config.app_config.get("map", "unit_color_switching", list):
-            if self.color == pygame.Color(i[0]):
-                if isinstance(i[1], list):
-                    self.color = pygame.Color(i[1])
-                else:
-                    self.color = pygame.Color(i[1][0], i[1][1], i[1][2])
+        # for i in config.app_config.get("map", "unit_color_switching", list):
+        #     if self.color == pygame.Color(i[0]):
+        #         if isinstance(i[1], list):
+        #             self.color = pygame.Color(i[1])
+        #         else:
+        #             self.color = pygame.Color(i[1][0], i[1][1], i[1][2])
         
     def get_display_name(self) -> str:
 
@@ -182,7 +182,7 @@ class airUnit(GameObject):
         size = (20,20)
         surface = pygame.Surface(size, pygame.SRCALPHA)
         
-        contactrect = pygame.Rect((0,0,size,size))
+        contactrect = pygame.Rect((0,0,*size))
         pygame.draw.rect(surface, self.color, contactrect, 2)
         
         # Draw Velocity Line

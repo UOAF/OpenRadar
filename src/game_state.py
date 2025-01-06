@@ -144,7 +144,7 @@ class GameState:
             updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
         """
         if self.current_time is not None:
-            updateObj.delta_time = self.current_time
+            updateObj.timestamp = self.current_time
 
         if updateObj.object_id in self.all_objects:
             self.all_objects[updateObj.object_id].update(updateObj)
