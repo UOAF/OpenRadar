@@ -23,15 +23,26 @@ class MapAnnotations:
         for threat in ini.threats:
             self.circles.append(threat)
             
-            
     def draw(self):
         self.draw_lines()
         self.draw_circles()
         self.draw_text()
         
     def draw_lines(self):
-        # self.scene.draw_lines(self.lines)
-        pass
+        if len(self.lines) == 0:
+            return
+
+        colors = []
+        widths_px = []
+
+        for line in self.lines:
+
+            colors.append((*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0))
+            widths_px.append(config.app_config.get_float("annotations", "ini_width"))
+
+
+        self.renderer.draw_lines(self.lines, colors, widths_px)
+
     
     def draw_circles(self):
         
@@ -50,7 +61,6 @@ class MapAnnotations:
             widths_px.append( config.app_config.get_float("annotations", "ini_width") )
         
         self.renderer.draw_circles(offsets, scales, color, widths_px)
-        pass
     
     def draw_text(self):
         pass
