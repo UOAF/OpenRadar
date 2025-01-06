@@ -13,7 +13,7 @@ in vec4 i_color; // This varies per instance
 uniform mat4  u_mvp;
 uniform vec2  u_resolution;
 
-varying vec4 v_color;
+out vec4 v_color;
 
 void main()
 {
