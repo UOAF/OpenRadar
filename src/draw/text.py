@@ -133,6 +133,8 @@ class TextRendererMsdf:
     def render(self):
         """Call this once per frame, after rendering all the text you need.
         """
+        if not self.vertex_batches or not self.index_batches:
+            return
         vertices = np.concat(self.vertex_batches)
         indices = np.concat(self.index_batches)
         vbo = self._ctx.buffer(vertices.tobytes())
