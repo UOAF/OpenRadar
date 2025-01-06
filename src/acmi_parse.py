@@ -43,6 +43,8 @@ ACMIFileParser:
 from dataclasses import dataclass
 from typing import Optional, get_type_hints
 
+import datetime
+
 ACTION_UPDATE = "+"
 ACTION_REMOVE = "-"
 ACTION_TIME = "#"
@@ -60,7 +62,8 @@ class ACMIEntry:
     """
     action: str
     object_id: Optional[str] = "None"
-    timestamp: Optional[float] = None
+    delta_time: Optional[float] = None
+    timestamp: Optional[datetime.datetime] = None
     # def __init__(self, action: str, object_id: str = "", timestamp: float = 0.0):
     #     self.action = action
     #     self.object_id = object_id
@@ -248,7 +251,7 @@ class ACMIFileParser:
             # Parse time frame
             time_frame = float(line[1:])
             self.relative_time = time_frame
-            return ACMIEntry(ACTION_TIME, timestamp=time_frame)
+            return ACMIEntry(ACTION_TIME, delta_time=time_frame)
 
         if line.startswith('-'):
             # Remove object from battlefield
