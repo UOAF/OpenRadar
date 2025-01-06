@@ -19,11 +19,10 @@ from trtt_client import TRTTClientThread
 from draw.map_gl import MapGL
 from draw.scene import Scene
 from draw.annotations import MapAnnotations
+from sensor_tracks import SensorTracks
+from display_data import DisplayData
 
-from draw.polygon import PolygonRenderer
-import draw.shapes as shapes
 from util.os_utils import from_path
-
 from util.bms_math import THEATRE_DEFAULT_SIZE_FT
 
 VSYNC_ENABLE = True
@@ -124,10 +123,10 @@ class App:
         self.size = self.width, self.height = config_size
         self.scene = Scene(self.size, self.mgl_ctx)
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
-
-        self._polygon_renderer = PolygonRenderer(self.mgl_ctx, self.scene)
-
-        self._annotations =  MapAnnotations(self.scene, self._polygon_renderer, self.mgl_ctx)
+        
+        self._annotations =  MapAnnotations(self.scene, self.mgl_ctx)
+        self._tracks = SensorTracks(self.gamestate)
+        self._display_data = DisplayData(self.gamestate, self._tracks) 
         
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations)
 
