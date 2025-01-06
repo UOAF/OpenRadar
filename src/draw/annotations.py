@@ -1,5 +1,6 @@
 
 import moderngl as mgl
+import glm
 
 from draw.polygon import PolygonRenderer
 from util.bms_ini import FalconBMSIni
@@ -32,16 +33,25 @@ class MapAnnotations:
         if len(self.lines) == 0:
             return
 
+        out_lines = []
         colors = []
         widths_px = []
 
         for line in self.lines:
-
+            
+            out_line = []
+            
+            [out_line.append(glm.vec4(*vec, 0.0, 1.0)) for vec in line] # type: ignore
             colors.append((*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0))
             widths_px.append(config.app_config.get_float("annotations", "ini_width"))
+        
+            first = out_line[0]
+            last = out_line[-1]
+            out_line.append(last)
+            out_line.insert(0, first)
+            out_lines.append(out_line)
 
-
-        self.renderer.draw_lines(self.lines, colors, widths_px)
+        self.renderer.draw_lines(out_lines, colors, widths_px)
 
     
     def draw_circles(self):
