@@ -11,8 +11,8 @@ import config
 
 class MapAnnotations:
 
-    def __init__(self, scene: Scene, polyrender: PolygonRenderer, mgl_context: mgl.Context):
-        self.renderer = polyrender
+    def __init__(self, scene: Scene, mgl_context: mgl.Context):
+        self.renderer = PolygonRenderer(mgl_context, scene)
         self.mgl_context = mgl_context
         self.annotations = []
         self.lines = []

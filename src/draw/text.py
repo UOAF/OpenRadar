@@ -141,7 +141,7 @@ class TextRendererMsdf:
         ibo = self._ctx.buffer(indices.tobytes())
 
         # Render glyph
-        self._program['camera'].write(self._scene.get_mvp())
+        self._program['camera'].write(self._scene.get_mvp()) # type: ignore
         scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * .6
         self._program['font_to_world'] = scale
         self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
