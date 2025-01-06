@@ -67,16 +67,16 @@ void main() {
 '''
 
 prog = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
-prog['atlas'].value = 0
-prog['smoothing'].value = distance_range / font_size
+prog['atlas'].value = 0 # type: ignore
+prog['smoothing'].value = distance_range / font_size # type: ignore
 
 # Projection Matrix
 proj = glm.ortho(0, 800, 0, 600, -1, 1)  # Y-axis flipped for bottom-left origin
-prog['proj'].write(np.array(proj.to_list(), dtype='f4', order='C'))
+prog['proj'].write(np.array(proj.to_list(), dtype='f4', order='C')) # type: ignore
 
 # Model Matrix
 model = glm.mat4(1.0)  # Identity matrix
-prog['model'].write(np.array(model.to_list(), dtype='f4', order='C'))
+prog['model'].write(np.array(model.to_list(), dtype='f4', order='C')) # type: ignore
 
 # Create dynamic VBO and VAO
 vbo = ctx.buffer(reserve=1024 * 16)  # Reserve space for vertices
