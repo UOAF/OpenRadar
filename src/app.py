@@ -126,7 +126,7 @@ class App:
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
 
         self._polygon_renderer = PolygonRenderer(self.mgl_ctx, self.scene)
-        self._annotations =  MapAnnotations(self._polygon_renderer, self.mgl_ctx)
+        self._annotations =  MapAnnotations(self.scene, self._polygon_renderer, self.mgl_ctx)
         self._annotations.load_ini("Data/test.ini")  # type: ignore
         
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations)
