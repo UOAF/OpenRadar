@@ -50,10 +50,12 @@ class MapAnnotations:
             colors.append((*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0))
             widths_px.append(config.app_config.get_float("annotations", "ini_width"))
         
-            first = out_line[0]
-            last = out_line[-1]
-            out_line.append(last)
-            out_line.insert(0, first)
+            # After and Prior are points extended to the line begining and end line segmenets to render the tangets
+            # See the comment in polygon.py for more details
+            prior = out_line[0] - (out_line[1] - out_line[0])
+            after = out_line[-1] + (out_line[-1] - out_line[-2])
+            out_line.append(after)
+            out_line.insert(0, prior)
             out_lines.append(out_line)
 
         self.renderer.draw_lines(out_lines, colors, widths_px)
