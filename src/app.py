@@ -29,6 +29,7 @@ VSYNC_ENABLE = True
 MOUSEDRAGBUTTON = 1
 MOUSEBRAABUTTON = 0
 
+
 class Clock:
 
     def __init__(self):
@@ -97,7 +98,7 @@ class App:
         # Create the Tacview RT Relemetry client
         self.data_queue: queue.Queue[str] = queue.Queue()
 
-        self.data_client = TRTTClientThread(self.data_queue)  #TODO move to somewhere more sensible
+        self.data_client = TRTTClientThread(self.data_queue)
         self.data_client.start()
 
         self.gamestate = GameState(self.data_queue)
@@ -118,17 +119,17 @@ class App:
             assert (result is None)
 
         self._running = True
-        
+
         self.mgl_ctx = mgl.create_context()
         self.size = self.width, self.height = config_size
         self.scene = Scene(self.size, self.mgl_ctx)
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
-        
-        self._annotations =  MapAnnotations(self.scene, self.mgl_ctx)
+
+        self._annotations = MapAnnotations(self.scene, self.mgl_ctx)
         self._tracks = SensorTracks(self.gamestate)
-        self._display_data = DisplayData(self.gamestate, self._tracks) 
-        
-        self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations)
+        self._display_data = DisplayData(self.gamestate, self._tracks)
+
+        self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations, self.data_client)
 
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
@@ -209,7 +210,7 @@ class App:
         self.mgl_ctx.clear(*config.app_config.get_color_normalized("map", "background_color"))
 
         self._map_gl.on_render()
-        
+
         self._annotations.draw()
 
         self._ImguiUI.render()
