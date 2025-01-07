@@ -90,7 +90,11 @@ class FalconBMSIni:
                 v,u = self.data["STPT"][f"linestpt_{i*BMS_LINE_POINTS+j}"].split(",")[0:2]
                 x = float(u) / BMS_FT_PER_M
                 y = float(v) / BMS_FT_PER_M
-                self.lines[i][j] = x, y
+                if x > 1 and y > 1:
+                    self.lines[i][j] = x, y
+                    
+        # Remove empty lines and points
+        self.lines = [[point for point in line if point is not None] for line in self.lines if any(line)]
 
     def get_ppt_threats(self):
         """
