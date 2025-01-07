@@ -1,14 +1,27 @@
 import imgui
-import glfw
 from imgui.integrations.glfw import GlfwRenderer
 import numpy as np
 import datetime
 
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
+from trtt_client import TRTTClientThread, ThreadState
 import config
 
 from util.os_utils import open_file_dialog
+
+# # Regex patterns for IPv4 and IPv6 validation
+# ipv4_pattern = re.compile(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
+# ipv6_pattern = re.compile(
+#     r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))\.){3,3}(25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))\.){3,3}(25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])))$'
+# )
+
+
+# def validate_ip(ip: str) -> bool:
+#     """
+#     Validate an IP address.
+#     """
+#     return ipv4_pattern.match(ip) is not None or ipv6_pattern.match(ip) is not None
 
 
 def TextCentered(text: str):
@@ -18,17 +31,19 @@ def TextCentered(text: str):
     imgui.set_cursor_pos_y((window_height - text_height) * 0.5)
     imgui.text(text)
 
+
 class ImguiUserInterface:
 
-    def __init__(self, size, window, map_gl: MapGL, annotations: MapAnnotations):
+    def __init__(self, size, window, map_gl: MapGL, annotations: MapAnnotations, data_client: TRTTClientThread):
         self.size = size
         self.map_gl: MapGL = map_gl
         self.annotations = annotations
+        self.data_client = data_client
 
         imgui.create_context()
         io = imgui.get_io()
         io.display_size = self.size
-        io.fonts.add_font_from_file_ttf("resources/fonts/ProggyClean.ttf", 18)  #TODO make this work with the exe bundle
+        io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18) 
         self.impl = GlfwRenderer(window, attach_callbacks=False)
         self._time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
@@ -47,8 +62,10 @@ class ImguiUserInterface:
         self.map_selection_dialog_path = ""
         self.map_selection_dialog_open = False
 
-    def on_event(self, event):
-        return self.impl.process_event(event)
+        self.server_password = ""
+
+    # def on_event(self, event):
+    #     return self.impl.process_event(event)
 
     def render(self):
 
@@ -85,7 +102,7 @@ class ImguiUserInterface:
         self._fps_history.append(self._fps)
         self._fps_history.pop(0)
 
-        self._frame_time_history.append(self._frame_time)
+        self._frame_time_history.append(int(self._frame_time))
         self._frame_time_history.pop(0)
 
         imgui.new_frame()
@@ -159,7 +176,7 @@ class ImguiUserInterface:
             if imgui.begin_popup_modal("Map Selection", True)[0]:
 
                 # Create input text field with folder path
-                imgui.input_text("", self.map_selection_dialog_path, 256, imgui.INPUT_TEXT_READ_ONLY)
+                imgui.input_text("", self.map_selection_dialog_path, -1, imgui.INPUT_TEXT_READ_ONLY)
 
                 # Button with folder icon
                 imgui.same_line()
@@ -225,36 +242,36 @@ class ImguiUserInterface:
         if not open:
             self.settings_window_open = False
             config.app_config.save()
-            
+
     def settings_tab_map(self):
         map_alpha = config.app_config.get_int("map", "map_alpha")
         map_background_color = config.app_config.get_color_normalized("map", "background_color")
-        
+
         bg_color_picker = imgui.color_edit3("Background Color", *map_background_color)
         imgui.same_line()
         imgui.text_disabled("(?)")
         if imgui.is_item_hovered():
             imgui.begin_tooltip()
             imgui.text_unformatted("Click on the color square to open a color picker.\n"
-                                    "CTRL+click on individual component to input value.\n")
+                                   "CTRL+click on individual component to input value.\n")
             imgui.end_tooltip()
-            
+
         alpha_slider = imgui.slider_int("Map Alpha", map_alpha, 0, 255)
         imgui.text("Map Size")
-        
+
         if alpha_slider[0]:
             config.app_config.set("map", "map_alpha", alpha_slider[1])
         if bg_color_picker[0]:
             config.app_config.set_color_from_normalized("map", "background_color", bg_color_picker[1])
-            
+
     def settings_tab_annotations(self):
-        
+
         ini_width = config.app_config.get_int("annotations", "ini_width")
         ini_color = config.app_config.get_color_normalized("annotations", "ini_color")
-        
+
         ini_color_picker = imgui.color_edit3("Ini Color", *ini_color)
         ini_width_slider = imgui.slider_int("Ini Line Width", ini_width, 1, 40)
-        
+
         if ini_width_slider[0]:
             config.app_config.set("annotations", "ini_width", ini_width_slider[1])
         if ini_color_picker[0]:
@@ -264,48 +281,68 @@ class ImguiUserInterface:
         if not self.layers_window_open:
             return
         with imgui.begin("Layers"):
-            pass #TODO add layers window
-        
+            pass  #TODO add layers window
+
     def server_window(self):
         if not self.server_window_open:
             return
-        
-        _, open = imgui.begin("Server")
-        
-        imgui.text("Server Address")
+
+        _, open = imgui.begin("Server", True, imgui.WINDOW_ALWAYS_AUTO_RESIZE)
+
+        address_changed, address = imgui.input_text("Address##server_address", config.app_config.get_str("server", "address"),
+                                                    -1)
+
+        port_changed, port = imgui.input_int("Port##server_port", config.app_config.get_int("server", "port"))
         imgui.same_line()
-        imgui.input_text("##server_address", "localhost:42674", 256)
-        imgui.text("Server Status: ")
+        if imgui.button("Default", width=80):
+            config.app_config.set_default("server", "port")
+
+        pw_changed, password = imgui.input_text("Password##server_password", self.server_password, -1)
+
+        retries_changed, retries = imgui.input_int("Retries", config.app_config.get_int("server", "retries"))
+
+        autoconnect_changed, autoconnect = imgui.checkbox("Autoconnect",
+                                                          config.app_config.get_bool("server", "autoconnect"))
+
+        imgui.text("Status: ")
         imgui.same_line()
-        imgui.text("Not Connected")
-        imgui.text("Server Password")
-        imgui.same_line()
-        imgui.input_text("##server_password", "", 256)
+        status, description = self.data_client.get_status()
+        imgui.text(f"{status.status_msg}  {description}")
+
         if imgui.button("Connect"):
-            pass #TODO add server connection logic
+            self.data_client.connect(address, port, password, retries)
         imgui.same_line()
         if imgui.button("Disconnect"):
-            pass #TODO add server disconnection logic 
+            self.data_client.disconnect()
         imgui.end()
-        
+
+        if address_changed:
+            config.app_config.set("server", "address", address)
+        if port_changed:
+            config.app_config.set("server", "port", port)
+        if pw_changed:
+            self.server_password = password
+        if retries_changed:
+            config.app_config.set("server", "retries", retries)
+        if autoconnect_changed:
+            config.app_config.set("server", "autoconnect", autoconnect)
+
         if not open:
             self.server_window_open = False
-            
+            config.app_config.save()
+
     def notepad_window(self):
         if not self.notepad_window_open:
             return
         _, open = imgui.begin("Notepad", True)
         notes = config.app_config.get_str("notepad", "notes")
-        
+
         # Get window size
         width, height = imgui.get_content_region_available()
         changed, notes = imgui.input_text_multiline("", notes, -1, width, height, imgui.INPUT_TEXT_ALLOW_TAB_INPUT)
         imgui.end()
-        
+
         if changed:
             config.app_config.set("notepad", "notes", notes)
         if not open:
             self.notepad_window_open = False
-        
-    
-

@@ -55,6 +55,9 @@ class RadarConfig:
 
     def get_float(self, heading, key) -> float:
         return float(self.get(heading, key, float))  # type: ignore
+    
+    def get_bool(self, heading, key) -> bool:
+        return bool(self.get(heading, key, bool)) # type: ignore
 
     def get_dict(self, heading, key) -> dict:
         return dict(self.get(heading, key, dict))  # type: ignore

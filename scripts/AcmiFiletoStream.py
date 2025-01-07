@@ -74,5 +74,5 @@ while True:
                 buffer = ""
 
         clientsocket.close()
-    except ConnectionResetError:
+    except (ConnectionResetError, ConnectionAbortedError):
         print("ConnectionResetError")        

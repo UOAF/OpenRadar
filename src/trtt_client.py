@@ -2,199 +2,176 @@ import socket
 import queue
 import threading
 from time import sleep
-
 from dataclasses import dataclass
 from enum import Enum, auto
 
-import config
-from messages import UI_SETTINGS_PAGE_SERVER_CONNECT, UI_SETTINGS_PAGE_SERVER_DISCONNECT, DATA_THREAD_STATUS, UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS
-from messages import RADAR_SERVER_CONNECTED, RADAR_SERVER_DISCONNECTED
+import datetime
+
+from tomlkit import date
+
 @dataclass
 class ThreadStatus:
-    status_enum: int 
+    status_enum: int
     status_msg: str
-    status_color: tuple[int,int,int] | str
+    status_color: tuple[int, int, int] | str
     is_connected: bool
-    
-class ThreadState(ThreadStatus, Enum):
-    DISCONNECTED = auto(), "Disconnected", '#dbdbdb', False # White
-    CONNECTING = auto(), "Connecting", '#f5f52c', False # Yellow
-    CONNECTED = auto(), "Connected", '#2cf562', False # Green
-    FAILED = auto(), "Failed", '#f52c4a', False # Red
-    TERMINATED = auto(), "Terminated", '#f52c4a', False # Red
-    
-class Buffer:
 
+class ThreadState(ThreadStatus, Enum):
+    DISCONNECTED = auto(), "Disconnected", '#dbdbdb', False  # White
+    CONNECTING = auto(), "Connecting", '#f5f52c', False     # Yellow
+    CONNECTED = auto(), "Connected", '#2cf562', True       # Green
+    FAILED = auto(), "Failed", '#f52c4a', False            # Red
+    TERMINATED = auto(), "Terminated", '#f52c4a', False    # Red
+
+class Buffer:
     def __init__(self, sock: socket.socket):
         self.sock = sock
         self.buffer = b''
 
     def get_handshake(self):
         return self.get_line("\0")
-    
-    def get_line(self, seperator="\n"):
+
+    def get_line(self, separator="\n"):
         try:
-            while seperator.encode("utf-8") not in self.buffer:
-                data = self.sock.recv(1024) #TODO try except
-                if not data: # socket closed
+            while separator.encode("utf-8") not in self.buffer:
+                data = self.sock.recv(1024)
+                if not data:  # socket closed
                     return None
                 self.buffer += data
-            line,sep,self.buffer = self.buffer.partition(seperator.encode("utf-8"))
+            line, sep, self.buffer = self.buffer.partition(separator.encode("utf-8"))
             return line.decode()
-        except ConnectionAbortedError:
+        except (ConnectionAbortedError, ConnectionResetError, OSError):
             return None
 
 class TRTTClientThread(threading.Thread):
     def __init__(self, queue: queue.Queue):
-        super(TRTTClientThread, self,).__init__(daemon=True) # Call the init for threading.Thread
+        super().__init__(daemon=True)
         self.queue = queue
         self.connected = False
         self.connecting = False
         self.quit = False
-        self.status:ThreadState #state and info string
-        self.state_info: str = ""
-        
-        self.set_status(ThreadState.DISCONNECTED, "Not connected")
-        
-        self.server = None
-        server = str(config.app_config.get("server", "address", str)) # type: ignore
-        port = int(config.app_config.get("server", "port", int)) # type: ignore
-        if server is None:
-            self.set_status(ThreadState.FAILED, "No server address set")
-        elif port is None:
-            self.set_status(ThreadState.FAILED, "No server port set")
-        else:
-            self.server = (server, port)
-            
-        autoconnect = config.app_config.get("server", "autoconnect", bool) # type: ignore
+        self.status = ThreadState.DISCONNECTED
+        self.state_info = ""
 
-        
-        self.tacview_password = str(config.app_config.get("server", "password", str)) # type: ignore
-            
-        self.num_retries = int( config.app_config.get("server", "retries", int) ) # type: ignore
-        self.servername = ""
+        self.server = None
         self.clientsocket = None
+        self.tacview_password = ""
+        self.max_retries = 3
+        self.retries = 0
         
-        if autoconnect and self.server is not None:
-            self.connect(server, port)
+        self.connection_time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+
+        self.lock = threading.Lock()
 
     def run(self):
-        
-        retries = 0
+        retry_delay = 5  # Initial retry delay in seconds
         while not self.quit:
-
-            if self.connecting:
-                self.set_status(ThreadState.CONNECTING, "Trying connection")
-                
-                if self.clientsocket is None:
-                    print("Uh oh clientsocket")
-                elif self.server is None:
-                    print("Uh oh server")
-                elif (retries < self.num_retries or self.num_retries == 0):
-                    try:
-                        self.clientsocket.connect(self.server) #TODO: Fix race condition with disconnect (clientsocket can be none here)
+            with self.lock:
+                if self.connecting:
+                    self._set_status(ThreadState.CONNECTING, "Trying connection")
+                    if self.clientsocket and self.server and (self.retries < self.max_retries or self.max_retries == 0):
+                        try:
+                            self.clientsocket.settimeout(10)
+                            self.clientsocket.connect(self.server)
+                            self.clientsocket.settimeout(None)
+                            self.connecting = False
+                            self.connected = True
+                            self.retries = 0 # Reset retries on successful connection
+                            self.connection_time = datetime.datetime.now()
+                        except (ConnectionRefusedError, socket.timeout):
+                            self.retries += 1
+                            self._set_status(ThreadState.CONNECTING, f"Retry {self.retries}/{self.max_retries}")
+                            sleep(retry_delay)
+                        continue
+                    else:
+                        self._set_status(ThreadState.FAILED, f"Failed to connect after {self.retries} retries")
+                        self.retries = 0 # Reset retries on failed connection
                         self.connecting = False
-                        self.connected = True
-                    except ConnectionRefusedError:
-                        retries += 1
-                        self.set_status(ThreadState.CONNECTING ,f"Connection refused, retrying in 10 seconds {retries}/{self.num_retries}")
-                        sleep(10)
-                else:
-                    self.set_status(ThreadState.FAILED, "Failed to connect to server")
-                    self.connecting = False
-                    self.connected = False
-                    
-            if self.connected and self.clientsocket is not None:
-                
-                buf = Buffer(self.clientsocket)
-                
-                if not self.performHandshake(buf, self.tacview_password):
-                    self.set_status(ThreadState.FAILED, "Tacview Handshake failed")
-                    self.disconnect()
-                
-                self.set_status(ThreadState.CONNECTED, "")
-                # pygame.event.post(pygame.event.Event(RADAR_SERVER_CONNECTED))
-                self.process_data(buf) # blocking call
-                self.set_status(ThreadState.DISCONNECTED, "Disconnected from server")
-                # pygame.event.post(pygame.event.Event(RADAR_SERVER_DISCONNECTED))
+                        self.connected = False
 
+            # Process data outside the lock
+            if self.connected and self.clientsocket:
+                buf = Buffer(self.clientsocket)
+                if not self._perform_handshake(buf, self.tacview_password):
+                    self._set_status(ThreadState.FAILED, "Handshake failed")
+                    self.disconnect()
+                    
+                with self.lock:
+                    self._set_status(ThreadState.CONNECTED, "Connected")
+                    
+                self._process_data(buf)
+                
+                with self.lock:
+                    self._set_status(ThreadState.DISCONNECTED, "")
 
             sleep(1)
-                
+
     def stop(self):
         self.quit = True
-        self.disconnect()            
-    
-    def connect(self, server: str, port: int) -> bool:
-        
-        if self.connected:
-            return False
-        self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        config.app_config.set("server", "address", server)
-        config.app_config.set("server", "port", port)
-        self.server = (server, port)
-        self.connecting = True
-        return True
-        
-    def process_data(self, buf: Buffer):
-        # Put lines from the socket into the queue while socket is open
+        self.disconnect()
+
+    def connect(self, server: str, port: int, password: str = "", retries: int = 3):
+        # Disconnect outside the lock to avoid deadlock
+        self.disconnect()
+        with self.lock:
+            if self.connected or self.connecting:
+                return False
+            # Reset connection state
+            self.connected = False
+            self.connecting = False
+            # Create a new socket
+            self.clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server = (server, port)
+            self.tacview_password = password
+            self.max_retries = retries
+            self.connecting = True
+            return True
+
+    def disconnect(self):
+        if self.clientsocket:
+            try:
+                self.clientsocket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            self.clientsocket.close()
+            self.clientsocket = None
+        with self.lock:
+            self.connected = False
+            self.connecting = False
+
+    def get_status(self):
+        return self.status, self.state_info
+
+    def _process_data(self, buf: Buffer):
         while self.connected and not self.quit:
             line = buf.get_line()
             if line is None:
+                with self.lock:
+                    self.connected = False
                 self.disconnect()
-                self.set_status(ThreadState.DISCONNECTED, "Disconnected from server")
+                self._set_status(ThreadState.DISCONNECTED, "Disconnected")
                 break
             self.queue.put(line)
+            
+            hours, remainder = divmod((datetime.datetime.now() - self.connection_time).total_seconds(), 3600)
+            minutes, seconds = divmod(remainder, 60)
+            self._set_status(ThreadState.CONNECTED, f"Connected for {int(hours)}h {int(minutes)}m {int(seconds)}s")
+        self.queue.put(None)
 
-        # Indicate that the thread has finished its work
-        self.queue.put(None)   
-                
-    def performHandshake(self, buf: Buffer, password: str = "") -> bool:
-        
-        if self.clientsocket is None:
-            return False
-        
-        handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
-        self.clientsocket.sendall(handshake)
-        # Get handshake from server
-        handshake = buf.get_handshake()
-        
-        if handshake is not None and handshake.startswith("XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n"):
-            self.connected = True
-            self.servername = handshake.split("\n")[2]
-            return True
-        else:
+    def _perform_handshake(self, buf: Buffer, password: str = "") -> bool:
+        if not self.clientsocket:
             return False
 
-    def disconnect(self):
-        self.connected = False
-        self.connecting = False
-        self.servername = ""
-        if self.clientsocket is not None:
-            self.clientsocket.close()
-            self.clientsocket = None
-        
-    def set_status(self, status: ThreadState, info: str):
+        try:
+            handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
+            self.clientsocket.sendall(handshake)
+            response = buf.get_handshake()
+            if response and response.startswith("XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n"):
+                return True
+        except socket.error:
+            pass
+        return False
+
+    def _set_status(self, status: ThreadState, info: str):
         self.status = status
         self.state_info = info
-        event_data = {'status': self.status, 'info': self.state_info}
-        # pygame.event.post(pygame.event.Event(DATA_THREAD_STATUS, event_data))
-        
-    # def process_events(self, event: pygame.event.Event) -> bool:
-        
-    #     consumed = False
-        
-    #     if event.type == UI_SETTINGS_PAGE_SERVER_CONNECT:
-    #         ip, port = event.server, event.port
-    #         self.connect(ip, port)
-    #         consumed = True
-                
-    #     elif event.type == UI_SETTINGS_PAGE_SERVER_DISCONNECT:
-    #         self.disconnect()
-    #         consumed = True
-
-    #     elif event.type == UI_SETTINGS_PAGE_REQUEST_SERVER_STATUS:
-    #         event_data = {'status': self.status, 'info': self.state_info}
-    #         pygame.event.post(pygame.event.Event(DATA_THREAD_STATUS, event_data))
-            
-    #     return consumed
