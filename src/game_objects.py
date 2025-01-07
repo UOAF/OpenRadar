@@ -7,7 +7,6 @@ import config
 from util.bms_math import *
 from typing import Callable, Any
 from acmi_parse import ACMIObject
-from pygame_utils import draw_dashed_line
 
 font : pygame.font.Font | None = None
 
@@ -228,8 +227,8 @@ class airUnit(GameObject):
         pygame.draw.line(surface, color, pos, end_point, 3)
         
         # draw dashed lock line to target
-        if target_pos is not None:
-            draw_dashed_line(surface, color, pos, target_pos, 1, 6)
+        # if target_pos is not None:
+        #     draw_dashed_line(surface, color, pos, target_pos, 1, 6)
 
         # if hover:
         #     pygame.draw.circle(surface, color, pos, size*2, 2)
@@ -326,9 +325,9 @@ class missile(airUnit):
             pygame.draw.line(surface, color, pos, point, 2)
         
         # draw dotted lock line to target
-        if target_pos is not None:
-            # pygame.draw.line(surface, color, pos, target_pos, 2)
-            draw_dashed_line(surface, color, pos, target_pos, 1, 6)
+        # if target_pos is not None:
+        #     # pygame.draw.line(surface, color, pos, target_pos, 2)
+        #     draw_dashed_line(surface, color, pos, target_pos, 1, 6)
     
 class fixedWing(airUnit):
     def __init__(self, object: ACMIObject, color: pygame.Color = pygame.Color(255,255,255)):
