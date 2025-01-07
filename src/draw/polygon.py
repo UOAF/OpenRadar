@@ -2,6 +2,7 @@ import os
 
 import moderngl as mgl
 import numpy as np
+import glm
 
 import config
 from draw.scene import Scene
@@ -89,9 +90,16 @@ class PolygonRenderer:
                    widths_px: list[float]):
 
         for i in range(len(lines)):
-            line = lines[i]
+            line = [glm.vec4(*vec, 0.0, 1.0) for vec in lines[i]]
+            # After and Prior are points extended to the line begining and end line segmenets to render the tangets
+            # See the comment in draw instances for more details
+            prior = line[0] - (line[1] - line[0])
+            after = line[-1] + (line[-1] - line[-2])
+            line.append(after)
+            line.insert(0, prior)
+
             color = [colors[i]]
             width = [widths_px[i]]
-            offset = [(0,0)]
-            scale = [(1,1)]
+            offset = [(0, 0)]
+            scale = [(1, 1)]
             self.draw_instances(line, offset, scale, color, width)
