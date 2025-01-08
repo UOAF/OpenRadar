@@ -30,7 +30,7 @@ class MapAnnotations:
         for threat in ini.threats:
             self.circles.append(threat)
 
-    def draw(self):
+    def render(self):
         self.text_renderer.init_frame()
         self.draw_lines()
         self.draw_circles()
@@ -63,7 +63,7 @@ class MapAnnotations:
             line_array = np.array(line, dtype=np.float32)  # Shape: (P, 2)
 
             # Render each line separately
-            self.renderer.draw_lines(
+            self.renderer.draw_lines_args(
                 lines=line_array[None, :, :],  # Add batch dimension: Shape (1, P, 2)
                 colors=colors[i:i + 1],  # Slice (1, 4)
                 widths_px=widths_px[i:i + 1]  # Slice (1,)
@@ -96,7 +96,7 @@ class MapAnnotations:
             pos, _, name = circle
             self.text_renderer.draw_text(name, *pos)
 
-        self.renderer.draw_circles(offsets, scales, colors, widths_px)
+        self.renderer.draw_circles_args(offsets, scales, colors, widths_px) # TODO: Modify this line to use the new draw_circles method and store arrays on edit
 
     def draw_text(self):
         pass

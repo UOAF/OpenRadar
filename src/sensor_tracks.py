@@ -1,14 +1,18 @@
 import datetime
 
-from attr import dataclass
+from typing import Type
+from dataclasses import dataclass, field
 
-from game_state import GameState
+from tomlkit import date
+
+from game_state import GameState, GameObjectClassType
+import game_objects
 
 
 @dataclass
 class Coalition:
     name: str
-    color: tuple[int, int, int]
+    color: tuple[float, float, float, float]
     allies: list[str]
 
 
@@ -16,19 +20,19 @@ class Coalition:
 game_coalitions: dict[str, Coalition] = {}
 
 
-def get_coalition(name: str, color: tuple[int, int, int]) -> Coalition | None:
+def get_coalition(name: str, color: tuple[float, float, float, float]) -> Coalition:
     """
     Get a coalition by name. If the coalition does not exist, create it.
     """
     if name in game_coalitions:
-        return game_coalitions.get(name)
+        return game_coalitions[name]
 
     if name != "":
         coalition = Coalition(name, color, [])
         game_coalitions[name] = coalition
         return coalition
 
-    return None
+    assert False, f"Invalid coalition name {name}"
 
 
 @dataclass
@@ -42,16 +46,16 @@ class Track:
     velocity: float
     heading: float
     altitude: float
-    speed: float
-    last_seen: datetime.datetime | None
-    history: list[tuple[tuple[float, float], datetime.datetime]] = []
+    last_seen: datetime.datetime
+    class_type: GameObjectClassType
+    coalition: Coalition
+    history: list[tuple[tuple[float, float], datetime.datetime]] = field(default_factory=list)
     confidence: float = 0.0
     classification: str = "---"
     source: str = ""
     track_id: int = 0
-    coalition: Coalition | None = None
 
-    def update(self, position: tuple[float, float], velocity: float, heading: float, altitude: float, speed: float,
+    def update(self, position: tuple[float, float], velocity: float, heading: float, altitude: float,
                time: datetime.datetime | None):
         """
         Update the track with the latest data.
@@ -67,40 +71,55 @@ class Track:
         self.velocity = velocity
         self.heading = heading
         self.altitude = altitude
-        self.speed = speed
 
 
 class SensorTracks:
 
     def __init__(self, gamestate: GameState):
         self.gamestate = gamestate
-        self.tracks: dict[str, Track] = {}
+        self.tracks: dict[GameObjectClassType, dict[str, Track]] = {}
         self.track_id = 0
+        self.cur_time: datetime.datetime | None = None
+        self.track_inactivity_timeout_sec = 60
+
+        self.update_bullseye()
+
+    def update_bullseye(self):
+        self.bullseye = self.gamestate.get_bullseye_pos()
 
     def update(self):
         """
         Update the radar tracks.
         """
-        for id, object in self.gamestate.all_objects.items():
+        self.cur_time = self.gamestate.current_time  # Only updates the current time when tracks are updated, this may be undeseirable
 
-            if not id in self.tracks:
+        for classenum, object_class_dict in self.gamestate.objects.items():
 
-                # Create a new track
-                pos_m = (object.data.T.U, object.data.T.V)
-                vel_m_s = (object.data.CAS)
-                heading_deg = object.data.T.Heading
-                altitude_m = object.data.T.Altitude
-                self.tracks[id] = Track(id, object.data.Type, pos_m, vel_m_s, heading_deg, altitude_m, vel_m_s,
-                                        object.data.timestamp)
-                # Set coalition
-                pass
+            for object_id, object in object_class_dict.items():
 
-            else:
-                # Create a new track
-                pos_m = (object.data.T.U, object.data.T.V)
-                vel_m_s = (object.data.CAS)
-                heading_deg = object.data.T.Heading
-                altitude_m = object.data.T.Altitude
-                self.tracks[id].update(pos_m, vel_m_s, heading_deg, altitude_m, vel_m_s, object.data.timestamp)
-                # Set coalition
-                pass
+                if not object_id in self.tracks:
+                    # Create a new track
+                    side = get_coalition(object.data.Coalition, object.color)
+                    self.tracks[classenum][object_id] = Track(
+                        object_id,
+                        object.data.Type,
+                        (object.data.T.U, object.data.T.V),
+                        object.data.CAS,
+                        object.data.T.Heading,
+                        object.data.T.Altitude,
+                        object.data.timestamp,  # type: ignore #TODO enforce datetime is not None in static analysis
+                        classenum,
+                        side)
+
+                else:
+                    self.tracks[classenum][object_id].update((object.data.T.U, object.data.T.V), object.data.CAS,
+                                                             object.data.T.Heading, object.data.T.Altitude,
+                                                             object.data.timestamp)
+
+        # Remove old tracks
+        if self.cur_time is None:  # Do not remove tracks if the current time is not set
+            return
+        for classenum, track_dict in self.tracks.items():
+            for id, track in track_dict.items():
+                if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
+                    del self.tracks[classenum][id]

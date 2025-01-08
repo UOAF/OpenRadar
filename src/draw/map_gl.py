@@ -113,7 +113,7 @@ class MapGL:
         config.app_config.set("map", "default_map_size_km", bms_math.THEATRE_DEFAULT_SIZE_KM)
         self.scene.set_size(self.map_size_m)
 
-    def on_render(self):
+    def render(self):
 
         scale = self.map_size_m
         self.shader['camera'].write(self.scene.get_mvp())

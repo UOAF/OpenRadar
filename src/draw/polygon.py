@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import os
 
 import moderngl as mgl
@@ -9,6 +10,30 @@ import glm
 import config
 from draw.scene import Scene
 from draw import shapes
+
+
+@dataclass
+class FullRenderBuffer:
+    vertices: NDArray[np.float32] # Shape: (M, 4) -> (x, y, z, w) per vertex
+    offsets: NDArray[np.float32] # Shape: (N, 2) -> (x, y) offset per shape
+    scales: NDArray[np.float32] # Shape: (N, 2) -> (x, y) scale per shape
+    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per shape
+    widths_px: NDArray[np.float32] # Shape: (N,) -> Width per shape
+
+
+@dataclass
+class ShapesRenderBuffer:
+    offsets: NDArray[np.float32] # Shape: (N, 2) -> (x, y) offset per shape
+    scales: NDArray[np.float32] # Shape: (N, 2) -> (x, y) scale per shape
+    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per shape
+    widths_px: NDArray[np.float32] # Shape: (N,) -> Width per shape
+
+
+@dataclass
+class LineRenderBuffer:
+    lines: NDArray[np.float32] # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
+    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per line
+    widths_px: NDArray[np.float32] # Shape: (N,) -> Width per line
 
 
 class PolygonRenderer:
@@ -24,7 +49,10 @@ class PolygonRenderer:
 
         self.program = self._mgl_context.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
 
-    def draw_instances(self, vertices: NDArray[np.float32], offsets: NDArray[np.float32], scales: NDArray[np.float32],
+    def draw_instances(self, input: FullRenderBuffer):
+        self.draw_instances_args(input.vertices, input.offsets, input.scales, input.colors, input.widths_px)
+
+    def draw_instances_args(self, vertices: NDArray[np.float32], offsets: NDArray[np.float32], scales: NDArray[np.float32],
                        colors: NDArray[np.float32], widths_px: NDArray[np.float32]):
         """
         Draws multiple line instances with specified attributes.
@@ -136,16 +164,29 @@ class PolygonRenderer:
         num_output_vertices = (len(vertices) - 3) * 6
 
         vao.render(mgl.TRIANGLES, vertices=num_output_vertices, instances=len(offsets))
+        
+    def draw_shapes(self, unit_shape, input: ShapesRenderBuffer):
+        self.draw_shapes_args(unit_shape, input.offsets, input.scales, input.colors, input.widths_px)
+        
+    def draw_shapes_args(self, unit_shape: NDArray[np.float32], offsets: NDArray[np.float32], scales: NDArray[np.float32], colors: NDArray[np.float32], widths_px: NDArray[np.float32]):
+        self.draw_instances_args(unit_shape, offsets, scales, colors, widths_px)
 
-    def draw_circles(self, offsets: NDArray[np.float32], scales: NDArray[np.float32], colors: NDArray[np.float32],
+    def draw_circles(self, input: ShapesRenderBuffer): # TODO Depricate
+        self.draw_circles_args(input.offsets, input.scales, input.colors, input.widths_px)
+        
+    def draw_circles_args(self, offsets: NDArray[np.float32], scales: NDArray[np.float32], colors: NDArray[np.float32],
                      widths_px: NDArray[np.float32]):
-        self.draw_instances(shapes.circle, offsets, scales, colors, widths_px)
+        self.draw_instances_args(shapes.CIRCLE, offsets, scales, colors, widths_px)
 
-    def draw_lines(self,
-                lines: NDArray[np.float32],            # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
-                colors: NDArray[np.float32],           # Shape: (N, 4) -> RGBA color per line
-                widths_px: NDArray[np.float32],        # Shape: (N,) -> Width per line
-                add_control_points: bool = True):
+    def draw_lines(self, input: LineRenderBuffer):
+        self.draw_lines_args(input.lines, input.colors, input.widths_px)
+
+    def draw_lines_args(
+            self,
+            lines: NDArray[np.float32],  # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
+            colors: NDArray[np.float32],  # Shape: (N, 4) -> RGBA color per line
+            widths_px: NDArray[np.float32],  # Shape: (N,) -> Width per line
+            add_control_points: bool = True):
         """
         Draw multiple lines with specified colors, widths, and optional control points.
 
@@ -168,12 +209,12 @@ class PolygonRenderer:
         # Prepare offsets and scales (default values)
         num_instances = lines.shape[0]
         offsets = np.zeros((num_instances, 2), dtype=np.float32)  # (N, 2)
-        scales = np.ones((num_instances, 2), dtype=np.float32)    # (N, 2)
+        scales = np.ones((num_instances, 2), dtype=np.float32)  # (N, 2)
 
         for i in range(num_instances):
             # Convert 2D points (x, y) to 4D (x, y, z=0.0, w=1.0)
             z = np.zeros((lines[i].shape[0], 1), dtype=np.float32)  # z = 0.0
-            w = np.ones((lines[i].shape[0], 1), dtype=np.float32)   # w = 1.0
+            w = np.ones((lines[i].shape[0], 1), dtype=np.float32)  # w = 1.0
             line = np.hstack((lines[i], z, w))  # Shape: (P, 4)
 
             # Add control points if required
@@ -184,10 +225,10 @@ class PolygonRenderer:
             assert line.shape[1] == 4, "Vertices must have shape (P, 4)."
 
             # Draw the line with specified parameters
-            self.draw_instances(
+            self.draw_instances_args(
                 vertices=line,
-                offsets=offsets[i:i + 1],    # Slice to match shape (1, 2)
-                scales=scales[i:i + 1],      # Slice to match shape (1, 2)
-                colors=colors[i:i + 1],      # Slice to match shape (1, 4)
+                offsets=offsets[i:i + 1],  # Slice to match shape (1, 2)
+                scales=scales[i:i + 1],  # Slice to match shape (1, 2)
+                colors=colors[i:i + 1],  # Slice to match shape (1, 4)
                 widths_px=widths_px[i:i + 1]  # Slice to match shape (1,)
             )
