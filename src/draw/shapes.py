@@ -4,6 +4,8 @@ from numpy.typing import NDArray
 import glm
 import math
 
+from regex import D
+
 
 def unit_vector(angle_rad: float) -> np.ndarray:
     """Returns a unit vector for the given angle in radians."""
@@ -126,13 +128,13 @@ def get_diamond_points():
 
 def get_semicircle_points(radius, num_points):
     # Generate angles evenly spaced around the circle
-    angles = np.linspace(0, np.pi, num_points, endpoint=True)
+    angles = np.linspace(0, np.pi, num_points, endpoint=True, dtype=np.float32)
 
     # Calculate x and y coordinates
-    x = radius * np.cos(angles)
-    y = radius * np.sin(angles)
-    z = np.zeros(num_points)
-    w = np.ones(num_points)
+    x = radius * np.cos(angles, dtype=np.float32)
+    y = radius * np.sin(angles, dtype=np.float32)
+    z = np.zeros(num_points, dtype=np.float32)
+    w = np.ones(num_points, dtype=np.float32)
 
     # Combine into pairs of (x, y) points
     points = np.column_stack((x, y, z, w))
@@ -146,8 +148,8 @@ def get_half_diamond_points():
     return add_control_points_angle(points, before_angle_deg=180, after_angle_deg=180)
 
 
-circle = get_circle_points(1, 100)
-square = get_square_points()
-semicircle = get_semicircle_points(1, 50)
-diamond = get_diamond_points()
-half_diamond = get_half_diamond_points()
+CIRCLE = get_circle_points(1, 100)
+SQUARE = get_square_points()
+SEMICIRCLE = get_semicircle_points(1, 50)
+DIAMOND = get_diamond_points()
+HALF_DIAMOND = get_half_diamond_points()

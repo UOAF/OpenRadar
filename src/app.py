@@ -127,7 +127,7 @@ class App:
 
         self._annotations = MapAnnotations(self.scene)
         self._tracks = SensorTracks(self.gamestate)
-        self._display_data = DisplayData(self.gamestate, self._tracks)
+        self._display_data = DisplayData(self.scene, self.gamestate, self._tracks)
 
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations, self.data_client)
 
@@ -208,11 +208,9 @@ class App:
         Renders the application
         """
         self.mgl_ctx.clear(*config.app_config.get_color_normalized("map", "background_color"))
-
-        self._map_gl.on_render()
-
-        self._annotations.draw()
-
+        self._map_gl.render()
+        self._annotations.render()
+        self._display_data.render()
         self._ImguiUI.render()
 
     def on_cleanup(self):

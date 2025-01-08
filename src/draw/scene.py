@@ -19,11 +19,15 @@ class Scene:
         self.mvp = glm.mat4(1.0)
         self.projection_matrix = glm.mat4(1.0)
         self.view_matrix = glm.mat4(1.0)
+        self.aspect = 1.0
 
         self.resize(self.display_size)
 
     def get_mvp(self):
         return self.mvp
+    
+    def get_scale(self):
+        return self.map_size_m / self.display_size[1]
 
     def set_size(self, scene_size):
         self.map_size_m = scene_size
@@ -37,8 +41,8 @@ class Scene:
 
     def make_camera_matrix(self):
         w, h = self.display_size
-        aspect = w / h
-        projection_matrix = glm.ortho(0.0, aspect, 0.0, 1.0, -1.0, 1.0)
+        self.aspect = w / h
+        projection_matrix = glm.ortho(0.0, self.aspect, 0.0, 1.0, -1.0, 1.0)
 
         scale = 1 / self.map_size_m
         scale = glm.mat4(scale)
