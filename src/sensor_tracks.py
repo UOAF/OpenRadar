@@ -1,5 +1,5 @@
 import datetime
-from turtle import heading
+
 from attr import dataclass
 
 from game_state import GameState
