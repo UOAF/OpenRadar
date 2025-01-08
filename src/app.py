@@ -125,7 +125,7 @@ class App:
         self.scene = Scene(self.size, self.mgl_ctx)
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
 
-        self._annotations = MapAnnotations(self.scene, self.mgl_ctx)
+        self._annotations = MapAnnotations(self.scene)
         self._tracks = SensorTracks(self.gamestate)
         self._display_data = DisplayData(self.gamestate, self._tracks)
 

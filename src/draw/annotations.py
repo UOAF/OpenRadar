@@ -1,5 +1,7 @@
 import moderngl as mgl
 import glm
+import numpy as np
+from numpy.typing import NDArray
 
 from draw.polygon import PolygonRenderer
 from util.bms_ini import FalconBMSIni
@@ -11,9 +13,9 @@ import config
 
 class MapAnnotations:
 
-    def __init__(self, scene: Scene, mgl_context: mgl.Context):
-        self.renderer = PolygonRenderer(mgl_context, scene)
-        self.mgl_context = mgl_context
+    def __init__(self, scene: Scene):
+        self.renderer = PolygonRenderer(scene)
+        self.mgl_context = scene.mgl_context
         self.annotations = []
         self.lines = []
         self.circles = []
@@ -35,40 +37,66 @@ class MapAnnotations:
         self.text_renderer.render()
 
     def draw_lines(self):
+        """
+        Renders stored lines with associated colors and widths.
+        """
+        # Return early if no lines exist
         if len(self.lines) == 0:
             return
 
-        out_lines = []
-        colors = []
-        widths_px = []
+        # Prepare output arrays
+        num_lines = len(self.lines)
 
-        for line in self.lines:
+        # Generate colors (N, 4) RGBA
+        colors: NDArray[np.float32] = np.array(
+            [(*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0) for _ in range(num_lines)],
+            dtype=np.float32)  # Shape: (N, 4)
 
-            colors.append((*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0))
-            widths_px.append(config.app_config.get_float("annotations", "ini_width"))
+        # Generate widths (N,)
+        widths_px: NDArray[np.float32] = np.array(
+            [config.app_config.get_float("annotations", "ini_width") for _ in range(num_lines)],
+            dtype=np.float32)  # Shape: (N,)
 
-        self.renderer.draw_lines(self.lines, colors, widths_px)
+        # Process each line individually
+        for i, line in enumerate(self.lines):
+            # Convert line to NDArray with (P, 2)
+            line_array = np.array(line, dtype=np.float32)  # Shape: (P, 2)
+
+            # Render each line separately
+            self.renderer.draw_lines(
+                lines=line_array[None, :, :],  # Add batch dimension: Shape (1, P, 2)
+                colors=colors[i:i + 1],  # Slice (1, 4)
+                widths_px=widths_px[i:i + 1]  # Slice (1,)
+            )
 
     def draw_circles(self):
+        """
+        Renders stored circles with specified offsets, scales, colors, and widths.
 
+        This function processes stored circles, converts inputs into NumPy arrays, and passes them 
+        to the `draw_circles` method for rendering.
+
+        Raises:
+            ValueError: If any input arrays have inconsistent lengths or invalid shapes.
+        """
+        # Return early if no circles exist
         if len(self.circles) == 0:
             return
 
-        offsets = []
-        scales = []
-        color = []
-        widths_px = []
+        offsets = np.array([circle[0] for circle in self.circles], dtype=np.float32)  # Shape: (N, 2)
+        scales = np.array([(circle[1], circle[1]) for circle in self.circles], dtype=np.float32)  # Shape: (N, 2)
+        colors = np.array([(*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0)
+                           for _ in self.circles],
+                          dtype=np.float32)  # Shape: (N, 4)
+        widths_px = np.array([config.app_config.get_float("annotations", "ini_width") for _ in self.circles],
+                             dtype=np.float32)  # Shape: (N,)
 
+        # Render text labels at circle positions
         for circle in self.circles:
-            pos, r, name = circle
-            # ((x, y), r, name)
-            offsets.append(pos)
-            scales.append((r, r))  # scale by the same in x and y to stay a circle
-            color.append((*config.app_config.get_color_normalized("annotations", "ini_color"), 1.0))
-            widths_px.append(config.app_config.get_float("annotations", "ini_width"))
+            pos, _, name = circle
             self.text_renderer.draw_text(name, *pos)
 
-        self.renderer.draw_circles(offsets, scales, color, widths_px)
+        self.renderer.draw_circles(offsets, scales, colors, widths_px)
 
     def draw_text(self):
         pass

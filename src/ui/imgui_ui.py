@@ -346,3 +346,6 @@ class ImguiUserInterface:
             config.app_config.set("notepad", "notes", notes)
         if not open:
             self.notepad_window_open = False
+
+
+    # TODO handle map and ini drag-drops
