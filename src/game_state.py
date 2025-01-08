@@ -1,28 +1,46 @@
 import acmi_parse
 import datetime
 from trtt_client import TRTTClientThread
-import queue 
+import queue
 import pygame
 import math
 
 from typing import Type
+from enum import Enum, auto
 
 from game_objects import *
 
 # This can cause an attempt to delete objects that are not in the game state
 # TODO: If perfomance becomes an issues consider reimplementing this list.
-HIDDEN_OBJECT_CLASSES = ("Static", "Projectile", "Vehicle", "Flare", "Chaff", "Explosion", "Parachutist", "Bomb", "Rotorcraft") 
+# HIDDEN_OBJECT_CLASSES = ("Static", "Projectile", "Vehicle", "Flare", "Chaff", "Explosion", "Parachutist", "Bomb", "Rotorcraft")
 
-CLASS_MAP = {
-    "Navaid+Static+Bullseye": Bullseye,
-    "FixedWing": fixedWing,
-    "Rotorcraft": rotaryWing,
-    "Missile": missile,
-    "Ground+Vehicle": groundUnit,
-    "Watercraft": surfaceVessel
-}
+# CLASS_MAP = {
+#     "Navaid+Static+Bullseye": Bullseye,
+#     "FixedWing": fixedWing,
+#     "Rotorcraft": rotaryWing,
+#     "Missile": missile,
+#     "Ground+Vehicle": groundUnit,
+#     "Watercraft": surfaceVessel
+# }
 
 SUPPORTED_CLASSES = Bullseye | fixedWing | rotaryWing | missile | groundUnit | surfaceVessel
+
+class GameObjectClassDescription():
+    id: int
+    class_type: Type[SUPPORTED_CLASSES]
+    tacview_class: str
+
+class GameObjectClassType(GameObjectClassDescription, Enum):
+    """
+    Enumeration of track types.
+    """
+    FIXEDWING = auto(), fixedWing, "FixedWing"
+    ROTARYWING = auto(), rotaryWing, "Rotorcraft"
+    MISSLE = auto(), missile, "Missile"
+    GROUND = auto(), groundUnit, "Ground+Vehicle"
+    SEA = auto(), surfaceVessel, "Watercraft"
+    BULLSEYE = auto(), Bullseye, "Navaid+Static+Bullseye"
+
 
 class GameState:
     """
@@ -35,23 +53,26 @@ class GameState:
         parser (AcmiParse.ACMIFileParser): ACMI parser to parse incoming data.
     """
 
-    def __init__(self, data_queue: queue.Queue[str]):      
+    def __init__(self, data_queue: queue.Queue[str]):
         self.data_queue: queue.Queue[str] = data_queue
         self.global_vars = dict()
-        
+
         self.reference_time: datetime.datetime | None = None
         self.current_time: datetime.datetime | None = None
-        
-        self.objects: dict[Type[SUPPORTED_CLASSES], dict["str", GameObject] ] = {clas: dict() for clas in CLASS_MAP.values()}
+
+        self.objects: dict[GameObjectClassType, dict["str", GameObject]] = {
+            class_type: dict()
+            for class_type in GameObjectClassType
+        }
         self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
-        
+
     def get_bullseye_pos(self):
-        if '7fffffffffffffff' not in self.objects[Bullseye]:
-            return (0,0)
-        return self.objects[Bullseye]['7fffffffffffffff'].get_pos()
-    
+        if '7fffffffffffffff' not in self.objects[GameObjectClassType.BULLSEYE]:
+            return (0, 0)
+        return self.objects[GameObjectClassType.BULLSEYE]['7fffffffffffffff'].get_pos()
+
     def update_state(self):
         """
         Update the game state with the latest data from the Tacview client.
@@ -61,13 +82,13 @@ class GameState:
 
             line = self.data_queue.get()
             # print(line)
-            if line is None: break # End of data
+            if line is None: break  # End of data
 
-            acmiline = self.parser.parse_line(line) # Parse the line into a dict
-            if acmiline is None: 
+            acmiline = self.parser.parse_line(line)  # Parse the line into a dict
+            if acmiline is None:
                 print(f"Failed to parse line: {line}")
-                continue # Skip if line fails to parse
-            
+                continue  # Skip if line fails to parse
+
             if acmiline.action in acmi_parse.ACTION_REMOVE:
                 # Remove object from battlefield
                 if acmiline.object_id is not None:
@@ -84,19 +105,17 @@ class GameState:
                 self.global_vars = self.global_vars | acmiline.properties
                 if "ReferenceTime" in acmiline.properties:
                     # format 2024-6-9T00:00:00Z
-                    self.reference_time = datetime.datetime.strptime(acmiline.properties["ReferenceTime"], "%Y-%m-%dT%H:%M:%SZ")
+                    self.reference_time = datetime.datetime.strptime(acmiline.properties["ReferenceTime"],
+                                                                     "%Y-%m-%dT%H:%M:%SZ")
                     self.reference_time = self.reference_time.replace(tzinfo=datetime.timezone.utc)
 
             elif acmiline.action in acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
-                # if not any(clas in acmiline.Type for clas in HIDDEN_OBJECT_CLASSES): # Skip hidden objects 
-                # TODO Refrence comment on HIDDEN_OBJECT_CLASSES declaration
                 self._update_object(acmiline)
 
             else:
                 print(f"Unknown action {acmiline.action} in {acmiline}")
-                
-    def get_nearest_object(self, world_pos: tuple[float, float], hover_dist_world: float) -> GameObject | None:
 
+    def get_nearest_object(self, world_pos: tuple[float, float], hover_dist_world: float) -> GameObject | None:
         """
         Gets the object ID of the object that is being hovered over.
         
@@ -126,7 +145,7 @@ class GameState:
 
         Args:
             object_id (str): The ID of the object to remove.
-        """       
+        """
         for subdict in self.objects.values():
             if object_id in subdict:
                 del subdict[object_id]
@@ -134,7 +153,6 @@ class GameState:
                 return
 
         # print(f"tried to delete object {object_id} not in self.objects")  #TODO handle objects not in CLASS_MAP
-        
 
     def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
         """
@@ -150,13 +168,13 @@ class GameState:
             self.all_objects[updateObj.object_id].update(updateObj)
             self._update_target_lock(self.all_objects[updateObj.object_id])
         else:
-            for key in CLASS_MAP:
-                if key in updateObj.Type:
-                    subdict = self.objects[CLASS_MAP[key]]
-                    subdict[updateObj.object_id] = CLASS_MAP[key](updateObj)
+            for classenum in GameObjectClassType:
+                if classenum.tacview_class in updateObj.Type:
+                    subdict = self.objects[classenum]
+                    subdict[updateObj.object_id] = classenum.class_type(updateObj)
                     self.all_objects[updateObj.object_id] = subdict[updateObj.object_id]
                     break
-        
+
     def _update_target_lock(self, updateObj: GameObject) -> None:
         if updateObj.data.LockedTarget not in [None, "", "0"]:
             if updateObj.data.LockedTarget in self.all_objects:
@@ -165,9 +183,9 @@ class GameState:
                 print(f"Target {updateObj.data.LockedTarget} not found")
         else:
             updateObj.locked_target = None
-            
+
         #TODO handle objects not in CLASS_MAP
-        
+
     def clear_state(self) -> None:
         """
         Clear the game state.
