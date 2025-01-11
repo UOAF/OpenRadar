@@ -45,7 +45,7 @@ class ImguiUserInterface:
         io.display_size = self.size
         io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18) 
         self.impl = GlfwRenderer(window, attach_callbacks=False)
-        self._time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+        self._time: datetime.datetime = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
         self._fps = 0
         self._fps_history = [0] * 100
@@ -206,7 +206,7 @@ class ImguiUserInterface:
         imgui.set_next_window_size(width, height)
         imgui.set_next_window_position(0, imgui.get_io().display_size[1] - height)
         with imgui.begin("Bottom Bar", True, flags=bottom_flags):
-            TextCentered(self.time.strftime("%H:%M:%SZ"))
+            TextCentered(self._time.strftime("%H:%M:%SZ"))
 
     def fps_counter(self):
         if not self.fps_window_open:

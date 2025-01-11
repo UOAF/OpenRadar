@@ -197,11 +197,12 @@ class App:
         """
         Performs any necessary updates or calculations for the application.
         """
+        self.gamestate.update_state()
         self._ImguiUI.update()
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.frame_time
         if self.gamestate.current_time is not None:
-            self._ImguiUI.time = self.gamestate.current_time.strftime("%H:%M:%SZ")
+            self._ImguiUI.time = self.gamestate.current_time
 
     def on_render(self):
         """
@@ -227,13 +228,20 @@ class App:
         if self.on_init() == False:
             self._running = False
 
+        time_sum = 0
         while self._running:
-            self.clock.tick()
+            dt = self.clock.tick()
+            time_sum += dt
             gl.glQueryCounter(self.start_query, timer_query.GL_TIMESTAMP)
             start_time_ns = ctypes.c_ulonglong()
             end_time_ns = ctypes.c_ulonglong()
 
             self.on_loop()
+            
+            if time_sum > 1:
+                time_sum = 0
+                self._tracks.update()
+                self._display_data.generate_render_instance_arrays()
             self.on_render()
 
             gl.glQueryCounter(self.end_query, timer_query.GL_TIMESTAMP)

@@ -17,8 +17,7 @@ class DisplayData:
         """
         Generate the instance arrays for rendering. called 
         """
-        for track in self.tracks:
-            pass
+        self.track_renderer.build_render_arrays(self.tracks)
         
     def render(self):
         """
