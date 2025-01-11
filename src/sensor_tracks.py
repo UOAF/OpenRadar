@@ -31,6 +31,9 @@ def get_coalition(name: str, color: tuple[float, float, float, float]) -> Coalit
         coalition = Coalition(name, color, [])
         game_coalitions[name] = coalition
         return coalition
+    
+    if name == "":
+        return Coalition("Unknown", (1, 0, 1, 1), [])
 
     assert False, f"Invalid coalition name {name}"
 
@@ -77,7 +80,7 @@ class SensorTracks:
 
     def __init__(self, gamestate: GameState):
         self.gamestate = gamestate
-        self.tracks: dict[GameObjectClassType, dict[str, Track]] = {}
+        self.tracks: dict[GameObjectClassType, dict[str, Track]] = {class_type: {} for class_type in GameObjectClassType}
         self.track_id = 0
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 60
@@ -107,7 +110,7 @@ class SensorTracks:
                         object.data.CAS,
                         object.data.T.Heading,
                         object.data.T.Altitude,
-                        object.data.timestamp,  # type: ignore #TODO enforce datetime is not None in static analysis
+                        object.data.timestamp,  # type: ignore #TODO enforce timestamp is not None in static analysis
                         classenum,
                         side)
 
@@ -120,6 +123,10 @@ class SensorTracks:
         if self.cur_time is None:  # Do not remove tracks if the current time is not set
             return
         for classenum, track_dict in self.tracks.items():
+            to_delete = []
             for id, track in track_dict.items():
-                if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
-                    del self.tracks[classenum][id]
+                if track.last_seen is not None:  # TODO enforce last_seen is not None in static analysis
+                    if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
+                        to_delete.append(id)    
+            for id in to_delete:
+                del self.tracks[classenum][id]  

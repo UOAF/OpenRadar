@@ -145,6 +145,7 @@ class TRTTClientThread(threading.Thread):
     def _process_data(self, buf: Buffer):
         while self.connected and not self.quit:
             line = buf.get_line()
+            print(line)
             if line is None:
                 with self.lock:
                     self.connected = False
@@ -152,6 +153,7 @@ class TRTTClientThread(threading.Thread):
                 self._set_status(ThreadState.DISCONNECTED, "Disconnected")
                 break
             self.queue.put(line)
+            print ("Put data in queue")
             
             hours, remainder = divmod((datetime.datetime.now() - self.connection_time).total_seconds(), 3600)
             minutes, seconds = divmod(remainder, 60)

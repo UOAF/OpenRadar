@@ -1,9 +1,8 @@
 import acmi_parse
 import datetime
-from trtt_client import TRTTClientThread
 import queue
-import pygame
 import math
+from dataclasses import dataclass
 
 from typing import Type
 from enum import Enum, auto
@@ -24,22 +23,22 @@ from game_objects import *
 # }
 
 SUPPORTED_CLASSES = Bullseye | fixedWing | rotaryWing | missile | groundUnit | surfaceVessel
-
-class GameObjectClassDescription():
+@dataclass
+class GameObjectClassDescription:
     id: int
     class_type: Type[SUPPORTED_CLASSES]
     tacview_class: str
 
-class GameObjectClassType(GameObjectClassDescription, Enum):
+class GameObjectClassType(Enum):
     """
     Enumeration of track types.
     """
-    FIXEDWING = auto(), fixedWing, "FixedWing"
-    ROTARYWING = auto(), rotaryWing, "Rotorcraft"
-    MISSLE = auto(), missile, "Missile"
-    GROUND = auto(), groundUnit, "Ground+Vehicle"
-    SEA = auto(), surfaceVessel, "Watercraft"
-    BULLSEYE = auto(), Bullseye, "Navaid+Static+Bullseye"
+    FIXEDWING = GameObjectClassDescription(auto(), fixedWing, "FixedWing")
+    ROTARYWING = GameObjectClassDescription(auto(), rotaryWing, "Rotorcraft")
+    MISSILE = GameObjectClassDescription(auto(), missile, "Missile")
+    GROUND = GameObjectClassDescription(auto(), groundUnit, "Ground+Vehicle")
+    SEA = GameObjectClassDescription(auto(), surfaceVessel, "Watercraft")
+    BULLSEYE = GameObjectClassDescription(auto(), Bullseye, "Navaid+Static+Bullseye")
 
 
 class GameState:
@@ -81,7 +80,7 @@ class GameState:
         while not self.data_queue.empty():
 
             line = self.data_queue.get()
-            # print(line)
+            print("Got line")
             if line is None: break  # End of data
 
             acmiline = self.parser.parse_line(line)  # Parse the line into a dict
@@ -169,9 +168,9 @@ class GameState:
             self._update_target_lock(self.all_objects[updateObj.object_id])
         else:
             for classenum in GameObjectClassType:
-                if classenum.tacview_class in updateObj.Type:
+                if classenum.value.tacview_class in updateObj.Type:
                     subdict = self.objects[classenum]
-                    subdict[updateObj.object_id] = classenum.class_type(updateObj)
+                    subdict[updateObj.object_id] = classenum.value.class_type(updateObj)
                     self.all_objects[updateObj.object_id] = subdict[updateObj.object_id]
                     break
 
