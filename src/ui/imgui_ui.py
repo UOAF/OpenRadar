@@ -16,7 +16,6 @@ from util.os_utils import open_file_dialog
 #     r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))\.){3,3}(25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))\.){3,3}(25[0-5]|(2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])))$'
 # )
 
-
 # def validate_ip(ip: str) -> bool:
 #     """
 #     Validate an IP address.
@@ -43,7 +42,7 @@ class ImguiUserInterface:
         imgui.create_context()
         io = imgui.get_io()
         io.display_size = self.size
-        io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18) 
+        io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18)
         self.impl = GlfwRenderer(window, attach_callbacks=False)
         self._time: datetime.datetime = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
@@ -151,7 +150,7 @@ class ImguiUserInterface:
                 # Windows Dropdown
                 with imgui.begin_menu('Windows', True) as windows_menu:
                     if windows_menu.opened:
-                        
+
                         if imgui.menu_item('Server', '', self.server_window_open, True)[0]:
                             self.server_window_open = not self.server_window_open
                         if imgui.menu_item('Layers', '', self.layers_window_open, True)[0]:
@@ -287,7 +286,7 @@ class ImguiUserInterface:
     def server_window(self):
         if not self.server_window_open:
             return
-        
+
         connected = False
 
         status, description = self.data_client.get_status()
@@ -295,12 +294,12 @@ class ImguiUserInterface:
             connected = True
 
         _, open = imgui.begin("Server", True, imgui.WINDOW_ALWAYS_AUTO_RESIZE)
-        
+
         if connected:
             imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
 
-        address_changed, address = imgui.input_text("Address##server_address", config.app_config.get_str("server", "address"),
-                                                    -1)
+        address_changed, address = imgui.input_text("Address##server_address",
+                                                    config.app_config.get_str("server", "address"), -1)
 
         port_changed, port = imgui.input_int("Port##server_port", config.app_config.get_int("server", "port"))
         imgui.same_line()
@@ -313,13 +312,13 @@ class ImguiUserInterface:
 
         autoconnect_changed, autoconnect = imgui.checkbox("Autoconnect",
                                                           config.app_config.get_bool("server", "autoconnect"))
-        
+
         if connected:
             imgui.internal.pop_item_flag()
 
         imgui.text("Status: ")
         imgui.same_line()
-        
+
         imgui.text(f"{status.status_msg}  {description}")
 
         if imgui.button("Connect"):
@@ -359,6 +358,5 @@ class ImguiUserInterface:
             config.app_config.set("notepad", "notes", notes)
         if not open:
             self.notepad_window_open = False
-
 
     # TODO handle map and ini drag-drops

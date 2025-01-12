@@ -56,9 +56,6 @@ class GameState:
         self.data_queue: queue.Queue[str] = data_queue
         self.global_vars = dict()
 
-        self.reference_time: datetime.datetime | None = None
-        self.current_time: datetime.datetime | None = None
-
         self.objects: dict[GameObjectClassType, dict["str", GameObject]] = {
             class_type: dict()
             for class_type in GameObjectClassType
@@ -66,6 +63,9 @@ class GameState:
         self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
+        
+    def get_time(self) -> datetime.datetime:
+        return self.parser.get_time()
 
     def get_bullseye_pos(self):
         if '7fffffffffffffff' not in self.objects[GameObjectClassType.BULLSEYE]:
@@ -80,7 +80,6 @@ class GameState:
         while not self.data_queue.empty():
 
             line = self.data_queue.get()
-            print("Got line")
             if line is None: break  # End of data
 
             acmiline = self.parser.parse_line(line)  # Parse the line into a dict
@@ -97,16 +96,12 @@ class GameState:
                 # print(f"tried to delete object {acmiline.object_id} not in self.state")
 
             elif acmiline.action in acmi_parse.ACTION_TIME:
-                if self.reference_time is not None and acmiline.delta_time is not None:
-                    self.current_time = self.reference_time + datetime.timedelta(seconds=acmiline.delta_time)
+                # if self.reference_time is not None and acmiline.delta_time is not None: #TODO remove this. it was moved to the parser
+                #     self.current_time = self.reference_time + datetime.timedelta(seconds=acmiline.delta_time)
+                pass
 
             elif acmiline.action in acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
                 self.global_vars = self.global_vars | acmiline.properties
-                if "ReferenceTime" in acmiline.properties:
-                    # format 2024-6-9T00:00:00Z
-                    self.reference_time = datetime.datetime.strptime(acmiline.properties["ReferenceTime"],
-                                                                     "%Y-%m-%dT%H:%M:%SZ")
-                    self.reference_time = self.reference_time.replace(tzinfo=datetime.timezone.utc)
 
             elif acmiline.action in acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
                 self._update_object(acmiline)
@@ -160,9 +155,6 @@ class GameState:
         Args:
             updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
         """
-        if self.current_time is not None:
-            updateObj.timestamp = self.current_time
-
         if updateObj.object_id in self.all_objects:
             self.all_objects[updateObj.object_id].update(updateObj)
             self._update_target_lock(self.all_objects[updateObj.object_id])

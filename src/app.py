@@ -215,9 +215,8 @@ class App:
         self._ImguiUI.update()
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.frame_time
-        if self.gamestate.current_time is not None:
-            self._ImguiUI.time = self.gamestate.current_time
-
+        self._ImguiUI.time = self.gamestate.get_time()
+        
     def on_render(self):
         """
         Renders the application

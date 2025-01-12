@@ -61,9 +61,10 @@ class ACMIEntry:
         timestamp (float): The timestamp of the entry.
     """
     action: str
+    timestamp: datetime.datetime
     object_id: Optional[str] = "None"
     delta_time: Optional[float] = None
-    timestamp: Optional[datetime.datetime] = None
+
     # def __init__(self, action: str, object_id: str = "", timestamp: float = 0.0):
     #     self.action = action
     #     self.object_id = object_id
@@ -122,6 +123,7 @@ class ACMIObject (ACMIEntry):
         VerticalGForce (float): The vertical G-force experienced by the object.
     """
     T: Orientation
+    timestamp: datetime.datetime
     object_id: str = ""
     properties = dict()
     AOA: float = 0.0
@@ -141,7 +143,7 @@ class ACMIObject (ACMIEntry):
     Type: str = ""
     VerticalGForce: float = 0.0
     
-    def __init__(self, action, object_id: str, properties: dict):
+    def __init__(self, action, object_id: str, properties: dict, timestamp: datetime.datetime):
         """
         Initialize an ACMIObject object.
 
@@ -150,18 +152,19 @@ class ACMIObject (ACMIEntry):
             object_id (str): The ID of the object.
             properties (dict): The properties of the object.
         """
-        super().__init__(action, object_id=object_id)
+        super().__init__(action, object_id=object_id, timestamp=timestamp)
         self.T = Orientation()
         self.object_id = object_id
-        self.update(properties)
+        self.update(properties, timestamp)
 
-    def update(self, properties: dict):
+    def update(self, properties: dict, timestamp: datetime.datetime):
         """
         Updates the properties of the object.
 
         Args:
             properties (dict): The properties to update.
         """
+        self.timestamp = timestamp
         self.properties = {**self.properties, **properties}
 
         for key, value in self.properties.items():
@@ -188,6 +191,7 @@ class ACMIFileParser:
         self.file_path = file_path
         self.global_obj = {}
         self.objects = {}
+        self.reference_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
         self.relative_time = 0
 
     def parse_file(self):
@@ -201,6 +205,15 @@ class ACMIFileParser:
             lines = file.readlines()
             for line in lines:
                 self.parse_line(line)
+                
+    def get_time(self) -> datetime.datetime:
+        """
+        Returns the current time in the ACMI file.
+
+        Returns:
+            datetime.datetime: The current time in the ACMI file.
+        """
+        return self.reference_time + datetime.timedelta(seconds=self.relative_time)
                 
     def get_action(self, line: str) -> str | None:
         """
@@ -251,12 +264,12 @@ class ACMIFileParser:
             # Parse time frame
             time_frame = float(line[1:])
             self.relative_time = time_frame
-            return ACMIEntry(ACTION_TIME, delta_time=time_frame)
+            return ACMIEntry(ACTION_TIME, timestamp=self.get_time(), delta_time=time_frame)
 
         if line.startswith('-'):
             # Remove object from battlefield
             object_id = line[1:]
-            return ACMIEntry(ACTION_REMOVE, object_id=object_id)
+            return ACMIEntry(ACTION_REMOVE, timestamp=self.get_time(), object_id=object_id)
 
         else:
             
@@ -284,10 +297,15 @@ class ACMIFileParser:
                 properties[key] = value
             
             if object_id == "global":
-                return ACMIObject(ACTION_GLOBAL, object_id, properties)
+                if "ReferenceTime" in properties:
+                    # format 2024-6-9T00:00:00Z
+                    self.reference_time = datetime.datetime.strptime(properties["ReferenceTime"],
+                                                                     "%Y-%m-%dT%H:%M:%SZ")
+                    self.reference_time = self.reference_time.replace(tzinfo=datetime.timezone.utc)
+                return ACMIObject(ACTION_GLOBAL, object_id, properties, self.get_time())
             
             else:
-                return ACMIObject(ACTION_UPDATE, object_id, properties)
+                return ACMIObject(ACTION_UPDATE, object_id, properties, self.get_time())
 
     def parse_t(self, t: str) -> dict | None:
         """ 

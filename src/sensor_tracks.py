@@ -83,7 +83,7 @@ class SensorTracks:
         self.tracks: dict[GameObjectClassType, dict[str, Track]] = {class_type: {} for class_type in GameObjectClassType}
         self.track_id = 0
         self.cur_time: datetime.datetime | None = None
-        self.track_inactivity_timeout_sec = 60
+        self.track_inactivity_timeout_sec = 10
 
         self.update_bullseye()
 
@@ -94,7 +94,7 @@ class SensorTracks:
         """
         Update the radar tracks.
         """
-        self.cur_time = self.gamestate.current_time  # Only updates the current time when tracks are updated, this may be undeseirable
+        self.cur_time = self.gamestate.get_time()  # Only updates the current time when tracks are updated, this may be undeseirable
 
         for classenum, object_class_dict in self.gamestate.objects.items():
 
@@ -102,6 +102,10 @@ class SensorTracks:
 
                 if not object_id in self.tracks:
                     # Create a new track
+                    if object.data.timestamp is None or (self.cur_time - object.data.timestamp).total_seconds() > self.track_inactivity_timeout_sec:
+                       # Skip if the object has no timestamp or is too old
+                       # will need to rethink this for ground/sea contacts
+                       continue
                     side = get_coalition(object.data.Coalition, object.color)
                     self.tracks[classenum][object_id] = Track(
                         object_id,
@@ -128,5 +132,7 @@ class SensorTracks:
                 if track.last_seen is not None:  # TODO enforce last_seen is not None in static analysis
                     if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
                         to_delete.append(id)    
+                        
+                        print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
             for id in to_delete:
                 del self.tracks[classenum][id]  
