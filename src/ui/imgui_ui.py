@@ -3,11 +3,13 @@ from imgui.integrations.glfw import GlfwRenderer
 import numpy as np
 import datetime
 
+from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
 from trtt_client import TRTTClientThread, ThreadState
 import config
 
+from util.bms_math import METERS_TO_FT
 from util.os_utils import open_file_dialog
 
 # # Regex patterns for IPv4 and IPv6 validation
@@ -33,8 +35,9 @@ def TextCentered(text: str):
 
 class ImguiUserInterface:
 
-    def __init__(self, size, window, map_gl: MapGL, annotations: MapAnnotations, data_client: TRTTClientThread):
+    def __init__(self, size, window, scene: Scene, map_gl: MapGL, annotations: MapAnnotations, data_client: TRTTClientThread):
         self.size = size
+        self.scene = scene
         self.map_gl: MapGL = map_gl
         self.annotations = annotations
         self.data_client = data_client
@@ -56,6 +59,7 @@ class ImguiUserInterface:
         self.settings_window_open = False
         self.server_window_open = False
         self.notepad_window_open = False
+        self.debug_window_open = False
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -113,6 +117,7 @@ class ImguiUserInterface:
         self.settings_window()
         self.server_window()
         self.notepad_window()
+        self.debug_window()
 
     def ui_main_menu(self):
 
@@ -159,6 +164,8 @@ class ImguiUserInterface:
                             self.notepad_window_open = not self.notepad_window_open
                         if imgui.menu_item('FPS', '', self.fps_window_open, True)[0]:
                             self.fps_window_open = not self.fps_window_open
+                        if imgui.menu_item('Debug', '', self.debug_window_open, True)[0]:
+                            self.debug_window_open = not self.debug_window_open
 
     def map_list_menu(self):
         maps = self.map_gl.list_maps()
@@ -358,5 +365,19 @@ class ImguiUserInterface:
             config.app_config.set("notepad", "notes", notes)
         if not open:
             self.notepad_window_open = False
+            
+    def debug_window(self):
+        if not self.debug_window_open:
+            return
+        _, open = imgui.begin("Debug", True)
+        imgui.text(f"Mouse Pos: {imgui.get_mouse_pos()}")
+        imgui.text(f"Mouse Pos (World (m)): {self.scene.screen_to_world(imgui.get_mouse_pos())}")
+        imgui.text(f"Mouse Pos (World (ft)): {self.scene.screen_to_world(imgui.get_mouse_pos()) * METERS_TO_FT}")
+        imgui.text(f"Pan: {self.scene._pan_screen}")
+        imgui.text(f"Zoom: {self.scene.zoom_level}")
+        imgui.text(f"Map Size: {self.scene.map_size_m}")
+        imgui.end()
+        if not open:
+            self.debug_window_open = False
 
     # TODO handle map and ini drag-drops

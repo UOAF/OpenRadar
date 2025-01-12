@@ -131,7 +131,8 @@ class App:
         self._tracks = SensorTracks(self.gamestate)
         self._display_data = DisplayData(self.scene, self.gamestate, self._tracks)
 
-        self._ImguiUI = ImguiUserInterface(self.size, self.window, self._map_gl, self._annotations, self.data_client)
+        self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self._annotations,
+                                           self.data_client)
 
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
@@ -194,7 +195,7 @@ class App:
             self._startPan = (xpos, ypos)
         # if self.mouseBRAADown:
         #     self._radar.braa(True, self._startBraa, event.pos)
-        
+
     def handle_key(self, window, key, scancode, action, mods):
         if imgui.get_io().want_capture_keyboard:
             self._ImguiUI.impl.keyboard_callback(window, key, scancode, action, mods)
@@ -202,7 +203,7 @@ class App:
         if action == glfw.PRESS:
             if key == glfw.KEY_ESCAPE:
                 self._running = False
-                
+
     def handle_char(self, window, char):
         if imgui.get_io().want_capture_keyboard:
             self._ImguiUI.impl.char_callback(window, char)
@@ -216,7 +217,7 @@ class App:
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.frame_time
         self._ImguiUI.time = self.gamestate.get_time()
-        
+
     def on_render(self):
         """
         Renders the application
@@ -250,7 +251,7 @@ class App:
             end_time_ns = ctypes.c_ulonglong()
 
             self.on_loop()
-            
+
             if time_sum > 1:
                 time_sum = 0
                 self._tracks.update()
