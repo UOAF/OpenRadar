@@ -110,6 +110,8 @@ class App:
             'scroll': self.handle_mouse_wheel,
             'mouse_button': self.handle_mouse_button,
             'cursor_pos': self.handle_mouse_motion,
+            'key': self.handle_key,
+            'char': self.handle_char
         }
 
         for handler_name in event_handlers:
@@ -192,6 +194,18 @@ class App:
             self._startPan = (xpos, ypos)
         # if self.mouseBRAADown:
         #     self._radar.braa(True, self._startBraa, event.pos)
+        
+    def handle_key(self, window, key, scancode, action, mods):
+        if imgui.get_io().want_capture_keyboard:
+            self._ImguiUI.impl.keyboard_callback(window, key, scancode, action, mods)
+            return
+        if action == glfw.PRESS:
+            if key == glfw.KEY_ESCAPE:
+                self._running = False
+                
+    def handle_char(self, window, char):
+        if imgui.get_io().want_capture_keyboard:
+            self._ImguiUI.impl.char_callback(window, char)
 
     def on_loop(self):
         """
