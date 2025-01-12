@@ -53,7 +53,7 @@ class GameObject:
         return f"{self.data.Type}"
         
     def update(self, object: ACMIObject):
-        self.data.update(object.properties)
+        self.data.update(object.properties, object.timestamp)
 
     def get_pos(self) -> tuple[float,float]:
         return (self.data.T.U, self.data.T.V)
