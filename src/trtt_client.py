@@ -78,7 +78,7 @@ class TRTTClientThread(threading.Thread):
                             self.connected = True
                             self.retries = 0 # Reset retries on successful connection
                             self.connection_time = datetime.datetime.now()
-                        except (ConnectionRefusedError, socket.timeout):
+                        except (ConnectionRefusedError, socket.timeout, OSError):
                             self.retries += 1
                             self._set_status(ThreadState.CONNECTING, f"Retry {self.retries}/{self.max_retries}")
                             sleep(retry_delay)
@@ -133,8 +133,11 @@ class TRTTClientThread(threading.Thread):
                 self.clientsocket.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
+        try:
             self.clientsocket.close()
-            self.clientsocket = None
+        except AttributeError:
+            pass
+        self.clientsocket = None
         with self.lock:
             self.connected = False
             self.connecting = False
@@ -145,7 +148,6 @@ class TRTTClientThread(threading.Thread):
     def _process_data(self, buf: Buffer):
         while self.connected and not self.quit:
             line = buf.get_line()
-            print(line)
             if line is None:
                 with self.lock:
                     self.connected = False
@@ -153,7 +155,6 @@ class TRTTClientThread(threading.Thread):
                 self._set_status(ThreadState.DISCONNECTED, "Disconnected")
                 break
             self.queue.put(line)
-            print ("Put data in queue")
             
             hours, remainder = divmod((datetime.datetime.now() - self.connection_time).total_seconds(), 3600)
             minutes, seconds = divmod(remainder, 60)

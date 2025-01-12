@@ -63,6 +63,7 @@ class ImguiUserInterface:
         self.map_selection_dialog_open = False
 
         self.server_password = ""
+        self.server_connected = False
 
     # def on_event(self, event):
     #     return self.impl.process_event(event)
@@ -286,8 +287,17 @@ class ImguiUserInterface:
     def server_window(self):
         if not self.server_window_open:
             return
+        
+        connected = False
+
+        status, description = self.data_client.get_status()
+        if status in [ThreadState.CONNECTED, ThreadState.CONNECTING]:
+            connected = True
 
         _, open = imgui.begin("Server", True, imgui.WINDOW_ALWAYS_AUTO_RESIZE)
+        
+        if connected:
+            imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
 
         address_changed, address = imgui.input_text("Address##server_address", config.app_config.get_str("server", "address"),
                                                     -1)
@@ -303,10 +313,13 @@ class ImguiUserInterface:
 
         autoconnect_changed, autoconnect = imgui.checkbox("Autoconnect",
                                                           config.app_config.get_bool("server", "autoconnect"))
+        
+        if connected:
+            imgui.internal.pop_item_flag()
 
         imgui.text("Status: ")
         imgui.same_line()
-        status, description = self.data_client.get_status()
+        
         imgui.text(f"{status.status_msg}  {description}")
 
         if imgui.button("Connect"):
