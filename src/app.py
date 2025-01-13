@@ -234,13 +234,17 @@ class App:
         """
         glfw.terminate()
 
-    def on_execute(self):
+    def on_execute(self, args):
         """
         This is the main Loop
         """
 
         if self.on_init() == False:
             self._running = False
+
+        self.args = args
+        if args.ini is not None:
+            self._annotations.load_ini(args.ini)
 
         time_sum = 0
         while self._running:
@@ -268,4 +272,7 @@ class App:
         self.on_cleanup()
 
     def __del__(self):
-        self.data_client.stop()
+        try:
+            self.data_client.stop()
+        except AttributeError:
+            pass
