@@ -4,7 +4,6 @@ from numpy.typing import NDArray
 import glm
 import math
 
-from regex import D
 
 
 def unit_vector(angle_rad: float) -> np.ndarray:
@@ -78,7 +77,7 @@ def add_control_points_angle(points: NDArray[np.float32],
             angle_rad = np.arctan2(delta[1], delta[0])
 
         # Compute and insert prior control point
-        array_points[0] = array_points[1] - unit_vector(angle_rad)
+        array_points[0] = array_points[1] + unit_vector(angle_rad)
         array_points[0, 3] = 1
 
     # Add control point after the last point
@@ -139,13 +138,13 @@ def get_semicircle_points(radius, num_points):
     # Combine into pairs of (x, y) points
     points = np.column_stack((x, y, z, w))
 
-    return add_control_points_angle(points, before_angle_deg=180, after_angle_deg=180)
+    return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
 
 def get_half_diamond_points():
     points = np.array([[0, -1, 0, 1], [-1, 0, 0, 1], [0, 1, 0, 1]], dtype=np.float32)
 
-    return add_control_points_angle(points, before_angle_deg=180, after_angle_deg=180)
+    return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
 
 CIRCLE = get_circle_points(1, 100)
@@ -153,3 +152,7 @@ SQUARE = get_square_points()
 SEMICIRCLE = get_semicircle_points(1, 50)
 DIAMOND = get_diamond_points()
 HALF_DIAMOND = get_half_diamond_points()
+
+# import matplotlib.pyplot as plt
+# plt.scatter(SEMICIRCLE[:, 0], SEMICIRCLE[:, 1])
+# plt.show()
