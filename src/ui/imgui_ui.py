@@ -2,6 +2,7 @@ import imgui
 from imgui.integrations.glfw import GlfwRenderer
 import numpy as np
 import datetime
+import os
 
 from draw.scene import Scene
 from draw.map_gl import MapGL
@@ -11,6 +12,7 @@ import config
 
 from util.bms_math import METERS_TO_FT
 from util.os_utils import open_file_dialog
+
 
 # # Regex patterns for IPv4 and IPv6 validation
 # ipv4_pattern = re.compile(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
@@ -376,6 +378,8 @@ class ImguiUserInterface:
         imgui.text(f"Pan: {self.scene._pan_screen}")
         imgui.text(f"Zoom: {self.scene.zoom_level}")
         imgui.text(f"Map Size: {self.scene.map_size_m}")
+        if imgui.button("Load test ini"):
+            self.annotations.load_ini(os.path.join(os.getcwd(), "Data", "test.ini"))
         imgui.end()
         if not open:
             self.debug_window_open = False
