@@ -14,26 +14,26 @@ from draw import shapes
 
 @dataclass
 class FullRenderBuffer:
-    vertices: NDArray[np.float32] # Shape: (M, 4) -> (x, y, z, w) per vertex
-    offsets: NDArray[np.float32] # Shape: (N, 2) -> (x, y) offset per shape
-    scales: NDArray[np.float32] # Shape: (N, 2) -> (x, y) scale per shape
-    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per shape
-    widths_px: NDArray[np.float32] # Shape: (N,) -> Width per shape
+    vertices: NDArray[np.float32]  # Shape: (M, 4) -> (x, y, z, w) per vertex
+    offsets: NDArray[np.float32]  # Shape: (N, 2) -> (x, y) offset per shape
+    scales: NDArray[np.float32]  # Shape: (N, 2) -> (x, y) scale per shape
+    colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per shape
+    widths_px: NDArray[np.float32]  # Shape: (N,) -> Width per shape
 
 
 @dataclass
 class ShapesRenderBuffer:
-    offsets: NDArray[np.float32] # Shape: (N, 2) -> (x, y) offset per shape
-    scales: NDArray[np.float32] # Shape: (N, 2) -> (x, y) scale per shape
-    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per shape
-    widths_px: NDArray[np.float32] # Shape: (N,) -> Width per shape
+    offsets: NDArray[np.float32]  # Shape: (N, 2) -> (x, y) offset per shape
+    scales: NDArray[np.float32]  # Shape: (N, 2) -> (x, y) scale per shape
+    colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per shape
+    widths_px: NDArray[np.float32]  # Shape: (N,) -> Width per shape
 
 
 @dataclass
 class LineRenderBuffer:
-    lines: NDArray[np.float32] # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
-    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per line
-    widths_px: NDArray[np.float32] # Shape: (N,) -> Width per line
+    lines: NDArray[np.float32]  # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
+    colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
+    widths_px: NDArray[np.float32]  # Shape: (N,) -> Width per line
 
 
 class PolygonRenderer:
@@ -52,8 +52,8 @@ class PolygonRenderer:
     def draw_instances(self, input: FullRenderBuffer):
         self.draw_instances_args(input.vertices, input.offsets, input.scales, input.colors, input.widths_px)
 
-    def draw_instances_args(self, vertices: NDArray[np.float32], offsets: NDArray[np.float32], scales: NDArray[np.float32],
-                       colors: NDArray[np.float32], widths_px: NDArray[np.float32]):
+    def draw_instances_args(self, vertices: NDArray[np.float32], offsets: NDArray[np.float32],
+                            scales: NDArray[np.float32], colors: NDArray[np.float32], widths_px: NDArray[np.float32]):
         """
         Draws multiple line instances with specified attributes.
 
@@ -164,18 +164,19 @@ class PolygonRenderer:
         num_output_vertices = (len(vertices) - 3) * 6
 
         vao.render(mgl.TRIANGLES, vertices=num_output_vertices, instances=len(offsets))
-        
+
     def draw_shapes(self, unit_shape, input: ShapesRenderBuffer):
         self.draw_shapes_args(unit_shape, input.offsets, input.scales, input.colors, input.widths_px)
-        
-    def draw_shapes_args(self, unit_shape: NDArray[np.float32], offsets: NDArray[np.float32], scales: NDArray[np.float32], colors: NDArray[np.float32], widths_px: NDArray[np.float32]):
+
+    def draw_shapes_args(self, unit_shape: NDArray[np.float32], offsets: NDArray[np.float32],
+                         scales: NDArray[np.float32], colors: NDArray[np.float32], widths_px: NDArray[np.float32]):
         self.draw_instances_args(unit_shape, offsets, scales, colors, widths_px)
 
-    def draw_circles(self, input: ShapesRenderBuffer): # TODO Depricate
+    def draw_circles(self, input: ShapesRenderBuffer):  # TODO Depricate
         self.draw_circles_args(input.offsets, input.scales, input.colors, input.widths_px)
-        
+
     def draw_circles_args(self, offsets: NDArray[np.float32], scales: NDArray[np.float32], colors: NDArray[np.float32],
-                     widths_px: NDArray[np.float32]):
+                          widths_px: NDArray[np.float32]):
         self.draw_instances_args(shapes.CIRCLE, offsets, scales, colors, widths_px)
 
     def draw_lines(self, input: LineRenderBuffer):
