@@ -8,8 +8,6 @@ from util.bms_math import *
 from typing import Callable, Any
 from acmi_parse import ACMIObject
 
-# font : pygame.font.Font | None = None
-
 class GameCoalition:
     pass
 

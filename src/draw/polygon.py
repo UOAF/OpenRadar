@@ -44,7 +44,7 @@ class PolygonRenderer:
         self._mgl_context = scene.mgl_context
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
-        vert_shader = open(os.path.join(shader_dir, "polygon_vertex.glsl")).read()
+        vert_shader = open(os.path.join(shader_dir, "map_polygon_vertex.glsl")).read()
         frag_shader = open(os.path.join(shader_dir, "polygon_frag.glsl")).read()
 
         self.program = self._mgl_context.program(vertex_shader=vert_shader, fragment_shader=frag_shader)
