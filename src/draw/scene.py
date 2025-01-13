@@ -63,7 +63,9 @@ class Scene:
         self._pan_screen += delta
         self.make_camera_matrix()
 
-    def screen_to_world(self, point_screen: glm.vec2):
+    def screen_to_world(self, point_screen: glm.vec2 | tuple[float, float]):
+
+        point_screen = glm.vec2(*point_screen)
         w, h = self.display_size
         ratio = h / self.map_size_m
         point_screen.y = h - point_screen.y
