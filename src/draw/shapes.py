@@ -73,7 +73,7 @@ def add_control_points_angle(points: NDArray[np.float32],
             angle_rad = np.deg2rad(before_angle_deg)
         else:
             # Compute tangent angle from the first segment
-            delta = array_points[2] - array_points[1]
+            delta = array_points[1] - array_points[2]
             angle_rad = np.arctan2(delta[1], delta[0])
 
         # Compute and insert prior control point
