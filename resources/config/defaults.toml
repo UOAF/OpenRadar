@@ -22,6 +22,9 @@ unit_color_switching = [
     ["Blue", [0, 225, 255]]
 ]
 
+[radar]
+update_interval = 1 # Update interval in seconds
+
 [annotations]
 ini_width = 10 # Width ini file annotations are drawn in pixels
 ini_color = [ 255, 255, 0 ] # [r, g, b] # Color of the ini file annotations
