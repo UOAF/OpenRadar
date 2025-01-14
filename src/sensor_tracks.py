@@ -1,12 +1,8 @@
 import datetime
 
-from typing import Type
 from dataclasses import dataclass, field
 
-from tomlkit import date
-
 from game_state import GameState, GameObjectClassType
-import game_objects
 
 
 @dataclass
@@ -81,7 +77,6 @@ class SensorTracks:
     def __init__(self, gamestate: GameState):
         self.gamestate = gamestate
         self.tracks: dict[GameObjectClassType, dict[str, Track]] = {class_type: {} for class_type in GameObjectClassType}
-        self.track_id = 0
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 10
 
@@ -114,7 +109,7 @@ class SensorTracks:
                         object.data.CAS,
                         object.data.T.Heading,
                         object.data.T.Altitude,
-                        object.data.timestamp,  # type: ignore #TODO enforce timestamp is not None in static analysis
+                        object.data.timestamp, 
                         classenum,
                         side)
 
@@ -124,15 +119,24 @@ class SensorTracks:
                                                              object.data.timestamp)
 
         # Remove old tracks
-        if self.cur_time is None:  # Do not remove tracks if the current time is not set
-            return
+        # if self.cur_time is None:  # Do not remove tracks if the current time is not set
+        #     return
         for classenum, track_dict in self.tracks.items():
             to_delete = []
             for id, track in track_dict.items():
-                if track.last_seen is not None:  # TODO enforce last_seen is not None in static analysis
+                # if track.last_seen is not None:  
                     if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
                         to_delete.append(id)    
                         
                         print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
             for id in to_delete:
                 del self.tracks[classenum][id]  
+                
+    def clear(self):
+        """
+        Clear all tracks.
+        """
+        for dict in self.tracks.values():
+            dict.clear()
+        self.update()
+

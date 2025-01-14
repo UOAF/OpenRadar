@@ -32,6 +32,11 @@ class DisplayData:
         # for annotation in self.annotations:
         #     annotation.render()
         
-    
+    def clear(self):
+        """
+        Clear the display data.
+        """
+        self.track_renderer.clear()
+        # self.annotations.clear()
 
 

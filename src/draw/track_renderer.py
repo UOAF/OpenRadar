@@ -5,7 +5,7 @@ import moderngl as mgl
 
 from draw.scene import Scene
 from draw.polygon import PolygonRenderer, ShapesRenderBuffer, LineRenderBuffer
-import draw.shapes as shapes
+from draw.shapes import Shapes
 import glm
 
 from game_state import GameObjectClassType
@@ -35,6 +35,9 @@ class TrackRenderer:
 
         self.program = self._mgl_context.program(vertex_shader=screen_polygon_vertex_shader,
                                                  fragment_shader=screen_polygon_fragment_shader)
+        
+    def clear(self):
+        self.semicircles = None
 
     def build_render_arrays(self, tracks):
         offsets = []
@@ -43,7 +46,7 @@ class TrackRenderer:
         widths_px = []
 
         for track in tracks[GameObjectClassType.FIXEDWING].values():
-            print(track.position)
+            # print(track.position)
             # Collect position and scaling data
             offsets.append(track.position)
             scales.append([16, 16])
@@ -60,7 +63,7 @@ class TrackRenderer:
 
     def render(self):
         if self.semicircles is not None:
-            self.draw_shapes(shapes.SEMICIRCLE, self.semicircles)
+            self.draw_shapes(Shapes.SEMICIRCLE.value.points, self.semicircles)
 
     def draw_shapes(self, shape: NDArray, input: TrackRenderBuffer):
         self.draw_instances_args(shape, input.offsets,  input.colors, input.shape_size_px, input.line_width_px)
