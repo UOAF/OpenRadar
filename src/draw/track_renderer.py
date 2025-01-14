@@ -60,6 +60,9 @@ class TrackRenderer:
         self.semicircles = TrackRenderBuffer(line_width_px=4, shape_size_px=glm.vec2(16, 16),
                                              offsets=np.array(offsets, dtype=np.float32),
                                              colors=np.array(colors, dtype=np.float32))
+        
+    def draw_line(self, start: glm.vec2, end: glm.vec2, color: glm.vec4, width: float):
+        self.draw_lines([start, end], color, width)
 
     def render(self):
         if self.semicircles is not None:
