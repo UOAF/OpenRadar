@@ -114,7 +114,7 @@ class Scene:
         # adjust the pan so that the world position of the mouse is preserved before and after zoom
         mouse_world_old = self.screen_to_world(glm.vec2(*mouse_pos))
 
-        self.zoom_level /=  1 + (factor / 10)
+        self.zoom_level /=  1 - (factor / 10)
         self.zoom_level = max(0.05, self.zoom_level)
 
         mouse_world_new = self.screen_to_world(glm.vec2(*mouse_pos))
