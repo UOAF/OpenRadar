@@ -1,9 +1,9 @@
 from typing import Any, Iterable, Union
 import numpy as np
 from numpy.typing import NDArray
-import glm
+from dataclasses import dataclass
 import math
-
+from enum import Enum
 
 
 def unit_vector(angle_rad: float) -> np.ndarray:
@@ -147,11 +147,19 @@ def get_half_diamond_points():
     return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
 
-CIRCLE = get_circle_points(1, 100)
-SQUARE = get_square_points()
-SEMICIRCLE = get_semicircle_points(1, 50)
-DIAMOND = get_diamond_points()
-HALF_DIAMOND = get_half_diamond_points()
+@dataclass
+class Shape:
+    idx: int
+    str: str
+    points: np.ndarray
+    
+class Shapes(Enum):
+    CIRCLE = Shape(1, "Circle", get_circle_points(1, 100))
+    SQUARE = Shape(2, "Square", get_square_points())
+    SEMICIRCLE = Shape(3, "Semicircle", get_semicircle_points(1, 50))
+    DIAMOND = Shape(4, "Diamond", get_diamond_points())
+    HALF_DIAMOND = Shape(5, "Half Diamond", get_half_diamond_points())
+
 
 # import matplotlib.pyplot as plt
 # plt.scatter(SEMICIRCLE[:, 0], SEMICIRCLE[:, 1])

@@ -8,11 +8,13 @@ from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
 from trtt_client import TRTTClientThread, ThreadState
+from game_state import GameState
+from sensor_tracks import SensorTracks
+from display_data import DisplayData
 import config
 
 from util.bms_math import METERS_TO_FT
 from util.os_utils import open_file_dialog
-
 
 # # Regex patterns for IPv4 and IPv6 validation
 # ipv4_pattern = re.compile(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
@@ -37,10 +39,14 @@ def TextCentered(text: str):
 
 class ImguiUserInterface:
 
-    def __init__(self, size, window, scene: Scene, map_gl: MapGL, annotations: MapAnnotations, data_client: TRTTClientThread):
+    def __init__(self, size, window, scene: Scene, map_gl: MapGL, gamestate: GameState, tracks: SensorTracks,
+                 display_data: DisplayData, annotations: MapAnnotations, data_client: TRTTClientThread):
         self.size = size
         self.scene = scene
         self.map_gl: MapGL = map_gl
+        self.gamestate = gamestate
+        self.tracks = tracks
+        self.display_data = display_data
         self.annotations = annotations
         self.data_client = data_client
 
@@ -335,6 +341,9 @@ class ImguiUserInterface:
         imgui.same_line()
         if imgui.button("Disconnect"):
             self.data_client.disconnect()
+            self.gamestate.clear_state()
+            self.tracks.clear()
+            self.display_data.clear()
         imgui.end()
 
         if address_changed:
@@ -367,7 +376,7 @@ class ImguiUserInterface:
             config.app_config.set("notepad", "notes", notes)
         if not open:
             self.notepad_window_open = False
-            
+
     def debug_window(self):
         if not self.debug_window_open:
             return

@@ -113,6 +113,8 @@ class TRTTClientThread(threading.Thread):
     def connect(self, server: str, port: int, password: str = "", retries: int = 3):
         # Disconnect outside the lock to avoid deadlock
         self.disconnect()
+        if password == "":
+            password = "0"
         with self.lock:
             if self.connected or self.connecting:
                 return False
@@ -166,7 +168,7 @@ class TRTTClientThread(threading.Thread):
             return False
 
         try:
-            handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nClient OpenRadar\n{password}\0".encode('utf-8')
+            handshake = f"XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\nOpenRadar\n{password}\0".encode('utf-8')
             self.clientsocket.sendall(handshake)
             response = buf.get_handshake()
             if response and response.startswith("XtraLib.Stream.0\nTacview.RealTimeTelemetry.0\n"):
