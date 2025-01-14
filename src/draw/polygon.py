@@ -9,7 +9,7 @@ import glm
 
 import config
 from draw.scene import Scene
-from draw import shapes
+from draw.shapes import Shapes
 
 
 @dataclass
@@ -177,7 +177,7 @@ class PolygonRenderer:
 
     def draw_circles_args(self, offsets: NDArray[np.float32], scales: NDArray[np.float32], colors: NDArray[np.float32],
                           widths_px: NDArray[np.float32]):
-        self.draw_instances_args(shapes.CIRCLE, offsets, scales, colors, widths_px)
+        self.draw_instances_args(Shapes.CIRCLE.value.points, offsets, scales, colors, widths_px)
 
     def draw_lines(self, input: LineRenderBuffer):
         self.draw_lines_args(input.lines, input.colors, input.widths_px)
