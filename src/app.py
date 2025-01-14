@@ -62,6 +62,7 @@ class App:
         self._mgl_ctx: mgl.Context
         self.clock: Clock
         self.frame_time = 0
+        self.radar_sleep = 0
         try:
             os.chdir(sys._MEIPASS)  # type: ignore
         except AttributeError:
@@ -208,17 +209,25 @@ class App:
         if imgui.get_io().want_capture_keyboard:
             self._ImguiUI.impl.char_callback(window, char)
 
-    def on_loop(self):
+    def on_loop(self, delta_time):
         """
         Performs any necessary updates or calculations for the application.
         """
         self.gamestate.update_state()
+        
+        self.radar_sleep += delta_time
+        if self.radar_sleep > config.app_config.get("radar", "update_interval", float): #TODO implement in sensor_tracks
+            self.radar_sleep = 0
+            self._tracks.update()
+            self._display_data.generate_render_instance_arrays()
         self._ImguiUI.update()
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.frame_time
         self._ImguiUI.time = self.gamestate.get_time()
+        
+        
 
-    def on_render(self):
+    def on_render(self, delta_time):
         """
         Renders the application
         """
@@ -254,13 +263,8 @@ class App:
             start_time_ns = ctypes.c_ulonglong()
             end_time_ns = ctypes.c_ulonglong()
 
-            self.on_loop()
-
-            if time_sum > 1:
-                time_sum = 0
-                self._tracks.update()
-                self._display_data.generate_render_instance_arrays()
-            self.on_render()
+            self.on_loop(dt)
+            self.on_render(dt)
 
             gl.glQueryCounter(self.end_query, timer_query.GL_TIMESTAMP)
             glfw.swap_buffers(self.window)
