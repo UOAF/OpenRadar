@@ -1,6 +1,7 @@
 #version 330 core
 
 uniform sampler2D Texture;
+uniform float alpha;
 
 in vec3 v_vertex;
 in vec2 v_uv;
@@ -11,6 +12,6 @@ void main() {
     vec2 uvp = v_uv;
     // uncomment to flip vertically
     // uvp.y = 1 - uvp.y;
-    out_color = texture(Texture, uvp);
+    out_color = vec4(texture(Texture, uvp).xyz, alpha);
 
 }

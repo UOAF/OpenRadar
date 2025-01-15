@@ -145,7 +145,7 @@ class TextRendererMsdf:
         scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * .6
         self._program['font_to_world'] = scale
         self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
-        self._ctx.enable(mgl.BLEND)
+        self._ctx.enable(mgl.BLEND) # TODO is this the right place to call this?
 
         vao = self._ctx.simple_vertex_array(self._program,
                                             vbo,
