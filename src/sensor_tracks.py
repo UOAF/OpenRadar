@@ -2,7 +2,14 @@ import datetime
 
 from dataclasses import dataclass, field
 
+import config
 from game_state import GameState, GameObjectClassType
+from enum import Enum
+
+class Declaration(Enum):
+    FRIENDLY = 0
+    HOSTILE = 1
+    UNKNOWN = 2
 
 
 @dataclass
@@ -10,7 +17,7 @@ class Coalition:
     name: str
     color: tuple[float, float, float, float]
     allies: list[str]
-
+    enemies: list[str]
 
 # List of coalitions in the current game state
 game_coalitions: dict[str, Coalition] = {}
@@ -24,12 +31,12 @@ def get_coalition(name: str, color: tuple[float, float, float, float]) -> Coalit
         return game_coalitions[name]
 
     if name != "":
-        coalition = Coalition(name, color, [])
+        coalition = Coalition(name, color, [], [])
         game_coalitions[name] = coalition
         return coalition
     
     if name == "":
-        return Coalition("Unknown", (1, 0, 1, 1), [])
+        return Coalition("Unknown", (1, 0, 1, 1), [], [])
 
     assert False, f"Invalid coalition name {name}"
 
@@ -70,6 +77,24 @@ class Track:
         self.velocity = velocity
         self.heading = heading
         self.altitude = altitude
+        
+    def get_declaration(self) -> Declaration:
+        controler_coalition = config.app_config.get("controler", "coalition", str) #TODO parse to proper coalition object and link decleration to track for override
+        if controler_coalition not in game_coalitions:
+            print(f"Controler coalition {controler_coalition} not found in game_coalitions")
+            return Declaration.UNKNOWN
+
+        
+        if controler_coalition == self.coalition.name or controler_coalition in self.coalition.allies: 
+            return Declaration.FRIENDLY
+        if controler_coalition in self.coalition.enemies:
+            return Declaration.HOSTILE
+        
+        # TODO remove 
+        if self.coalition.name == "DPRK": # this is only for testing
+            return Declaration.HOSTILE
+        return Declaration.UNKNOWN
+        
 
 
 class SensorTracks:
@@ -127,8 +152,7 @@ class SensorTracks:
                 # if track.last_seen is not None:  
                     if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
                         to_delete.append(id)    
-                        
-                        print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
+                        # print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
             for id in to_delete:
                 del self.tracks[classenum][id]  
                 

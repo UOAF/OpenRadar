@@ -2,26 +2,34 @@ import os
 import numpy as np
 from numpy.typing import NDArray
 import moderngl as mgl
+import glm
+from dataclasses import dataclass
+import math
 
 from draw.scene import Scene
-from draw.polygon import PolygonRenderer, ShapesRenderBuffer, LineRenderBuffer
-from draw.shapes import Shapes
-import glm
-
+from draw.shapes import Shapes, add_control_points_angle
 from game_state import GameObjectClassType
+from sensor_tracks import Track, Declaration
+from util.bms_math import NM_TO_METERS
+
 import config
 
-from draw.polygon import FullRenderBuffer, ShapesRenderBuffer
-
-from dataclasses import dataclass
 
 @dataclass
-class TrackRenderBuffer:
+class TrackShapeRenderBuffer:
     line_width_px: float
     shape_size_px: glm.vec2
-    offsets: NDArray[np.float32] # Shape: (N, 2) -> N lines, (x, y)
-    colors: NDArray[np.float32] # Shape: (N, 4) -> RGBA color per line
-    
+    offsets: NDArray[np.float32]  # Shape: (N, 2) -> N lines, (x, y)
+    colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
+
+
+@dataclass
+class TrackLineRenderBuffer:
+    lines: NDArray[np.float32]  # Shape: (N, P, 2) -> N lines, [(x, y)]
+    colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
+    line_width_px: float
+
+
 class TrackRenderer:
 
     def __init__(self, scene: Scene):
@@ -35,44 +43,107 @@ class TrackRenderer:
 
         self.program = self._mgl_context.program(vertex_shader=screen_polygon_vertex_shader,
                                                  fragment_shader=screen_polygon_fragment_shader)
-        
+
+        self.shape_lists: dict[Shapes, list] = {shape: list() for shape in Shapes}
+        self.lines: list = list()
+
+        self.shape_buffers: dict[Shapes, TrackShapeRenderBuffer] = dict()
+        self.line_buffer: TrackLineRenderBuffer | None = None
+
+        self.line_width_px = 4.0
+        self.contact_size_px = glm.vec2(18, 18)
+
     def clear(self):
-        self.semicircles = None
+        self.shape_lists: dict[Shapes, list] = {shape: list() for shape in Shapes}
+        self.lines: list = list()
 
-    def build_render_arrays(self, tracks):
-        offsets = []
-        scales = []
-        colors = []
-        widths_px = []
+        self.shape_buffers: dict[Shapes, TrackShapeRenderBuffer] = dict()
+        self.line_buffer: TrackLineRenderBuffer | None = None
 
-        for track in tracks[GameObjectClassType.FIXEDWING].values():
-            # print(track.position)
-            # Collect position and scaling data
-            offsets.append(track.position)
-            scales.append([16, 16])
-            colors.append((0, 0, 1, 1))  # Example RGBA color
-            widths_px.append(4)
+    def build_buffers(self, tracks: dict[GameObjectClassType, dict[str, Track]]):
+        self.clear()
+        print("Building buffers")
+        for type, track_dict in tracks.items():
+            if type == GameObjectClassType.FIXEDWING:
+                for track in track_dict.values():
+                    self.draw_aircraft(track)
+                    
+        self.build_shape_arrays()
+        self.build_line_arrays()
 
-        if len(offsets) == 0:
-            self.semicircles = None
-            return
-        # Convert lists to NDarrays        
-        self.semicircles = TrackRenderBuffer(line_width_px=4, shape_size_px=glm.vec2(16, 16),
-                                             offsets=np.array(offsets, dtype=np.float32),
-                                             colors=np.array(colors, dtype=np.float32))
+    def draw_aircraft(self, track: Track):
+
+        decleration = track.get_declaration()
+
+        color = glm.vec4(1, 0, 1, 1)
+        shape = Shapes.CIRCLE
+        if decleration == Declaration.FRIENDLY:
+            color = glm.vec4(0, 0, 1, 1)
+            shape = Shapes.SEMICIRCLE
+        elif decleration == Declaration.HOSTILE:
+            color = glm.vec4(1, 0, 0, 1)
+            shape = Shapes.HALF_DIAMOND
+        elif decleration == Declaration.UNKNOWN:
+            color = glm.vec4(1, 1, 0, 1)
+            shape = Shapes.TOP_BOX
+
+        self.draw_shape(shape, track.position, color)
+        self.draw_velocity_vector(track, color)
+
+
+    def draw_velocity_vector(self, track: Track, color: glm.vec4):
         
-    def draw_line(self, start: glm.vec2, end: glm.vec2, color: glm.vec4, width: float):
-        self.draw_lines([start, end], color, width)
+        self.scene.world_to_screen_distance(track.velocity)
+
+        LINE_LEN_SECONDS = 30 # 30 seconds of velocity vector
+        px_per_second = self.scene.world_to_screen_distance(track.velocity) # Scale the velocity vector 
+        vel_vec_len_px = px_per_second * LINE_LEN_SECONDS # Scale the velocity vector
+
+        heading_rad = math.radians(track.heading-90) # -90 rotaes north to up
+        end_x = track.position[0] + track.velocity*math.cos(heading_rad) * LINE_LEN_SECONDS
+        end_y = track.position[1] + track.velocity*math.sin(-heading_rad) * LINE_LEN_SECONDS
+        end_pt = (end_x, end_y)
+        
+        self.draw_line([track.position, end_pt], color)
+
+
+
+    def draw_shape(self, shape_type: Shapes, position: tuple[float, float], color: glm.vec4):
+        self.shape_lists[shape_type].append((position, color))
+
+    def draw_line(self, points: list[tuple[float, float]], color: glm.vec4):
+        self.lines.append((points, color))
+
+    def build_shape_arrays(self):
+
+        for shape, item_list in self.shape_lists.items():
+            if len(item_list) == 0:
+                continue
+            positions, colors = zip(*item_list)
+            self.shape_buffers[shape] = TrackShapeRenderBuffer(line_width_px=self.line_width_px,
+                                                               shape_size_px=self.contact_size_px,
+                                                               offsets=np.array(positions, dtype=np.float32),
+                                                               colors=np.array(colors, dtype=np.float32))
+
+    def build_line_arrays(self):
+        if len(self.lines) == 0:
+            return
+        lines, colors = zip(*self.lines)
+        self.line_buffer = TrackLineRenderBuffer(np.array(lines, dtype=np.float32),
+                                                 np.array(colors, dtype=np.float32), 
+                                                 self.line_width_px)
 
     def render(self):
-        if self.semicircles is not None:
-            self.draw_shapes(Shapes.SEMICIRCLE.value.points, self.semicircles)
+        for shape, buffer in self.shape_buffers.items():
+            self.render_shapes_buffer(shape.value.points, buffer)
+        if self.line_buffer is not None:
+            self.render_lines_args(self.line_buffer.lines, self.line_buffer.colors, self.line_buffer.line_width_px)
 
-    def draw_shapes(self, shape: NDArray, input: TrackRenderBuffer):
-        self.draw_instances_args(shape, input.offsets,  input.colors, input.shape_size_px, input.line_width_px)
+    def render_shapes_buffer(self, shape: NDArray, input: TrackShapeRenderBuffer):
+        self.render_instances_args(shape, input.offsets, input.colors, input.shape_size_px, input.line_width_px)
 
-    def draw_instances_args(self, unit_shape: NDArray[np.float32], offsets: NDArray[np.float32], colors: NDArray[np.float32],
-                            scale: glm.vec2, widths_px: float):
+    def render_instances_args(self, unit_shape: NDArray[np.float32], offsets: NDArray[np.float32],
+                              colors: NDArray[np.float32], scale: glm.vec2, width_px: float):
         """
         Draws multiple line instances with specified attributes.
 
@@ -128,7 +199,7 @@ class TrackRenderer:
         self.program['u_mvp'].write(self.scene.get_mvp())  # type: ignore
         self.program['u_resolution'] = self.scene.display_size
         self.program['u_scale'] = scale
-        self.program['u_width'] = widths_px
+        self.program['u_width'] = width_px
 
         ssbo = self._mgl_context.buffer(unit_shape.astype('f4').tobytes())
         ssbo.bind_to_storage_buffer(0)
@@ -142,3 +213,51 @@ class TrackRenderer:
         num_output_vertices = (len(unit_shape) - 3) * 6
 
         vao.render(mgl.TRIANGLES, vertices=num_output_vertices, instances=len(offsets))
+
+    def render_lines_args(
+            self,
+            lines: NDArray[np.float32],  # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
+            colors: NDArray[np.float32],  # Shape: (N, 4) -> RGBA color per line
+            width_px: float,  # Width of each line in pixels
+            add_control_points: bool = True):
+        """
+        Draw multiple lines with specified colors, widths, and optional control points.
+
+        :param lines: An array of shape (N, P, 2) where N is the number of lines,
+                    P is the number of points per line, and 2 represents (x, y).
+        :param colors: An array of shape (N, 4) for RGBA colors, one for each line.
+        :param widths_px: An float specifying the width of each line.
+        :param add_control_points: Whether to add control points to each line.
+        """
+        # Validate input shapes
+        if len(lines.shape) != 3 or lines.shape[2] != 2:
+            raise ValueError("Input 'lines' must have shape (N, P, 2) for 2D points.")
+        if len(colors.shape) != 2 or colors.shape[1] != 4:
+            raise ValueError("Input 'colors' must have shape (N, 4) for RGBA colors.")
+        if lines.shape[0] != colors.shape[0]:
+            raise ValueError("Mismatched number of lines, colors.")
+
+        # Prepare offsets and scales (default values)
+        num_instances = lines.shape[0]
+        offsets = np.zeros((num_instances, 2), dtype=np.float32)  # (N, 2)
+
+        for i in range(num_instances):
+            # Convert 2D points (x, y) to 4D (x, y, z=0.0, w=1.0)
+            z = np.zeros((lines[i].shape[0], 1), dtype=np.float32)  # z = 0.0
+            w = np.ones((lines[i].shape[0], 1), dtype=np.float32)  # w = 1.0
+            line = np.hstack((lines[i], z, w))  # Shape: (P, 4)
+
+            # Add control points if required
+            if add_control_points:
+                line = add_control_points_angle(line)
+
+            # Verify that the processed vertices are valid for draw_instances
+            assert line.shape[1] == 4, "Vertices must have shape (P, 4)."
+
+            # Draw the line with specified parameters
+            self.render_instances_args(
+                unit_shape=line,
+                offsets=offsets[i:i + 1],  # Slice to match shape (1, 2)
+                colors=colors[i:i + 1],  # Slice to match shape (1, 4)
+                scale=glm.vec2(0, 0), # Scale is in screenspace so set it to 0
+                width_px=width_px)

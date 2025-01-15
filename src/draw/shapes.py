@@ -142,8 +142,11 @@ def get_semicircle_points(radius, num_points):
 
 
 def get_half_diamond_points():
-    points = np.array([[0, -1, 0, 1], [-1, 0, 0, 1], [0, 1, 0, 1]], dtype=np.float32)
+    points = np.array([[-1, 0, 0, 1], [0, 1, 0, 1], [1, 0, 0, 1]], dtype=np.float32)
+    return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
+def get_top_box_points():
+    points = np.array([[-1, 0, 0, 1], [-1, 1, 0, 1], [1, 1, 0, 1], [1, 0, 0, 1]], dtype=np.float32)
     return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
 
@@ -159,6 +162,7 @@ class Shapes(Enum):
     SEMICIRCLE = Shape(3, "Semicircle", get_semicircle_points(1, 50))
     DIAMOND = Shape(4, "Diamond", get_diamond_points())
     HALF_DIAMOND = Shape(5, "Half Diamond", get_half_diamond_points())
+    TOP_BOX = Shape(6, "Top Box", get_top_box_points())
 
 
 # import matplotlib.pyplot as plt
