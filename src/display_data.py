@@ -13,24 +13,18 @@ class DisplayData:
         self.tracks = self.sensor_tracks.tracks
         self.track_renderer: TrackRenderer = TrackRenderer(self.scene)
         
-    def generate_render_instance_arrays(self):
+    def generate_render_arrays(self):
         """
         Generate the instance arrays for rendering. called 
         """
-        self.track_renderer.build_render_arrays(self.tracks)
+        self.track_renderer.build_buffers(self.tracks)
         
     def render(self):
         """
         Render the display data.
         """
         self.track_renderer.render()
-        # for track in self.tracks:
-        # if track is ac:
-        #     render_ac()
-        #     track.render()
-            
-        # for annotation in self.annotations:
-        #     annotation.render()
+
         
     def clear(self):
         """

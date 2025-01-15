@@ -9,7 +9,7 @@ import glm
 
 import config
 from draw.scene import Scene
-from draw.shapes import Shapes
+from draw.shapes import Shapes, add_control_points_angle
 
 
 @dataclass
@@ -220,7 +220,7 @@ class PolygonRenderer:
 
             # Add control points if required
             if add_control_points:
-                line = shapes.add_control_points_angle(line)
+                line = add_control_points_angle(line)
 
             # Verify that the processed vertices are valid for draw_instances
             assert line.shape[1] == 4, "Vertices must have shape (P, 4)."

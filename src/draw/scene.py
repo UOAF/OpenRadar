@@ -55,6 +55,8 @@ class Scene:
 
     def make_camera_matrix(self):
         w, h = self.display_size
+        if h == 0:
+            return
         self.aspect = w / h
         projection_matrix = glm.ortho(0.0, self.aspect, 0.0, 1.0, -1.0, 1.0)
 

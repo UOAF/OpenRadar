@@ -219,7 +219,7 @@ class App:
         if self.radar_sleep > config.app_config.get("radar", "update_interval", float): #TODO implement in sensor_tracks
             self.radar_sleep = 0
             self._tracks.update()
-            self._display_data.generate_render_instance_arrays()
+            self._display_data.generate_render_arrays()
         self._ImguiUI.update()
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.frame_time
