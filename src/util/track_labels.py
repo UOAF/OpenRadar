@@ -1,4 +1,3 @@
-
 from game_state import GameObjectClassType
 from dataclasses import dataclass, field, fields
 from enum import Enum

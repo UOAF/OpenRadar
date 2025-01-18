@@ -16,14 +16,11 @@ default_map = "Korea.jpg" # Map to load on startup
 default_map_size_km = 1024 # Size of the map in kilometers
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
 background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
-# Colors that want to be switched from the Tacview default to a custom value, for better visibility.
-# Accepts the format [defaultcolor, newcolor], where the first arguments is a color String, and the second a color String or [r, g, b] array
-unit_color_switching = [
-    ["Blue", [0, 225, 255]]
-]
 
 [radar]
 update_interval = 1 # Update interval in seconds
+contact_size = 14 # Size of the track in pixels
+contact_stroke = 2 # Stroke width of the track in pixels
 
 [labels]
 FIXEDWING = '{"TOP_LEFT": {"label_name": "TL", "label_format": "{id}", "show_on_hover": false}}' # Label for fixed wing aircraft

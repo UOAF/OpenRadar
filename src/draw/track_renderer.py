@@ -51,9 +51,6 @@ class TrackRenderer:
         self.shape_buffers: dict[Shapes, TrackShapeRenderBuffer] = dict()
         self.line_buffer: TrackLineRenderBuffer | None = None
 
-        self.line_width_px = 4.0
-        self.contact_size_px = glm.vec2(18, 18)
-
     def clear(self):
         self.shape_lists: dict[Shapes, list] = {shape: list() for shape in Shapes}
         self.lines: list = list()
@@ -67,12 +64,27 @@ class TrackRenderer:
         for type, track_dict in tracks.items():
             if type == GameObjectClassType.FIXEDWING:
                 for track in track_dict.values():
-                    self.draw_aircraft(track)
-                    
+                    self.draw_fixedwing(track)
+            elif type == GameObjectClassType.ROTARYWING:
+                for track in track_dict.values():
+                    self.draw_rotarywing(track)
+            elif type == GameObjectClassType.GROUND:
+                for track in track_dict.values():
+                    self.draw_ground_unit(track)
+            elif type == GameObjectClassType.SEA:
+                for track in track_dict.values():
+                    self.draw_sea_unit(track)
+            elif type == GameObjectClassType.MISSILE:
+                for track in track_dict.values():
+                    self.draw_missile(track)
+
         self.build_shape_arrays()
         self.build_line_arrays()
 
-    def draw_aircraft(self, track: Track):
+    def draw_rotarywing(self, track: Track):
+        pass
+
+    def draw_fixedwing(self, track: Track):
 
         decleration = track.get_declaration()
 
@@ -88,26 +100,45 @@ class TrackRenderer:
             color = glm.vec4(1, 1, 0, 1)
             shape = Shapes.TOP_BOX
 
-        self.draw_shape(shape, track.position, color)
+        self.draw_shape(shape, track.position_m, color)
         self.draw_velocity_vector(track, color)
 
-
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
-        
+
         self.scene.world_to_screen_distance(track.velocity_ms)
 
-        LINE_LEN_SECONDS = 30 # 30 seconds of velocity vector
-        px_per_second = self.scene.world_to_screen_distance(track.velocity_ms) # Scale the velocity vector 
-        vel_vec_len_px = px_per_second * LINE_LEN_SECONDS # Scale the velocity vector
+        LINE_LEN_SECONDS = 30  # 30 seconds of velocity vector
 
-        heading_rad = math.radians(track.heading-90) # -90 rotaes north to up
-        end_x = track.position[0] + track.velocity_ms*math.cos(heading_rad) * LINE_LEN_SECONDS
-        end_y = track.position[1] + track.velocity_ms*math.sin(-heading_rad) * LINE_LEN_SECONDS
+        heading_rad = math.radians(track.heading_deg - 90)  # -90 rotaes north to up
+        end_x = track.position_m[0] + track.velocity_ms * math.cos(heading_rad) * LINE_LEN_SECONDS
+        end_y = track.position_m[1] + track.velocity_ms * math.sin(-heading_rad) * LINE_LEN_SECONDS
         end_pt = (end_x, end_y)
-        
-        self.draw_line([track.position, end_pt], color)
 
+        self.draw_line([track.position_m, end_pt], color)
 
+    def draw_ground_unit(self, track: Track):
+        decleration = track.get_declaration()
+
+        color = glm.vec4(1, 0, 1, 1)
+        shape = Shapes.CIRCLE
+
+        if decleration == Declaration.FRIENDLY:
+            color = glm.vec4(0, 0, 1, 1)
+            shape = Shapes.CIRCLE
+        elif decleration == Declaration.HOSTILE:
+            color = glm.vec4(1, 0, 0, 1)
+            shape = Shapes.DIAMOND
+        elif decleration == Declaration.UNKNOWN:
+            color = glm.vec4(1, 1, 0, 1)
+            shape = Shapes.SQUARE
+
+        self.draw_shape(shape, track.position_m, color)
+
+    def draw_sea_unit(self, track: Track):
+        pass
+
+    def draw_missile(self, track: Track):
+        pass
 
     def draw_shape(self, shape_type: Shapes, position: tuple[float, float], color: glm.vec4):
         self.shape_lists[shape_type].append((position, color))
@@ -117,22 +148,29 @@ class TrackRenderer:
 
     def build_shape_arrays(self):
 
+
+        stoke_width = config.app_config.get_float("radar", "contact_stroke")
+        shape_size = config.app_config.get_float("radar", "contact_size")
+        shape_size = glm.vec2(shape_size, shape_size)
+
         for shape, item_list in self.shape_lists.items():
             if len(item_list) == 0:
                 continue
             positions, colors = zip(*item_list)
-            self.shape_buffers[shape] = TrackShapeRenderBuffer(line_width_px=self.line_width_px,
-                                                               shape_size_px=self.contact_size_px,
-                                                               offsets=np.array(positions, dtype=np.float32),
-                                                               colors=np.array(colors, dtype=np.float32))
+            self.shape_buffers[shape] = TrackShapeRenderBuffer(
+                line_width_px=stoke_width,
+                shape_size_px=shape_size,
+                offsets=np.array(positions, dtype=np.float32),
+                colors=np.array(colors, dtype=np.float32))
 
     def build_line_arrays(self):
         if len(self.lines) == 0:
             return
+        
+        stoke_width = config.app_config.get_float("radar", "contact_stroke")
         lines, colors = zip(*self.lines)
-        self.line_buffer = TrackLineRenderBuffer(np.array(lines, dtype=np.float32),
-                                                 np.array(colors, dtype=np.float32), 
-                                                 self.line_width_px)
+        self.line_buffer = TrackLineRenderBuffer(np.array(lines, dtype=np.float32), np.array(colors, dtype=np.float32),
+                                                 stoke_width)
 
     def render(self):
         for shape, buffer in self.shape_buffers.items():
@@ -260,5 +298,5 @@ class TrackRenderer:
                 unit_shape=line,
                 offsets=offsets[i:i + 1],  # Slice to match shape (1, 2)
                 colors=colors[i:i + 1],  # Slice to match shape (1, 4)
-                scale=glm.vec2(0, 0), # Scale is in screenspace so set it to 0
+                scale=glm.vec2(0, 0),  # Scale is in screenspace so set it to 0
                 width_px=width_px)
