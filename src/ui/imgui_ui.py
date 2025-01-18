@@ -274,6 +274,9 @@ class ImguiUserInterface:
             if imgui.begin_tab_item("Annotations").selected:
                 self.settings_tab_annotations()
                 imgui.end_tab_item()
+            if imgui.begin_tab_item("Radar").selected:
+                self.settings_tab_radar()
+                imgui.end_tab_item()
         imgui.end_tab_bar()
         imgui.end()
 
@@ -314,6 +317,19 @@ class ImguiUserInterface:
             config.app_config.set("annotations", "ini_width", ini_width_slider[1])
         if ini_color_picker[0]:
             config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1])
+
+    def settings_tab_radar(self):
+        
+        stoke_width = config.app_config.get_float("radar", "contact_stroke")
+        shape_size = config.app_config.get_float("radar", "contact_size")
+        
+        stoke_width_slider = imgui.slider_float("Contact Stroke Width", stoke_width, 1, 10.0)
+        shape_size_slider = imgui.slider_float("Contact Shape Size", shape_size, 1, 40.0)
+        
+        if stoke_width_slider[0]:
+            config.app_config.set("radar", "contact_stroke", stoke_width_slider[1])
+        if shape_size_slider[0]:
+            config.app_config.set("radar", "contact_size", shape_size_slider[1])
 
     def layers_window(self):
         if not self.layers_window_open:

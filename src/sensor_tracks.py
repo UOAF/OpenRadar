@@ -1,4 +1,5 @@
 import datetime
+import math
 
 from dataclasses import dataclass, field, fields
 from enum import Enum
@@ -11,6 +12,7 @@ class Declaration(Enum):
     FRIENDLY = 0
     HOSTILE = 1
     UNKNOWN = 2
+    NEUTRAL = 3
 
 
 @dataclass
@@ -65,6 +67,14 @@ class Track:
     @property
     def velocity_kts(self) -> float:
         return self.velocity_ms * M_PER_SEC_TO_KNOTS
+    
+    @property
+    def heading_rad(self) -> float:
+        return math.radians(self.heading_deg) 
+    
+    @property
+    def coalition_name(self) -> str:
+        return self.coalition.name
 
     def update(self, position: tuple[float, float], velocity: float, heading: float, altitude: float,
                time: datetime.datetime | None):
@@ -72,15 +82,15 @@ class Track:
         Update the track with the latest data.
         """
         if self.last_seen is not None:
-            self.history.append((self.position, self.last_seen))
+            self.history.append((self.position_m, self.last_seen))
         if time is not None:
             self.last_seen = time
         else:
             self.last_seen = datetime.datetime.now()
             print(f"WARNING Track {self.id} has no timestamp")
-        self.position = position
+        self.position_m = position
         self.velocity_ms = velocity
-        self.heading = heading
+        self.heading_deg = heading
         self.altitude = altitude
         
     def get_declaration(self) -> Declaration:
@@ -127,7 +137,8 @@ class SensorTracks:
 
                 if not object_id in self.tracks:
                     # Create a new track
-                    if object.data.timestamp is None or (self.cur_time - object.data.timestamp).total_seconds() > self.track_inactivity_timeout_sec:
+                    if (classenum == GameObjectClassType.FIXEDWING and
+                        (self.cur_time - object.data.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
                        # Skip if the object has no timestamp or is too old
                        # will need to rethink this for ground/sea contacts
                        continue
@@ -155,7 +166,8 @@ class SensorTracks:
             to_delete = []
             for id, track in track_dict.items():
                 # if track.last_seen is not None:  
-                    if (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec:
+                    if (classenum in [GameObjectClassType.FIXEDWING, GameObjectClassType.ROTARYWING] and 
+                        (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec):
                         to_delete.append(id)    
                         # print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
             for id in to_delete:
