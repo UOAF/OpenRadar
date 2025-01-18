@@ -1,20 +1,24 @@
+import select
 import imgui
 from imgui.integrations.glfw import GlfwRenderer
 import numpy as np
 import datetime
 import os
+from dataclasses import fields
 
 from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
 from trtt_client import TRTTClientThread, ThreadState
-from game_state import GameState
-from sensor_tracks import SensorTracks
+from game_state import GameState, GameObjectClassType
+from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 import config
 
 from util.bms_math import METERS_TO_FT
 from util.os_utils import open_file_dialog
+from util.track_labels import *
+from util.other_utils import get_all_attributes
 
 # # Regex patterns for IPv4 and IPv6 validation
 # ipv4_pattern = re.compile(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
@@ -26,7 +30,20 @@ from util.os_utils import open_file_dialog
 #     """
 #     Validate an IP address.
 #     """
-#     return ipv4_pattern.match(ip) is not None or ipv6_pattern.match(ip) is not None
+# return ipv4_pattern.match(ip) is not None or ipv6_pattern.match(ip) is not None
+
+example_track = Track("69420", "Jester11", (100, 100), 200, 90, 10000, datetime.datetime.now(),
+                      GameObjectClassType.FIXEDWING, Coalition("U.S.", (0, 0, 1, 1), [], []))
+
+
+def help_marker(description: str):
+    imgui.text_disabled("(?)")
+    if imgui.is_item_hovered():
+        imgui.begin_tooltip()
+        imgui.push_text_wrap_pos(imgui.get_font_size() * 35.0)
+        imgui.text_unformatted(description)
+        imgui.pop_text_wrap_pos()
+        imgui.end_tooltip()
 
 
 def TextCentered(text: str):
@@ -68,6 +85,7 @@ class ImguiUserInterface:
         self.server_window_open = False
         self.notepad_window_open = False
         self.debug_window_open = False
+        self.track_labels_window_open = False
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -75,6 +93,8 @@ class ImguiUserInterface:
 
         self.server_password = ""
         self.server_connected = False
+
+        self.track_labels_selected_square = (0, 0)
 
     # def on_event(self, event):
     #     return self.impl.process_event(event)
@@ -126,6 +146,7 @@ class ImguiUserInterface:
         self.server_window()
         self.notepad_window()
         self.debug_window()
+        self.track_labels_window()
 
     def ui_main_menu(self):
 
@@ -170,6 +191,8 @@ class ImguiUserInterface:
                             self.layers_window_open = not self.layers_window_open
                         if imgui.menu_item('Notepad', '', self.notepad_window_open, True)[0]:
                             self.notepad_window_open = not self.notepad_window_open
+                        if imgui.menu_item('Track Labels', '', self.track_labels_window_open, True)[0]:
+                            self.track_labels_window_open = not self.track_labels_window_open
                         if imgui.menu_item('FPS', '', self.fps_window_open, True)[0]:
                             self.fps_window_open = not self.fps_window_open
                         if imgui.menu_item('Debug', '', self.debug_window_open, True)[0]:
@@ -392,5 +415,115 @@ class ImguiUserInterface:
         imgui.end()
         if not open:
             self.debug_window_open = False
+
+    def track_labels_window(self):
+
+        if not self.track_labels_window_open:
+            return
+
+        _, open = imgui.begin("Track Labels", True)
+
+        imgui.begin_tab_bar("Track Types")
+        for track_type in GameObjectClassType:
+            if imgui.begin_tab_item(track_type.value.display_name).selected:
+
+                labels = deserialize_track_labels(track_type.name, config.app_config.get_str(
+                    "labels", track_type.name))  # TODO: this may be slow, consider caching
+                if labels is None:
+                    print(f"Failed to load track labels {track_type.name}")
+                    raise Exception(f"Failed to load track labels for {track_type.name}")
+                    labels = TrackLabels(track_type)
+                imgui.text(f"Track Type: {track_type.name}")
+
+                imgui.text("Label Location")
+                imgui.same_line()
+                help_marker("You can have a different label on each side of the contact."
+                            "Select the square to edit the label at that cardinal direction.")
+                if imgui.begin_table("Label Location Table",
+                                     3,
+                                     inner_width=50,
+                                     flags=imgui.TABLE_BORDERS
+                                     | imgui.TABLE_SIZING_FIXED_SAME
+                                     | imgui.TABLE_NO_HOST_EXTEND_X):
+
+                    for i in range(3):
+                        imgui.table_next_row()
+                        for j in range(3):
+                            if i == 1 and j == 1:
+                                continue  # Dont let the middle square be selectable, # TODO make this a contact preview
+                            imgui.table_set_column_index(j)
+
+                            location = get_label_loc_by_ui_coords((i, j))
+                            label_name = ""
+                            selected = (self.track_labels_selected_square == (i, j))
+                            if labels.labels.get(location) is not None:
+                                label_name = labels.labels[location].label_name
+
+                            if imgui.selectable(f"{label_name}##{i}{j}",
+                                                selected,
+                                                imgui.SELECTABLE_DONT_CLOSE_POPUPS,
+                                                width=50,
+                                                height=50)[0]:
+                                self.track_labels_selected_square = (i, j)
+                                # print(f"Selected square ({i}, {j})")
+                    imgui.end_table()
+
+                selected_coords = get_label_loc_by_ui_coords(self.track_labels_selected_square)
+                selected_label = labels.labels.get(selected_coords, TrackLabel("", "", False))
+
+                imgui.text("Label Name")
+                imgui.same_line()
+                help_marker("The name of the label. This is only used for your reference in the UI")
+                imgui.push_item_width(50)
+                changed, label_name = imgui.input_text("##LabelName", selected_label.label_name, -1)
+                imgui.pop_item_width()
+                if changed:
+                    selected_label.label_name = label_name
+                    if selected_coords not in labels.labels:
+                        labels.labels[selected_coords] = selected_label
+                    config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
+
+                imgui.text("Show:")
+                if imgui.radio_button("Always", selected_label.show_on_hover == False):
+                    selected_label.show_on_hover = False
+                    if selected_coords not in labels.labels:
+                        labels.labels[selected_coords] = selected_label
+                    config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
+
+                imgui.same_line()
+                if imgui.radio_button("On Hover", selected_label.show_on_hover == True):
+                    selected_label.show_on_hover = True
+                    if selected_coords not in labels.labels:
+                        labels.labels[selected_coords] = selected_label
+                    config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
+
+
+                imgui.text("Label Contents")
+                imgui.same_line()
+                help_marker("Add the text to be displayed on the label. "
+                            "This can be a static string or a formatted string with variables."
+                            "Valid variables include: \n" + "\n".join(get_all_attributes(example_track).keys()))
+
+                changed, user_input = imgui.input_text("##Label Contents", selected_label.label_format, -1)
+                if changed:
+                    selected_label.label_format = user_input
+                    if selected_coords not in labels.labels:
+                        labels.labels[selected_coords] = selected_label
+                    config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
+
+                imgui.text("Preview")
+                imgui.text(evaluate_input_format(user_input, example_track))
+                
+                if imgui.button("Delete Label"):
+                    labels.labels.pop(get_label_loc_by_ui_coords(self.track_labels_selected_square))
+                    config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
+
+                imgui.end_tab_item()
+
+        imgui.end_tab_bar()
+        imgui.end()
+        if not open:
+            self.track_labels_window_open = False
+            config.app_config.save()
 
     # TODO handle map and ini drag-drops

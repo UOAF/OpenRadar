@@ -1,10 +1,11 @@
 import datetime
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
+from enum import Enum
 
 import config
 from game_state import GameState, GameObjectClassType
-from enum import Enum
+from util.bms_math import M_PER_SEC_TO_KNOTS
 
 class Declaration(Enum):
     FRIENDLY = 0
@@ -48,10 +49,10 @@ class Track:
     """
     id: str
     label: str
-    position: tuple[float, float]
-    velocity: float
-    heading: float
-    altitude: float
+    position_m: tuple[float, float]
+    velocity_ms: float
+    heading_deg: float
+    altitude_m: float
     last_seen: datetime.datetime
     class_type: GameObjectClassType
     coalition: Coalition
@@ -60,6 +61,10 @@ class Track:
     classification: str = "---"
     source: str = ""
     track_id: int = 0
+    
+    @property
+    def velocity_kts(self) -> float:
+        return self.velocity_ms * M_PER_SEC_TO_KNOTS
 
     def update(self, position: tuple[float, float], velocity: float, heading: float, altitude: float,
                time: datetime.datetime | None):
@@ -74,7 +79,7 @@ class Track:
             self.last_seen = datetime.datetime.now()
             print(f"WARNING Track {self.id} has no timestamp")
         self.position = position
-        self.velocity = velocity
+        self.velocity_ms = velocity
         self.heading = heading
         self.altitude = altitude
         

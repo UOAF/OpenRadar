@@ -25,6 +25,15 @@ unit_color_switching = [
 [radar]
 update_interval = 1 # Update interval in seconds
 
+[labels]
+FIXEDWING = '{"TOP_LEFT": {"label_name": "TL", "label_format": "{id}", "show_on_hover": false}}' # Label for fixed wing aircraft
+ROTARYWING = '{}'
+MISSILE = '{}'
+GROUND = '{}'
+SEA = '{}'
+BULLSEYE = '{}'
+
+
 [controler]
 coalition = "U.S." # Coalition to control on startup
 

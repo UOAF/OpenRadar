@@ -23,22 +23,23 @@ from game_objects import *
 # }
 
 SUPPORTED_CLASSES = Bullseye | fixedWing | rotaryWing | missile | groundUnit | surfaceVessel
-@dataclass
+@dataclass(frozen=True)
 class GameObjectClassDescription:
     id: int
     class_type: Type[SUPPORTED_CLASSES]
     tacview_class: str
+    display_name: str
 
 class GameObjectClassType(Enum):
     """
     Enumeration of track types.
     """
-    FIXEDWING = GameObjectClassDescription(auto(), fixedWing, "FixedWing")
-    ROTARYWING = GameObjectClassDescription(auto(), rotaryWing, "Rotorcraft")
-    MISSILE = GameObjectClassDescription(auto(), missile, "Missile")
-    GROUND = GameObjectClassDescription(auto(), groundUnit, "Ground+Vehicle")
-    SEA = GameObjectClassDescription(auto(), surfaceVessel, "Watercraft")
-    BULLSEYE = GameObjectClassDescription(auto(), Bullseye, "Navaid+Static+Bullseye")
+    FIXEDWING = GameObjectClassDescription(auto(), fixedWing, "FixedWing", "Fixed Wing")
+    ROTARYWING = GameObjectClassDescription(auto(), rotaryWing, "Rotorcraft", "Helicopter")
+    MISSILE = GameObjectClassDescription(auto(), missile, "Missile", "Missile")
+    GROUND = GameObjectClassDescription(auto(), groundUnit, "Ground+Vehicle", "Ground")
+    SEA = GameObjectClassDescription(auto(), surfaceVessel, "Watercraft", "Sea")
+    BULLSEYE = GameObjectClassDescription(auto(), Bullseye, "Navaid+Static+Bullseye", "Bullseye")
 
 
 class GameState:

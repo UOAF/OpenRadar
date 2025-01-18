@@ -11,6 +11,7 @@ from draw.shapes import Shapes, add_control_points_angle
 from game_state import GameObjectClassType
 from sensor_tracks import Track, Declaration
 from util.bms_math import NM_TO_METERS
+from util.track_labels import *
 
 import config
 
@@ -62,7 +63,7 @@ class TrackRenderer:
 
     def build_buffers(self, tracks: dict[GameObjectClassType, dict[str, Track]]):
         self.clear()
-        print("Building buffers")
+        # print("Building buffers")
         for type, track_dict in tracks.items():
             if type == GameObjectClassType.FIXEDWING:
                 for track in track_dict.values():
@@ -93,15 +94,15 @@ class TrackRenderer:
 
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
         
-        self.scene.world_to_screen_distance(track.velocity)
+        self.scene.world_to_screen_distance(track.velocity_ms)
 
         LINE_LEN_SECONDS = 30 # 30 seconds of velocity vector
-        px_per_second = self.scene.world_to_screen_distance(track.velocity) # Scale the velocity vector 
+        px_per_second = self.scene.world_to_screen_distance(track.velocity_ms) # Scale the velocity vector 
         vel_vec_len_px = px_per_second * LINE_LEN_SECONDS # Scale the velocity vector
 
         heading_rad = math.radians(track.heading-90) # -90 rotaes north to up
-        end_x = track.position[0] + track.velocity*math.cos(heading_rad) * LINE_LEN_SECONDS
-        end_y = track.position[1] + track.velocity*math.sin(-heading_rad) * LINE_LEN_SECONDS
+        end_x = track.position[0] + track.velocity_ms*math.cos(heading_rad) * LINE_LEN_SECONDS
+        end_y = track.position[1] + track.velocity_ms*math.sin(-heading_rad) * LINE_LEN_SECONDS
         end_pt = (end_x, end_y)
         
         self.draw_line([track.position, end_pt], color)
