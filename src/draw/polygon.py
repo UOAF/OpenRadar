@@ -109,7 +109,7 @@ class PolygonRenderer:
         assert offsets.shape[0] == scales.shape[0] == colors.shape[0] == widths_px.shape[0], \
             "All input arrays must have the same length"
 
-        self.program['u_mvp'].write(self.scene.get_mvp())  # type: ignore
+        self.program['u_mvp'].write(self.scene.get_vp())  # type: ignore
         self.program['u_resolution'] = self.scene.display_size
         # self.program['u_color'] = color[0]
 
