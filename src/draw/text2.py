@@ -39,7 +39,7 @@ def make_text_renderer(atlas_name: str, scene: Scene, atlas_path: Optional[str] 
     return TextRendererMsdf(tex, data, scene)
 
 
-def generate_model_matrix(position, scale, rotation=0):
+def generate_model_matrix(position, scale, rotation=0) -> np.ndarray:
     """
     Generate a model matrix for text rendering.
     
@@ -99,12 +99,15 @@ class TextRendererMsdf:
 
     def clear(self):
         """"""
+        self.text_batches: list[dict] = []
         self.vertex_batches = []
         self.index_batches = []
         self.model_matrices = []  # Store model matrices per instance
+        self.char_range = []  # Store character ranges per instance
+        self.char_scales = []  # Store character scales per instance
         self.vertex_count = 0
 
-    def draw_text(self, text: str, x_world: float, y_world: float, scale=60):
+    def draw_text(self, text: str, x_world: float, y_world: float, scale=20, scale_to_screen=True):
         """"""
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
@@ -117,7 +120,7 @@ class TextRendererMsdf:
         cursor_x = 0
         vert_idx = 0
         char_count = 0
-        
+
         for char in text:
             if char == ' ':
                 cursor_x += 0.5 * scale
@@ -170,56 +173,57 @@ class TextRendererMsdf:
             vert_idx = char_count * 16
 
             vertices[vert_idx:vert_idx + 16] = quad.flatten()
-            indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4) + self.vertex_count * 4
+            indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4)  # + self.vertex_count * 4
             cursor_x += advance
             char_count += 1
-        self.vertex_batches.append(vertices)
-        self.index_batches.append(indices)
-        self.vertex_count += char_count
-        
-        # Compute and store the model matrix for this instance
-        model_matrix = generate_model_matrix(position=(x_world, y_world), scale=scale)
-        self.model_matrices.append(model_matrix)
-        
-        # vp_matrix = np.array(self._scene.get_vp(), dtype='f4')
 
-        # # Remove scaling effects
-        # vp_matrix[0, 0] = 1.0
-        # vp_matrix[1, 1] = 1.0
+        current_batch = len(self.text_batches)
+        self.text_batches.append({})
+        self.text_batches[current_batch]['vertices'] = vertices
+        self.text_batches[current_batch]['indices'] = indices
+        # self.text_batches[current_batch]['char_count'] = char_count
+        self.text_batches[current_batch]['scale'] = scale
+        self.text_batches[current_batch]['scale_to_screen'] = scale_to_screen
+        self.text_batches[current_batch]['position'] = (x_world, y_world)
 
-        # model_matrix = generate_model_matrix(position=(x_world, y_world), scale=1.0)
-        # self.mvp_matrix = np.matmul(vp_matrix, model_matrix)
+        # self.vertex_batches.append(vertices)
+        # self.index_batches.append(indices)
+        # self.vertex_count += char_count
+        # self.char_range.append((0, char_count))
+        # self.char_scales.append(scale)
 
     def render(self):
         """Call this once per frame, after rendering all the text you need.
         """
         self._atlas.use()
-        if not self.vertex_batches or not self.index_batches:
-            return
-        vertices = np.concat(self.vertex_batches)
-        indices = np.concat(self.index_batches)
-        vbo = self._ctx.buffer(vertices.tobytes())
-        ibo = self._ctx.buffer(indices.tobytes())
-        
-        # Upload the view-projection matrix
-        vp_matrix = np.array(self._scene.get_vp(), dtype='f4')
-        self._program['u_vp'].write(vp_matrix.tobytes()) # type: ignore
-        
-        # Create and bind the SSBO for model matrices
-        model_array = np.array(self.model_matrices, dtype='f4')
-        ssbo = self._ctx.buffer(model_array.tobytes())
-        ssbo.bind_to_storage_buffer(binding=0)
-        
-       # Upload text scaling factor
-        text_scale = 0.1  # Example scale factor
-        self._program['u_text_scale'].value = text_scale # type: ignore   
-
         self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
         self._ctx.enable(mgl.BLEND)  # TODO is this the right place to call this?
 
-        vao = self._ctx.simple_vertex_array(self._program,
-                                            vbo,
-                                            'in_pos_text',
-                                            'in_texcoord',
-                                            index_buffer=ibo)
-        vao.render(mgl.TRIANGLES, instances=len(self.model_matrices))
+        if len(self.text_batches) == 0:
+            return
+
+        for batch in self.text_batches:
+            vertices = batch['vertices']
+            indices = batch['indices']
+            position = batch['position']
+            # char_count = batch['char_count']
+            scale = batch['scale']
+            scale_to_screen = batch['scale_to_screen']
+            
+            if scale_to_screen:
+                scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * scale
+            
+            
+            model_matrix = generate_model_matrix(position, scale)
+
+            vbo = self._ctx.buffer(vertices.tobytes())
+            ibo = self._ctx.buffer(indices.tobytes())
+
+            mvp = np.array(self._scene.get_vp()) @ model_matrix
+            self._program['u_mvp'].write(mvp.T.tobytes())  # type: ignore
+
+            text_scale = 1.0  # Example scale factor
+            self._program['u_text_scale'].value = text_scale  # type: ignore
+
+            vao = self._ctx.simple_vertex_array(self._program, vbo, 'in_pos_text', 'in_texcoord', index_buffer=ibo)
+            vao.render(mgl.TRIANGLES)
