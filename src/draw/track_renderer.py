@@ -108,7 +108,7 @@ class TrackRenderer:
 
         self.draw_shape(shape, track.position_m, color)
         self.draw_velocity_vector(track, color)
-        self.text_renderer.draw_text(track.label, *track.position_m, 60)
+        self.text_renderer.draw_text(track.id, *track.position_m, 40)
 
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
 
