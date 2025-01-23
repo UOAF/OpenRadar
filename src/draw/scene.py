@@ -16,7 +16,7 @@ class Scene:
         self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
         self._pan_screen = glm.vec2(0.0)
         self.zoom_level = 1.0
-        self.mvp = glm.mat4(1.0)
+        self.vp = glm.mat4(1.0)
         self.projection_matrix = glm.mat4(1.0)
         self.view_matrix = glm.mat4(1.0)
         self.aspect = 1.0
@@ -24,8 +24,8 @@ class Scene:
         self.resize(self.display_size)
         self.fit_in_view()
 
-    def get_mvp(self):
-        return self.mvp
+    def get_vp(self):
+        return self.vp
     
     def get_scale(self):
         return self.map_size_m / self.display_size[1]
@@ -72,7 +72,7 @@ class Scene:
 
         self.view_matrix = viewmatrix
         self.projection_matrix = projection_mat_scaled
-        self.mvp = projection_mat_scaled * viewmatrix
+        self.vp = projection_mat_scaled * viewmatrix
 
     def pan(self, dx_screen, dy_screen):
         delta = glm.vec2(dx_screen, -dy_screen)

@@ -125,7 +125,7 @@ class MapGL:
     def render(self):
 
         scale = self.map_size_m
-        self.shader['camera'].write(self.scene.get_mvp())
+        self.shader['camera'].write(self.scene.get_vp())
         self.shader['alpha'] = config.app_config.get_int("map", "map_alpha") / 255.0
 
         # self.mesh.render(scale * self.zoom_level, (pan.x, pan.y, 0.0))
