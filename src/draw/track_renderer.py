@@ -13,6 +13,8 @@ from sensor_tracks import Track, Declaration
 from util.bms_math import NM_TO_METERS
 from util.track_labels import *
 
+from draw.text2 import TextRendererMsdf, make_text_renderer
+
 import config
 
 
@@ -37,6 +39,8 @@ class TrackRenderer:
 
         self.scene = scene
         self._mgl_context = scene.mgl_context
+        
+        self.text_renderer = make_text_renderer("atlas", scene)
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
         screen_polygon_vertex_shader = open(os.path.join(shader_dir, "screen_polygon_vertex.glsl")).read()
@@ -57,6 +61,8 @@ class TrackRenderer:
 
         self.shape_buffers: dict[Shapes, TrackShapeRenderBuffer] = dict()
         self.line_buffer: TrackLineRenderBuffer | None = None
+        
+        self.text_renderer.clear()
 
     def build_buffers(self, tracks: dict[GameObjectClassType, dict[str, Track]]):
         self.clear()
@@ -102,6 +108,7 @@ class TrackRenderer:
 
         self.draw_shape(shape, track.position_m, color)
         self.draw_velocity_vector(track, color)
+        self.text_renderer.draw_text(track.label, *track.position_m, 60)
 
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
 
@@ -177,6 +184,8 @@ class TrackRenderer:
             self.render_shapes_buffer(shape.value.points, buffer)
         if self.line_buffer is not None:
             self.render_lines_args(self.line_buffer.lines, self.line_buffer.colors, self.line_buffer.line_width_px)
+            
+        self.text_renderer.render()
 
     def render_shapes_buffer(self, shape: NDArray, input: TrackShapeRenderBuffer):
         self.render_instances_args(shape, input.offsets, input.colors, input.shape_size_px, input.line_width_px)
@@ -235,7 +244,7 @@ class TrackRenderer:
         assert colors.shape[1] == 4, "colors must be a 4f array"
         assert offsets.shape[0] == colors.shape[0], "All input arrays must have the same length"
 
-        self.program['u_mvp'].write(self.scene.get_mvp())  # type: ignore
+        self.program['u_mvp'].write(self.scene.get_vp())  # type: ignore
         self.program['u_resolution'] = self.scene.display_size
         self.program['u_scale'] = scale
         self.program['u_width'] = width_px
