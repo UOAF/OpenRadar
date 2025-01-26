@@ -13,7 +13,7 @@ from sensor_tracks import Track, Declaration
 from util.bms_math import NM_TO_METERS
 from util.track_labels import *
 
-from draw.text2 import TextRendererMsdf, make_text_renderer
+from draw.text3 import TextRendererMsdf, make_text_renderer
 
 import config
 
