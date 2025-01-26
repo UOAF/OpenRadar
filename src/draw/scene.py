@@ -95,14 +95,14 @@ class Scene:
         ratio = h / self.map_size_m
         return distance_screen / ratio / self.zoom_level
 
-    def world_to_screen(self, point_world: glm.vec2):
+    def world_to_screen(self, point_world: glm.vec2 | tuple[float, float]):
+        point_world = glm.vec2(*point_world)
         w, h = self.display_size
         ratio = h / self.map_size_m
 
         point_screen_with_pan = point_world * ratio * self.zoom_level
 
         pan = glm.vec2(self._pan_screen)
-        pan.y *= -1.0
         point_screen = point_screen_with_pan + pan
         point_screen.y = h - point_screen.y
         return point_screen
