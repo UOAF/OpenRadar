@@ -261,6 +261,11 @@ class TrackRenderer:
         num_output_vertices = (len(unit_shape) - 3) * 6
 
         vao.render(mgl.TRIANGLES, vertices=num_output_vertices, instances=len(offsets))
+        
+        vao.release()
+        ssbo.release()
+        offset_buf.release()
+        colors_buf.release()
 
     def render_lines_args(
             self,

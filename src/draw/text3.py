@@ -1,10 +1,9 @@
-from calendar import c
-from tkinter import BOTTOM, TOP
 from typing import Optional
 from PIL import Image
 import os
 import json
 import moderngl as mgl
+import glm
 import numpy as np
 
 from draw.scene import Scene
@@ -12,8 +11,8 @@ from util.rect import Rect, RectInvY
 from util.track_labels import TrackLabelLocation
 
 
-def orient_text_rect(rect: RectInvY, location: TrackLabelLocation, obect_size: tuple[int, int] = (0,0)) -> RectInvY:
-    
+def orient_text_rect(rect: RectInvY, location: TrackLabelLocation, obect_size: tuple[int, int] = (0, 0)) -> RectInvY:
+
     if location == TrackLabelLocation.TOP_LEFT:
         offset = (-obect_size[0] // 2, obect_size[1] // 2)
         rect.bottom_right = offset
@@ -73,59 +72,13 @@ def make_text_renderer(atlas_name: str, scene: Scene, atlas_path: Optional[str] 
     return TextRendererMsdf(tex, data, scene)
 
 
-def generate_model_matrix(position, scale, rotation=0) -> np.ndarray:
-    """
-    Generate a model matrix for text rendering.
-    
-    Parameters:
-        position: Tuple (x, y) indicating the world-space position of the text.
-        scale: Scaling factor for the text size.
-        rotation: Rotation in radians (optional).
-    
-    Returns:
-        A 4x4 model matrix.
-    """
-    x, y = position
-
-    # Translation matrix
-    translation_matrix = np.array([
-        [1, 0, 0, x],
-        [0, 1, 0, y],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
-    ], dtype=np.float32)
-
-    # Scaling matrix
-    scaling_matrix = np.array([
-        [scale, 0, 0, 0],
-        [0, scale, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
-    ], dtype=np.float32)
-
-    # Rotation matrix (if rotation is needed)
-    cos_r = np.cos(rotation)
-    sin_r = np.sin(rotation)
-    rotation_matrix = np.array([
-        [cos_r, -sin_r, 0, 0],
-        [sin_r, cos_r, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
-    ],
-                               dtype=np.float32)
-
-    # Combine transformations: T * R * S
-    model_matrix = np.matmul(np.matmul(translation_matrix, rotation_matrix), scaling_matrix)
-    return model_matrix
-
-
 class TextRendererMsdf:
 
     def __init__(self, texture: mgl.Texture, metadata: dict, scene: Scene):
         self._atlas = texture
         self._metadata = metadata
         self._ctx = scene.mgl_context
-        vertex_shader = open(os.path.join("resources", "shaders", "text_vertex2.glsl")).read()
+        vertex_shader = open(os.path.join("resources", "shaders", "text_vertex3.glsl")).read()
         fragment_shader = open(os.path.join("resources", "shaders", "text_frag.glsl")).read()
         self._program = self._ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         self._scene = scene
@@ -146,8 +99,7 @@ class TextRendererMsdf:
                   x_world: float,
                   y_world: float,
                   scale: float = 20,
-                  scale_to_screen: bool = True,
-                  offset: tuple[int, int] = (0, 0)):
+                  location: TrackLabelLocation = TrackLabelLocation.TOP_LEFT):
         """"""
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
@@ -182,10 +134,11 @@ class TextRendererMsdf:
             advance = glyph['advance']
 
             # Scale glyph size
-            quad_x = plane['left']
-            quad_y = plane['bottom']
-            quad_w = plane['right']
-            quad_h = plane['top']
+            quad_x = plane['left'] * scale
+            quad_y = plane['bottom'] * scale
+            quad_w = plane['right'] * scale
+            quad_h = plane['top'] * scale
+            advance *= scale
 
             glyph_bottom = atlas_height - atlas['bottom']
             glyph_top = atlas_height - atlas['top']
@@ -201,10 +154,10 @@ class TextRendererMsdf:
 
             # Set up vertex data
             quad = np.array([
-                [cursor_x + quad_x, quad_y, tex_x, tex_y - tex_h],
-                [cursor_x + quad_w, quad_y, tex_x + tex_w, tex_y - tex_h],
-                [cursor_x + quad_w, quad_h, tex_x + tex_w, tex_y],
-                [cursor_x + quad_x, quad_h, tex_x, tex_y],
+                [cursor_x + quad_x, -quad_y, tex_x, tex_y - tex_h],
+                [cursor_x + quad_w, -quad_y, tex_x + tex_w, tex_y - tex_h],
+                [cursor_x + quad_w, -quad_h, tex_x + tex_w, tex_y],
+                [cursor_x + quad_x, -quad_h, tex_x, tex_y],
             ],
                             dtype='f4')
 
@@ -217,7 +170,7 @@ class TextRendererMsdf:
             cursor_x += advance
             char_count += 1
 
-        height = atlas_height = self._metadata['metrics']['lineHeight']
+        height = self._metadata['metrics']['lineHeight'] * scale
         text_rect = RectInvY(0, 0, cursor_x, height)
         
 
@@ -225,17 +178,17 @@ class TextRendererMsdf:
         self.text_batches.append({})
         self.text_batches[current_batch]['vertices'] = vertices
         self.text_batches[current_batch]['indices'] = indices
-        # self.text_batches[current_batch]['char_count'] = char_count
-        self.text_batches[current_batch]['scale'] = scale
-        self.text_batches[current_batch]['scale_to_screen'] = scale_to_screen
-        self.text_batches[current_batch]['position'] = (x_world, y_world)
+        self.text_batches[current_batch]['pos_world'] = (x_world, y_world)
+        self.text_batches[current_batch]['rect'] = text_rect
 
     def render(self):
         """Call this once per frame, after rendering all the text you need.
         """
-        self._atlas.use()
-        self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
-        self._ctx.enable(mgl.BLEND)  # TODO is this the right place to call this?
+        # self._atlas.use()
+        # self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
+        # self._ctx.enable(mgl.BLEND)  # TODO is this the right place to call this?
+
+        projection = glm.ortho(0, self._scene.display_size[0], self._scene.display_size[1], 0, -1, 1)
 
         if len(self.text_batches) == 0:
             return
@@ -243,24 +196,19 @@ class TextRendererMsdf:
         for batch in self.text_batches:
             vertices = batch['vertices']
             indices = batch['indices']
-            position = batch['position']
-            # char_count = batch['char_count']
-            scale = batch['scale']
-            scale_to_screen = batch['scale_to_screen']
-
-            if scale_to_screen:
-                scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * scale
-
-            model_matrix = generate_model_matrix(position, scale)
+            position = batch['pos_world']
+            rect = batch['rect']
 
             vbo = self._ctx.buffer(vertices.tobytes())
             ibo = self._ctx.buffer(indices.tobytes())
 
-            mvp = np.array(self._scene.get_vp()) @ model_matrix
-            self._program['u_mvp'].write(mvp.T.tobytes())  # type: ignore
-
-            text_scale = 1.0  # Example scale factor
-            self._program['u_text_scale'].value = text_scale  # type: ignore
+            screen_pos = self._scene.world_to_screen(position) + rect.bottom_left
+            self._program['u_offset'].write(screen_pos)  # type: ignore
+            self._program['u_proj'].write(projection)  # type: ignore
 
             vao = self._ctx.simple_vertex_array(self._program, vbo, 'in_pos_text', 'in_texcoord', index_buffer=ibo)
             vao.render(mgl.TRIANGLES)
+            
+            vao.release()
+            vbo.release()
+            ibo.release()
