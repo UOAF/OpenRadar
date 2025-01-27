@@ -164,6 +164,14 @@ class PolygonRenderer:
         num_output_vertices = (len(vertices) - 3) * 6
 
         vao.render(mgl.TRIANGLES, vertices=num_output_vertices, instances=len(offsets))
+        
+        vao.release()
+        ssbo.release()
+        offset_buf.release()
+        scales_buf.release()
+        colors_buf.release()
+        widths_buf.release()
+        
 
     def draw_shapes(self, unit_shape, input: ShapesRenderBuffer):
         self.draw_shapes_args(unit_shape, input.offsets, input.scales, input.colors, input.widths_px)
