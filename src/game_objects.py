@@ -244,7 +244,7 @@ class airUnit(GameObject):
         name_surface = self.font.render(f"{text}", True, color)
         type_surface = self.font.render(f"{self.data.Name}", True, color)
         data_surface = self.font.render(
-            f"{int(altitude*METERS_TO_FT//100)}  {(int(int(calibratedspeed)*M_PER_SEC_TO_KNOTS)//10)}", True, color)
+            f"{int(altitude*METERS_TO_FT//100):03d}  {(int(int(calibratedspeed)*M_PER_SEC_TO_KNOTS)//10):03d}", True, color)
         
         textrect = (max(name_surface.get_size()[0], data_surface.get_size()[0], type_surface.get_size()[0]), 
                    name_surface.get_size()[1]+ data_surface.get_size()[1] + type_surface.get_size()[1])
