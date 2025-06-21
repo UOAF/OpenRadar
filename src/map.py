@@ -11,7 +11,8 @@ from bms_math import *
 THEATRE_MAPS_BUILTIN = [{"name": "Balkans", "path": "resources/maps/balkans_4k_airbases.png", "size": 1024},
                         {"name": "KTO", "path": "resources/maps/Korea.jpg", "size": 1024},
                         {"name": "Israel", "path": "resources/maps/Israel.jpg", "size": 1024},
-                        {"name": "MidEast", "path": "resources/maps/MidEast128Map.png", "size": 1024},]
+                        {"name": "MidEast", "path": "resources/maps/MidEast128Map.png", "size": 2048},
+                        {"name": "Gibraltar", "path": "resources/maps/GibraltarMap.png", "size": 2048},]
 
 class Map:
     def __init__(self, displaysurface: pygame.Surface):
@@ -74,16 +75,16 @@ class Map:
         ini_file = open_file_dialog()
         print(f"Loading ini file {ini_file}")
         if ini_file:
-            self._load_ini(ini_file)
+            self._load_ini(ini_file, self.theatre_size_km)
 
-    def _load_ini(self, ini_file=None):
+    def _load_ini(self, ini_file=None, theater_size_km: int = 1024):
         
         if ini_file is None: 
             self.ini = None
             self.ini_surface = None
 
         else:
-            self.ini = FalconBMSIni(ini_file)
+            self.ini = FalconBMSIni(ini_file, map_size_meters=theater_size_km)
             self.ini_surface = self.ini.get_surf(self._map_source.get_size())
             self.prerender_map()     
         
@@ -291,16 +292,18 @@ class Map:
         return screen_to_canvas(screenCoords, self._scale_c2s, (self.offset.x, self.offset.y))
     
     def _canvas_to_world(self, canvasCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
-        return canvas_to_world(canvasCoords, self._map_source.get_size())
+        return canvas_to_world(canvasCoords, self._map_source.get_size(), self.theater_max_meter)
     
     def _world_to_canvas(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[float,float]:
-        return world_to_canvas(worldCoords, self._map_source.get_size())
+        return world_to_canvas(worldCoords, self._map_source.get_size(), self.theater_max_meter)
     
     def _screen_to_world(self, screenCoords: tuple[int,int]) -> tuple[float,float]:
-        return screen_to_world(screenCoords, self._map_source.get_size(), self._scale_c2s, (self.offset.x, self.offset.y))
+        return screen_to_world(screenCoords, self._map_source.get_size(), self.theater_max_meter, 
+                               self._scale_c2s, (self.offset.x, self.offset.y))
                                       
     def _world_to_screen(self, worldCoords: tuple[float,float] = (0,0)) -> tuple[int,int]:
-        return world_to_screen(worldCoords, self._map_source.get_size(), self._scale_c2s, (self.offset.x, self.offset.y))
+        return world_to_screen(worldCoords, self._map_source.get_size(), self.theater_max_meter,
+                               self._scale_c2s, (self.offset.x, self.offset.y))
     
     def _world_distance(self, worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
         return world_distance(worldCoords1, worldCoords2)

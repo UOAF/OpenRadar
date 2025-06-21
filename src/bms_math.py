@@ -19,7 +19,7 @@ def screen_to_canvas(screenCoords: tuple[int,int], scale: float, offset: tuple[f
     return  canvasX, canvasY
 
 def canvas_to_world(canvasCoords: tuple[float,float], canvas_size: tuple[float,float], 
-                    theatre_size_meters = THEATRE_DEFAULT_SIZE_METERS) -> tuple[float,float]:
+                    theatre_size_meters) -> tuple[float,float]:
     radar_map_size_x, radar_map_size_y = canvas_size
 
     pos_ux = canvasCoords[0] / radar_map_size_x * theatre_size_meters
@@ -28,7 +28,7 @@ def canvas_to_world(canvasCoords: tuple[float,float], canvas_size: tuple[float,f
     return pos_ux, pos_vy
     
 def world_to_canvas(worldCoords: tuple[float,float], canvas_size: tuple[float,float], 
-                    theatre_size_meters = THEATRE_DEFAULT_SIZE_METERS) -> tuple[float,float]:
+                    theatre_size_meters) -> tuple[float,float]:
     
     map_size_x, map_size_y = canvas_size
 
@@ -39,13 +39,13 @@ def world_to_canvas(worldCoords: tuple[float,float], canvas_size: tuple[float,fl
             
     return canvasX, canvasY
 
-def screen_to_world(screenCoords: tuple[int,int], canvas_size: tuple[float,float], 
+def screen_to_world(screenCoords: tuple[int,int], canvas_size: tuple[float,float], theatre_size_meters: float,
                     scale: float, offset: tuple[float,float]) -> tuple[float,float]:
-    return canvas_to_world(screen_to_canvas(screenCoords, scale, offset), canvas_size)
+    return canvas_to_world(screen_to_canvas(screenCoords, scale, offset), canvas_size, theatre_size_meters)
                                     
-def world_to_screen(worldCoords: tuple[float,float], canvas_size: tuple[float,float], 
+def world_to_screen(worldCoords: tuple[float,float], canvas_size: tuple[float,float], theatre_size_meters: float,
                     scale: float = 1, offset: tuple[float,float] = (0,0)) -> tuple[int,int]:
-    return canvas_to_screen(world_to_canvas(worldCoords, canvas_size), scale, offset)
+    return canvas_to_screen(world_to_canvas(worldCoords, canvas_size, theatre_size_meters), scale, offset)
 
 def world_distance(worldCoords1: tuple[float,float], worldCoords2: tuple[float,float]) -> float:
     return math.sqrt((worldCoords2[0] - worldCoords1[0])**2 + (worldCoords2[1] - worldCoords1[1])**2) / NM_TO_METERS

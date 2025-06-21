@@ -8,13 +8,14 @@ BMS_LINE_POINTS = 6
 BMS_NUM_THREATS = 15
 
 class FalconBMSIni:
-    def __init__(self, file_path):
+    def __init__(self, file_path, map_size_meters=1024):
         self.file_path = file_path
         self.data: configparser.ConfigParser
         self.lines = []
         self.threats = []
         self.load()
         self.font = pygame.font.SysFont("Arial", 18) #TODO: render this in the screen surface to not have variable font size with map zoom
+        self.map_size_maters = map_size_meters * 1000
 
     def load(self):
         with open(self.file_path, "r") as f:
@@ -45,15 +46,15 @@ class FalconBMSIni:
             if (line[i][0] < 1 or line[i+1][0] < 1):
                 continue
             
-            point1 = world_to_canvas(line[i], surface.get_size())
-            point2 = world_to_canvas(line[i+1], surface.get_size())
+            point1 = world_to_canvas(line[i], surface.get_size(), self.map_size_maters)
+            point2 = world_to_canvas(line[i+1], surface.get_size(), self.map_size_maters)
         
             pygame.draw.line(surface, color, point1, point2, width=2)
         
     def draw_threat(self, surface, threat, color):
         
-        threat_pos = world_to_canvas(threat[0], surface.get_size())
-        threat_radius = world_to_canvas((threat[1], 0), surface.get_size())[0]
+        threat_pos = world_to_canvas(threat[0], surface.get_size(), self.map_size_maters)
+        threat_radius = world_to_canvas((threat[1], 0), surface.get_size(), self.map_size_maters)[0]
         
         pygame.draw.circle(surface, color, threat_pos, int(threat_radius), width=3)
         
