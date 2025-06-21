@@ -94,7 +94,7 @@ class Radar(Map):
         bearing = self._world_bearing(start_world, end_world)
                 
         
-        text_surface = self.cursorFont.render(f"{bearing:.0f}/{distance_NM:.0f}", True, color)
+        text_surface = self.cursorFont.render(f"{bearing:03.0f}/{distance_NM:.0f}", True, color)
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.topleft = (end[0] + 10, end[1] + 10)
         surface.blit(text_surface, textrect)
@@ -114,7 +114,7 @@ class Radar(Map):
         
         polar = self.get_pos_world_bullseye_relative(self._screen_to_world(pos))
         
-        text_surface = self.cursorFont.render(f"{polar[0]:.0f}, {polar[1]:.0f}", True, (255,0,0)) #TODO fix color
+        text_surface = self.cursorFont.render(f"{polar[0]:03.0f}, {polar[1]:.0f}", True, (255,0,0)) #TODO fix color
         textrect = pygame.Rect((0,0),text_surface.get_size())
         textrect.topleft = (pos[0] + 10, pos[1] + 10)
         surface.blit(text_surface, textrect)
