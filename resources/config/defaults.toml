@@ -37,6 +37,7 @@ coalition = "U.S." # Coalition to control on startup
 [annotations]
 ini_width = 10 # Width ini file annotations are drawn in pixels
 ini_color = [ 255, 255, 0 ] # [r, g, b] # Color of the ini file annotations
+ini_font_size = 40 # Font size of the ini file annotations
 
 [notepad]
 notes = "" # Notes stored in the user notepad

@@ -56,7 +56,7 @@ class TextRendererMsdf:
         self.index_batches = []
         self.vertex_count = 0
 
-    def draw_text(self, text: str, x_world: int, y_world: int, scale=60):
+    def draw_text(self, text: str, x_world: int, y_world: int, scale=60, centered=False):
         """"""
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
@@ -126,6 +126,21 @@ class TextRendererMsdf:
             indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4) + self.vertex_count * 4
             cursor_x += advance
             char_count += 1
+            
+        if centered:
+            x_offset = -cursor_x / 2
+            
+            # For vertical centering, adjust y_offset based on the top of a capital letter
+            glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
+            if glyph_E:
+                y_offset = -glyph_E['planeBounds']['top'] * scale / 2
+            else:
+                y_offset = -self._metadata['metrics']['ascender'] * scale / 2
+
+            vertices[::6] += x_offset
+            vertices[1::6] += y_offset
+            
+
         self.vertex_batches.append(vertices)
         self.index_batches.append(indices)
         self.vertex_count += char_count
