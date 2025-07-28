@@ -95,7 +95,7 @@ class MapAnnotations:
         for circle in self.circles:
             pos, _, name = circle
             self.text_renderer.draw_text(name, *pos, centered=True, 
-                                         scale=config.app_config.get_int("annotations", "ini_font_size"))
+                                         scale=config.app_config.get_int("annotations", "ini_font_scale"))
 
         self.renderer.draw_circles_args(offsets, scales, colors, widths_px) # TODO: Modify this line to use the new draw_circles method and store arrays on edit
 

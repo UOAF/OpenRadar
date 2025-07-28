@@ -21,6 +21,7 @@ background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
 update_interval = 1 # Update interval in seconds
 contact_size = 14 # Size of the track in pixels
 contact_stroke = 2 # Stroke width of the track in pixels
+contact_font_scale = 40 # Font size of the track labels
 
 [labels]
 FIXEDWING = '{"TOP_LEFT": {"label_name": "TL", "label_format": "{id}", "show_on_hover": false}}' # Label for fixed wing aircraft
@@ -37,7 +38,7 @@ coalition = "U.S." # Coalition to control on startup
 [annotations]
 ini_width = 10 # Width ini file annotations are drawn in pixels
 ini_color = [ 255, 255, 0 ] # [r, g, b] # Color of the ini file annotations
-ini_font_size = 40 # Font size of the ini file annotations
+ini_font_scale = 40 # Font size of the ini file annotations
 
 [notepad]
 notes = "" # Notes stored in the user notepad

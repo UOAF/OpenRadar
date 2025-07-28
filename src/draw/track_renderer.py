@@ -13,25 +13,20 @@ from sensor_tracks import Track, Declaration
 from util.bms_math import NM_TO_METERS
 from util.track_labels import *
 
-from draw.text3 import TextRendererMsdf, make_text_renderer
+from draw.text import TextRendererMsdf, make_text_renderer
 
 import config
 
 
 @dataclass
 class TrackShapeRenderBuffer:
-    line_width_px: float
-    shape_size_px: glm.vec2
     offsets: NDArray[np.float32]  # Shape: (N, 2) -> N lines, (x, y)
     colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
-
 
 @dataclass
 class TrackLineRenderBuffer:
     lines: NDArray[np.float32]  # Shape: (N, P, 2) -> N lines, [(x, y)]
     colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
-    line_width_px: float
-
 
 class TrackRenderer:
 
@@ -40,7 +35,7 @@ class TrackRenderer:
         self.scene = scene
         self._mgl_context = scene.mgl_context
         
-        self.text_renderer = make_text_renderer("atlas", scene)
+        self.text_renderer = make_text_renderer(self._mgl_context, "atlas", scene)
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
         screen_polygon_vertex_shader = open(os.path.join(shader_dir, "screen_polygon_vertex.glsl")).read()
@@ -62,27 +57,26 @@ class TrackRenderer:
         self.shape_buffers: dict[Shapes, TrackShapeRenderBuffer] = dict()
         self.line_buffer: TrackLineRenderBuffer | None = None
         
-        self.text_renderer.clear()
+        self.text_renderer.init_frame()
 
     def build_buffers(self, tracks: dict[GameObjectClassType, dict[str, Track]]):
         self.clear()
         # print("Building buffers")
-        for type, track_dict in tracks.items():
-            if type == GameObjectClassType.FIXEDWING:
-                for track in track_dict.values():
-                    self.draw_fixedwing(track)
-            elif type == GameObjectClassType.ROTARYWING:
-                for track in track_dict.values():
-                    self.draw_rotarywing(track)
-            elif type == GameObjectClassType.GROUND:
-                for track in track_dict.values():
-                    self.draw_ground_unit(track)
-            elif type == GameObjectClassType.SEA:
-                for track in track_dict.values():
-                    self.draw_sea_unit(track)
-            elif type == GameObjectClassType.MISSILE:
-                for track in track_dict.values():
-                    self.draw_missile(track)
+        
+        for track_dict in tracks[GameObjectClassType.FIXEDWING].values():
+            self.draw_fixedwing(track_dict)
+        
+        for track_dict in tracks[GameObjectClassType.ROTARYWING].values():
+            self.draw_rotarywing(track_dict)
+            
+        for track_dict in tracks[GameObjectClassType.GROUND].values():
+            self.draw_ground_unit(track_dict)
+            
+        for track_dict in tracks[GameObjectClassType.SEA].values():
+            self.draw_sea_unit(track_dict)
+        
+        for track_dict in tracks[GameObjectClassType.MISSILE].values():
+            self.draw_missile(track_dict)
 
         self.build_shape_arrays()
         self.build_line_arrays()
@@ -92,29 +86,33 @@ class TrackRenderer:
 
     def draw_fixedwing(self, track: Track):
 
-        decleration = track.get_declaration()
+        declaration = track.get_declaration()
 
         color = glm.vec4(1, 0, 1, 1)
         shape = Shapes.CIRCLE
-        if decleration == Declaration.FRIENDLY:
+        if declaration == Declaration.FRIENDLY:
             color = glm.vec4(0, 0, 1, 1)
             shape = Shapes.SEMICIRCLE
-        elif decleration == Declaration.HOSTILE:
+        elif declaration == Declaration.HOSTILE:
             color = glm.vec4(1, 0, 0, 1)
             shape = Shapes.HALF_DIAMOND
-        elif decleration == Declaration.UNKNOWN:
+        elif declaration == Declaration.UNKNOWN:
             color = glm.vec4(1, 1, 0, 1)
             shape = Shapes.TOP_BOX
 
         self.draw_shape(shape, track.position_m, color)
         self.draw_velocity_vector(track, color)
-        self.text_renderer.draw_text(track.id, *track.position_m, 40)
+        # contact_size = config.app_config.get_int("radar", "contact_size")
+        # pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
+        # self.text_renderer.draw_text(track.id, pos_x, pos_y, 
+        #                              scale=config.app_config.get_int("radar", "contact_font_scale"), centered=True
+        #                                 )
 
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
 
         self.scene.world_to_screen_distance(track.velocity_ms)
 
-        LINE_LEN_SECONDS = 30  # 30 seconds of velocity vector
+        LINE_LEN_SECONDS = 30  # 30 seëconds of velocity vector
 
         heading_rad = math.radians(track.heading_deg - 90)  # -90 rotaes north to up
         end_x = track.position_m[0] + track.velocity_ms * math.cos(heading_rad) * LINE_LEN_SECONDS
@@ -154,19 +152,11 @@ class TrackRenderer:
         self.lines.append((points, color))
 
     def build_shape_arrays(self):
-
-
-        stoke_width = config.app_config.get_float("radar", "contact_stroke")
-        shape_size = config.app_config.get_float("radar", "contact_size")
-        shape_size = glm.vec2(shape_size, shape_size)
-
         for shape, item_list in self.shape_lists.items():
             if len(item_list) == 0:
                 continue
             positions, colors = zip(*item_list)
             self.shape_buffers[shape] = TrackShapeRenderBuffer(
-                line_width_px=stoke_width,
-                shape_size_px=shape_size,
                 offsets=np.array(positions, dtype=np.float32),
                 colors=np.array(colors, dtype=np.float32))
 
@@ -176,22 +166,21 @@ class TrackRenderer:
         
         stoke_width = config.app_config.get_float("radar", "contact_stroke")
         lines, colors = zip(*self.lines)
-        self.line_buffer = TrackLineRenderBuffer(np.array(lines, dtype=np.float32), np.array(colors, dtype=np.float32),
-                                                 stoke_width)
+        self.line_buffer = TrackLineRenderBuffer(np.array(lines, dtype=np.float32), np.array(colors, dtype=np.float32))
 
     def render(self):
         for shape, buffer in self.shape_buffers.items():
             self.render_shapes_buffer(shape.value.points, buffer)
         if self.line_buffer is not None:
-            self.render_lines_args(self.line_buffer.lines, self.line_buffer.colors, self.line_buffer.line_width_px)
-            
+            self.render_lines_args(self.line_buffer.lines, self.line_buffer.colors)
         self.text_renderer.render()
 
     def render_shapes_buffer(self, shape: NDArray, input: TrackShapeRenderBuffer):
-        self.render_instances_args(shape, input.offsets, input.colors, input.shape_size_px, input.line_width_px)
+        shape_size = config.app_config.get_float("radar", "contact_size")
+        self.render_instances_args(shape, input.offsets, input.colors, scale=shape_size)
 
     def render_instances_args(self, unit_shape: NDArray[np.float32], offsets: NDArray[np.float32],
-                              colors: NDArray[np.float32], scale: glm.vec2, width_px: float):
+                              colors: NDArray[np.float32], scale: float):
         """
         Draws multiple line instances with specified attributes.
 
@@ -246,8 +235,12 @@ class TrackRenderer:
 
         self.program['u_mvp'].write(self.scene.get_vp())  # type: ignore
         self.program['u_resolution'] = self.scene.display_size
-        self.program['u_scale'] = scale
-        self.program['u_width'] = width_px
+        
+        
+        track_width = config.app_config.get_float("radar", "contact_stroke")
+        
+        self.program['u_scale'] = glm.vec2(scale, scale)
+        self.program['u_width'] = track_width
 
         ssbo = self._mgl_context.buffer(unit_shape.astype('f4').tobytes())
         ssbo.bind_to_storage_buffer(0)
@@ -271,7 +264,6 @@ class TrackRenderer:
             self,
             lines: NDArray[np.float32],  # Shape: (N, P, 2) -> N lines, P points per line, (x, y)
             colors: NDArray[np.float32],  # Shape: (N, 4) -> RGBA color per line
-            width_px: float,  # Width of each line in pixels
             add_control_points: bool = True):
         """
         Draw multiple lines with specified colors, widths, and optional control points.
@@ -310,7 +302,6 @@ class TrackRenderer:
             # Draw the line with specified parameters
             self.render_instances_args(
                 unit_shape=line,
-                offsets=offsets[i:i + 1],  # Slice to match shape (1, 2)
-                colors=colors[i:i + 1],  # Slice to match shape (1, 4)
-                scale=glm.vec2(0, 0),  # Scale is in screenspace so set it to 0
-                width_px=width_px)
+                offsets=offsets[i:i + 1], # Slice to match shape (1, 2)
+                colors=colors[i:i + 1], # Slice to match shape (1, 4)
+                scale=0.0) # Scale is in screenspace so set it to 0)
