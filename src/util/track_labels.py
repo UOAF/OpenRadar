@@ -1,9 +1,10 @@
+from pyparsing import C
 from game_state import GameObjectClassType
 from dataclasses import dataclass, field, fields
 from enum import Enum
 import json
 
-
+import config
 @dataclass(frozen=True)
 class TrackLabelLocationData():
     index: int
@@ -12,15 +13,16 @@ class TrackLabelLocationData():
     render_coords: tuple[float, float] 
 
 class TrackLabelLocation(Enum):
-    TOP_LEFT = TrackLabelLocationData(0, (0, 0), "Top Left", (0.0, 0.0))
-    TOP_CENTER = TrackLabelLocationData(1, (1, 0), "Top", (0.0, 0.0))
+    TOP_LEFT = TrackLabelLocationData(0, (0, 0), "Top Left", (-1, 0))
+    TOP_CENTER = TrackLabelLocationData(1, (1, 0), "Top", (-0.5, 0))
     TOP_RIGHT = TrackLabelLocationData(2, (2, 0), "Top Right", (0.0, 0.0))
-    LEFT = TrackLabelLocationData(3, (0, 1), "Left", (0.0, 0.0))
-    RIGHT = TrackLabelLocationData(5, (2, 1), "Right", (0.0, 0.0))
-    BOTTOM_LEFT = TrackLabelLocationData(6, (0, 2), "Bottom Left", (0.0, 0.0))
-    BOTTOM_CENTER = TrackLabelLocationData(7, (1, 2), "Center", (0.0, 0.0))
-    BOTTOM_RIGHT = TrackLabelLocationData(8, (2, 2), "Bottom Right", (0.0, 0.0))
-    
+    LEFT = TrackLabelLocationData(3, (0, 1), "Left", (-1, 0.5))
+    CENTER = TrackLabelLocationData(4, (1, 1), "Center", (-0.5, 0.5))
+    RIGHT = TrackLabelLocationData(5, (2, 1), "Right", (0.0, 0.5))
+    BOTTOM_LEFT = TrackLabelLocationData(6, (0, 2), "Bottom Left", (-1, -1))
+    BOTTOM_CENTER = TrackLabelLocationData(7, (1, 2), "Bottom Center", (-0.5, -1))
+    BOTTOM_RIGHT = TrackLabelLocationData(8, (2, 2), "Bottom Right", (0.0, -1))
+
     def __eq__(self, value: object) -> bool:
         if isinstance(value, tuple) and len(value) == 2:
             return self.value.ui_reference_coords == value
@@ -72,6 +74,12 @@ def deserialize_track_labels(classtype:str, data: str) -> TrackLabels | None:
     except (KeyError, ValueError, TypeError) as e: 
         print(f"Invalid Track labels format in config file, using default labels: {e}")
         return None
+    
+def get_labels_for_class_type(class_type: GameObjectClassType) -> TrackLabels | None:
+    
+    labels = deserialize_track_labels(class_type.name, config.app_config.get_str("labels", class_type.name))  # TODO: this may be slow, consider caching
+    
+    return labels
 
 def evaluate_input_format(user_input, instance):
     # Create a context with all dataclass fields

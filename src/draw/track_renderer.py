@@ -105,11 +105,22 @@ class TrackRenderer:
 
         self.draw_shape(shape, track.position_m, color)
         self.draw_velocity_vector(track, color)
-        contact_size = config.app_config.get_int("radar", "contact_size")
+
         pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
-        self.text_renderer.draw_text(track.id, pos_x, pos_y,
-                                     scale=config.app_config.get_int("radar", "contact_font_scale"), centered=True
-                                        )
+        
+        labels = get_labels_for_class_type(GameObjectClassType.FIXEDWING)
+        
+        if labels is not None:
+            for location, track_label in labels.labels.items():
+                text = evaluate_input_format(track_label.label_format, track)
+                if text is not None and text != "":
+                    self.text_renderer.draw_text(text, pos_x, pos_y,
+                                                 scale=config.app_config.get_int("radar", "contact_font_scale"),
+                                                 location=location
+                                                 )
+        # self.text_renderer.draw_text(track.id, pos_x, pos_y,
+        #                              scale=config.app_config.get_int("radar", "contact_font_scale"),
+        #                                 )
 
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
 

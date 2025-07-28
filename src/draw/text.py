@@ -9,6 +9,57 @@ from draw.scene import Scene
 
 import config
 
+from util.track_labels import TrackLabelLocation
+
+
+def orient_text_rect(location: TrackLabelLocation, object_size: tuple[float, float] = (0, 0)) -> tuple[float, float]:
+    """Calculate the offset in model space for a text string based on the rendered bounding box of the string."""
+    scales = {
+        TrackLabelLocation.TOP_LEFT: (-1, 0),
+        TrackLabelLocation.TOP_CENTER: (-0.5, 0),
+        TrackLabelLocation.TOP_RIGHT: (0, 0),
+        TrackLabelLocation.LEFT: (-1, 0.5),
+        TrackLabelLocation.CENTER: (-0.5, 0.5),
+        TrackLabelLocation.RIGHT: (0, 0.5),
+        TrackLabelLocation.BOTTOM_LEFT: (-1, -1),
+        TrackLabelLocation.BOTTOM_CENTER: (-0.5, -1),
+        TrackLabelLocation.BOTTOM_RIGHT: (0, -1),
+    }
+    scale_x, scale_y = scales[location]
+    return (
+        object_size[0] * scale_x,
+        object_size[1] * scale_y * -1.0
+    )
+
+# def orient_text_rect(location: TrackLabelLocation, obect_size: tuple[int, int] = (0, 0)) -> RectInvY:
+
+#     if location == TrackLabelLocation.TOP_LEFT:
+#         offset = (-obect_size[0] // 2, obect_size[1] // 2)
+#         rect.bottom_right = offset
+#     elif location == TrackLabelLocation.TOP_CENTER:
+#         offset = (0, obect_size[1] // 2)
+#         rect.bottom_center = offset
+#     elif location == TrackLabelLocation.TOP_RIGHT:
+#         offset = (obect_size[0] // 2, obect_size[1] // 2)
+#         rect.bottom_left = offset
+#     elif location == TrackLabelLocation.LEFT:
+#         offset = (-obect_size[0] // 2, 0)
+#         rect.right_center = offset
+#     elif location == TrackLabelLocation.RIGHT:
+#         offset = (obect_size[0] // 2, 0)
+#         rect.left_center = offset
+#     elif location == TrackLabelLocation.BOTTOM_LEFT:
+#         offset = (-obect_size[0] // 2, -obect_size[1] // 2)
+#         rect.top_right = offset
+#     elif location == TrackLabelLocation.BOTTOM_CENTER:
+#         offset = (0, -obect_size[1] // 2)
+#         rect.top_center = offset
+#     elif location == TrackLabelLocation.BOTTOM_RIGHT:
+#         offset = (obect_size[0] // 2, -obect_size[1] // 2)
+#         rect.top_left = offset
+
+#     return rect
+
 def load_atlas(context: mgl.Context, atlas_name: str, atlas_path: str):
     atlas_image_path = os.path.join(atlas_path, f"{atlas_name}.png")
     atlas_json_path = os.path.join(atlas_path, f"{atlas_name}.json")
@@ -64,13 +115,15 @@ class TextRendererMsdf:
         self.index_batches = []
         self.vertex_count = 0
 
-    def draw_text(self, text: str, x_world: int, y_world: int, scale=60, centered=False):
-        """"""
+    def draw_text(self, text: str, x_world: int, y_world: int, scale=60, centered=False,
+                  location: TrackLabelLocation = TrackLabelLocation.BOTTOM_LEFT,
+                  location_offset: tuple[int, int] = (0, 0)):
+
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
         atlas_height = self._metadata['atlas']['height']
 
-        vertices = np.zeros(len(text) * 24, dtype='f4')
+        vertices = np.zeros(len(text) * 32, dtype='f4')
         indices = np.zeros(len(text) * 6, dtype='i4')
         indices_for_quad = np.array([0, 1, 2, 2, 3, 0], dtype='i4')
         x = y = 0
@@ -117,35 +170,49 @@ class TextRendererMsdf:
 
             # Set up vertex data
             quad = np.array([
-                [cursor_x + quad_x, y + quad_y, x_world, y_world, tex_x, tex_y - tex_h],
-                [cursor_x + quad_w, y + quad_y, x_world, y_world, tex_x + tex_w, tex_y - tex_h],
-                [cursor_x + quad_w, y + quad_h, x_world, y_world, tex_x + tex_w, tex_y],
-                [cursor_x + quad_x, y + quad_h, x_world, y_world, tex_x, tex_y],
+                [cursor_x + quad_x, quad_h - quad_y, x_world, y_world, tex_x, tex_y - tex_h, 0.0, 0.0],
+                [cursor_x + quad_w, quad_h - quad_y, x_world, y_world, tex_x + tex_w, tex_y - tex_h, 0.0, 0.0],
+                [cursor_x + quad_w, 0.0, x_world, y_world, tex_x + tex_w, tex_y, 0.0, 0.0],
+                [cursor_x + quad_x, 0.0, x_world, y_world, tex_x, tex_y, 0.0, 0.0],
             ],
                             dtype='f4')
 
             # index buffer index
             ib_idx = char_count * 6
-            vert_idx = char_count * 24
+            vert_idx = char_count * 32
 
-            vertices[vert_idx:vert_idx + 24] = quad.flatten()
+            vertices[vert_idx:vert_idx + 32] = quad.flatten()
             indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4) + self.vertex_count * 4
             cursor_x += advance
             char_count += 1
 
-        if centered:
-            x_offset = -cursor_x / 2
 
-            # For vertical centering, adjust y_offset based on the top of a capital letter
-            glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
-            if glyph_E:
-                y_offset = -glyph_E['planeBounds']['top'] / 2
-            else:
-                y_offset = -self._metadata['metrics']['ascender'] / 2
+        # For vertical centering, adjust y_offset based on the top of a capital letter
+        glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
+        if glyph_E:
+            y_offset = -glyph_E['planeBounds']['top'] / 2
+        else:
+            y_offset = -self._metadata['metrics']['ascender'] / 2
+        offset_x, offset_y = orient_text_rect(location, (cursor_x, y_offset))        
+        vertices[6::8] = offset_x
+        vertices[7::8] = offset_y
 
-            vertices[::6] += x_offset
-            vertices[1::6] += y_offset
+        # if centered:
+        #     x_offset = -cursor_x / 2
 
+        #     # For vertical centering, adjust y_offset based on the top of a capital letter
+        #     glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
+        #     if glyph_E:
+        #         y_offset = -glyph_E['planeBounds']['top'] / 2
+        #     else:
+        #         y_offset = -self._metadata['metrics']['ascender'] / 2
+
+        #     vertices[::6] += x_offset
+        #     vertices[1::6] += y_offset
+
+
+        # text_rect = RectInvY(0, 0, cursor_x, height)
+        # text_rect = orient_text_rect(text_rect, location, location_offset)
 
         self.vertex_batches.append(vertices)
         self.index_batches.append(indices)
@@ -177,5 +244,6 @@ class TextRendererMsdf:
                                             'in_pos_text',
                                             'in_pos_world',
                                             'in_texcoord',
+                                            'in_pos_str_offset',
                                             index_buffer=ibo)
         vao.render(mgl.TRIANGLES)
