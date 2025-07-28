@@ -309,27 +309,35 @@ class ImguiUserInterface:
 
         ini_width = config.app_config.get_int("annotations", "ini_width")
         ini_color = config.app_config.get_color_normalized("annotations", "ini_color")
+        ini_font_scale = config.app_config.get_float("annotations", "ini_font_scale")
 
         ini_color_picker = imgui.color_edit3("Ini Color", *ini_color)
         ini_width_slider = imgui.slider_int("Ini Line Width", ini_width, 1, 40)
+        ini_font_scale_slider = imgui.slider_float("Ini Font Scale", ini_font_scale, 20, 100)
 
         if ini_width_slider[0]:
             config.app_config.set("annotations", "ini_width", ini_width_slider[1])
         if ini_color_picker[0]:
             config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1])
+        if ini_font_scale_slider[0]:
+            config.app_config.set("annotations", "ini_font_scale", ini_font_scale_slider[1])
 
     def settings_tab_radar(self):
         
         stoke_width = config.app_config.get_float("radar", "contact_stroke")
         shape_size = config.app_config.get_float("radar", "contact_size")
+        font_scale = config.app_config.get_int("radar", "contact_font_scale")
         
         stoke_width_slider = imgui.slider_float("Contact Stroke Width", stoke_width, 1, 10.0)
         shape_size_slider = imgui.slider_float("Contact Shape Size", shape_size, 1, 40.0)
+        font_scale_slider = imgui.slider_int("Contact Font Scale", font_scale, 10, 100)
         
         if stoke_width_slider[0]:
             config.app_config.set("radar", "contact_stroke", stoke_width_slider[1])
         if shape_size_slider[0]:
             config.app_config.set("radar", "contact_size", shape_size_slider[1])
+        if font_scale_slider[0]:
+            config.app_config.set("radar", "contact_font_scale", font_scale_slider[1])
 
     def layers_window(self):
         if not self.layers_window_open:
