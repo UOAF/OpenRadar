@@ -34,8 +34,11 @@ class TrackRenderer:
 
         self.scene = scene
         self._mgl_context = scene.mgl_context
-        
-        self.text_renderer = make_text_renderer(self._mgl_context, "atlas", scene)
+
+        self.text_renderer = make_text_renderer(self._mgl_context,
+                                                "atlas",
+                                                scene,
+                                                scale_source=("radar", "contact_font_scale"))
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
         screen_polygon_vertex_shader = open(os.path.join(shader_dir, "screen_polygon_vertex.glsl")).read()
@@ -56,25 +59,25 @@ class TrackRenderer:
 
         self.shape_buffers: dict[Shapes, TrackShapeRenderBuffer] = dict()
         self.line_buffer: TrackLineRenderBuffer | None = None
-        
-        self.text_renderer.init_frame()
+
+        self.text_renderer.init_buffers()
 
     def build_buffers(self, tracks: dict[GameObjectClassType, dict[str, Track]]):
         self.clear()
         # print("Building buffers")
-        
+
         for track_dict in tracks[GameObjectClassType.FIXEDWING].values():
             self.draw_fixedwing(track_dict)
-        
+
         for track_dict in tracks[GameObjectClassType.ROTARYWING].values():
             self.draw_rotarywing(track_dict)
-            
+
         for track_dict in tracks[GameObjectClassType.GROUND].values():
             self.draw_ground_unit(track_dict)
-            
+
         for track_dict in tracks[GameObjectClassType.SEA].values():
             self.draw_sea_unit(track_dict)
-        
+
         for track_dict in tracks[GameObjectClassType.MISSILE].values():
             self.draw_missile(track_dict)
 
@@ -102,11 +105,11 @@ class TrackRenderer:
 
         self.draw_shape(shape, track.position_m, color)
         self.draw_velocity_vector(track, color)
-        # contact_size = config.app_config.get_int("radar", "contact_size")
-        # pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
-        # self.text_renderer.draw_text(track.id, pos_x, pos_y, 
-        #                              scale=config.app_config.get_int("radar", "contact_font_scale"), centered=True
-        #                                 )
+        contact_size = config.app_config.get_int("radar", "contact_size")
+        pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
+        self.text_renderer.draw_text(track.id, pos_x, pos_y,
+                                     scale=config.app_config.get_int("radar", "contact_font_scale"), centered=True
+                                        )
 
     def draw_velocity_vector(self, track: Track, color: glm.vec4):
 
@@ -163,7 +166,7 @@ class TrackRenderer:
     def build_line_arrays(self):
         if len(self.lines) == 0:
             return
-        
+
         stoke_width = config.app_config.get_float("radar", "contact_stroke")
         lines, colors = zip(*self.lines)
         self.line_buffer = TrackLineRenderBuffer(np.array(lines, dtype=np.float32), np.array(colors, dtype=np.float32))
@@ -235,10 +238,10 @@ class TrackRenderer:
 
         self.program['u_mvp'].write(self.scene.get_vp())  # type: ignore
         self.program['u_resolution'] = self.scene.display_size
-        
-        
+
+
         track_width = config.app_config.get_float("radar", "contact_stroke")
-        
+
         self.program['u_scale'] = glm.vec2(scale, scale)
         self.program['u_width'] = track_width
 
@@ -254,7 +257,7 @@ class TrackRenderer:
         num_output_vertices = (len(unit_shape) - 3) * 6
 
         vao.render(mgl.TRIANGLES, vertices=num_output_vertices, instances=len(offsets))
-        
+
         vao.release()
         ssbo.release()
         offset_buf.release()

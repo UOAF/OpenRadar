@@ -19,7 +19,7 @@ class MapAnnotations:
         self.annotations = []
         self.lines = []
         self.circles = []
-        self.text_renderer = make_text_renderer(self.mgl_context, "atlas", scene)
+        self.text_renderer = make_text_renderer(self.mgl_context, "atlas", scene, scale_source=("annotations", "ini_font_scale"))
         self.scene = scene
 
     def load_ini(self, path):
@@ -31,7 +31,7 @@ class MapAnnotations:
             self.circles.append(threat)
 
     def render(self):
-        self.text_renderer.init_frame()
+        self.text_renderer.init_buffers()
         self.draw_lines()
         self.draw_circles()
         self.text_renderer.render()
