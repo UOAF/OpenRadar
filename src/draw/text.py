@@ -7,6 +7,7 @@ import numpy as np
 
 from draw.scene import Scene
 
+import config
 
 def load_atlas(context: mgl.Context, atlas_name: str, atlas_path: str):
     atlas_image_path = os.path.join(atlas_path, f"{atlas_name}.png")
@@ -23,7 +24,11 @@ def load_atlas(context: mgl.Context, atlas_name: str, atlas_path: str):
     return atlas_texture, atlas_metadata
 
 
-def make_text_renderer(context: mgl.Context, atlas_name: str, scene: Scene, atlas_path: Optional[str] = None):
+def make_text_renderer(context: mgl.Context,
+                       atlas_name: str,
+                       scene: Scene,
+                       atlas_path: Optional[str] = None,
+                       scale_source: Optional[tuple[str, str]] = None):
     """Create a text renderer from a given MSDF (multichannel signed distance field) atlas.
     
     Parameters:
@@ -35,12 +40,13 @@ def make_text_renderer(context: mgl.Context, atlas_name: str, scene: Scene, atla
     if atlas_path is None:
         atlas_path = os.path.join(os.getcwd(), "resources", "fonts")
     tex, data = load_atlas(context, atlas_name, atlas_path)
-    return TextRendererMsdf(context, tex, data, scene)
+    return TextRendererMsdf(context, tex, data, scene, scale_source=scale_source)
 
 
 class TextRendererMsdf:
 
-    def __init__(self, context: mgl.Context, texture: mgl.Texture, metadata: dict, scene: Scene):
+    def __init__(self, context: mgl.Context, texture: mgl.Texture, metadata: dict, scene: Scene,
+                 scale_source: Optional[tuple[str, str]] = None):
         self._atlas = texture
         self._metadata = metadata
         self._ctx = context
@@ -48,8 +54,10 @@ class TextRendererMsdf:
         fragment_shader = open(os.path.join("resources", "shaders", "text_frag.glsl")).read()
         self._program = context.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         self._scene = scene
+        self.init_buffers()
+        self._scale_source = scale_source
 
-    def init_frame(self):
+    def init_buffers(self):
         """"""
         self._atlas.use()
         self.vertex_batches = []
@@ -72,7 +80,7 @@ class TextRendererMsdf:
         char_count = 0
         for char in text:
             if char == ' ':
-                cursor_x += 0.5 * scale
+                cursor_x += 0.5
                 continue
             # Skip characters without glyph data
             index = ord(char) - 32
@@ -90,12 +98,10 @@ class TextRendererMsdf:
             atlas = glyph['atlasBounds']
             advance = glyph['advance']
 
-            # Scale glyph size
-            quad_x = plane['left'] * scale
-            quad_y = plane['bottom'] * scale
-            quad_w = plane['right'] * scale
-            quad_h = plane['top'] * scale
-            advance *= scale
+            quad_x = plane['left']
+            quad_y = plane['bottom']
+            quad_w = plane['right']
+            quad_h = plane['top']
 
             glyph_bottom = atlas_height - atlas['bottom']
             glyph_top = atlas_height - atlas['top']
@@ -126,20 +132,20 @@ class TextRendererMsdf:
             indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4) + self.vertex_count * 4
             cursor_x += advance
             char_count += 1
-            
+
         if centered:
             x_offset = -cursor_x / 2
-            
+
             # For vertical centering, adjust y_offset based on the top of a capital letter
             glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
             if glyph_E:
-                y_offset = -glyph_E['planeBounds']['top'] * scale / 2
+                y_offset = -glyph_E['planeBounds']['top'] / 2
             else:
-                y_offset = -self._metadata['metrics']['ascender'] * scale / 2
+                y_offset = -self._metadata['metrics']['ascender'] / 2
 
             vertices[::6] += x_offset
             vertices[1::6] += y_offset
-            
+
 
         self.vertex_batches.append(vertices)
         self.index_batches.append(indices)
@@ -157,8 +163,12 @@ class TextRendererMsdf:
 
         # Render glyph
         self._program['camera'].write(self._scene.get_vp()) # type: ignore
-        scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * .6
-        self._program['font_to_world'] = scale
+
+        font_scale = config.app_config.get_float(*self._scale_source) if self._scale_source else 40.0
+        self._program['u_scale'] = font_scale
+
+        map_scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * .6
+        self._program['font_to_world'] = map_scale
         self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
         self._ctx.enable(mgl.BLEND) # TODO is this the right place to call this?
 
