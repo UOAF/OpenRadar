@@ -70,17 +70,22 @@ class App:
 
     def on_init(self):
 
-        window_x, window_y = config.app_config.get("window", "location", tuple[int, int])  # type: ignore
-        os.environ['SDL_VIDEO_WINDOW_POS'] = f"{window_x},{window_y}"
-
         glfw.init()
         self.clock = Clock()
         glfw.set_error_callback(self.handle_error)
         window_icon = Image.open(from_path(config.bundle_dir / "resources/icons/OpenRadaricon.png"))
 
+        # Set window hints for initial position (Hide the window initially before setting position)
+        glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
+
         config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int, int])  # type: ignore
         h, w = config_size
         self.window = glfw.create_window(h, w, 'OpenRadar', None, None)
+        
+        window_x, window_y = config.app_config.get("window", "location", tuple[int, int])  # type: ignore
+        glfw.set_window_pos(self.window, window_x, window_y)
+        
+        glfw.show_window(self.window)
 
         glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_NORMAL)
 
@@ -90,7 +95,7 @@ class App:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
         glfw.make_context_current(self.window)
-        #
+
         glfw.swap_interval(int(VSYNC_ENABLE))
         queries = gl.glGenQueries(2)
         self.start_query = queries[0]
@@ -147,7 +152,7 @@ class App:
     def handle_window_resized(self, window, width, height):
         self.size = self.width, self.height = width, height
         self.scene.resize(self.size)
-        config.app_config.set("window", "size", self.size)
+        config.app_config.set("window", "size", (width, height))
         self._ImguiUI.impl.resize_callback(window, width, height)
 
     def handle_mouse_wheel(self, window, scroll_x, scroll_y):
