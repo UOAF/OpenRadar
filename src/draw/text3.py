@@ -98,8 +98,9 @@ class TextRendererMsdf:
                   text: str,
                   x_world: float,
                   y_world: float,
-                  scale: float = 20,
-                  location: TrackLabelLocation = TrackLabelLocation.TOP_LEFT):
+                  scale: float = 40,
+                  location_offset: tuple[int, int] = (0, 0),
+                  location: TrackLabelLocation = TrackLabelLocation.LEFT):
         """"""
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
@@ -172,7 +173,7 @@ class TextRendererMsdf:
 
         height = self._metadata['metrics']['lineHeight'] * scale
         text_rect = RectInvY(0, 0, cursor_x, height)
-        
+        text_rect = orient_text_rect(text_rect, location, location_offset)
 
         current_batch = len(self.text_batches)
         self.text_batches.append({})
@@ -180,6 +181,9 @@ class TextRendererMsdf:
         self.text_batches[current_batch]['indices'] = indices
         self.text_batches[current_batch]['pos_world'] = (x_world, y_world)
         self.text_batches[current_batch]['rect'] = text_rect
+            
+        self.text_batches[current_batch]['location'] = location
+        self.text_batches[current_batch]['location_offset'] = location_offset
 
     def render(self):
         """Call this once per frame, after rendering all the text you need.
