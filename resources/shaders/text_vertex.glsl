@@ -1,20 +1,45 @@
 #version 330
 
-in vec2 in_pos_text;
-in vec2 in_pos_world;
-in vec2 in_texcoord;
-in vec2 in_pos_str_offset;
+// Per-vertex attributes (shared quad)
+in vec2 in_quad_pos;         // Quad vertex position (0,0), (1,0), (1,1), (0,1)
+
+// Per-instance attributes (per glyph)
+in vec4 in_glyph_bounds;     // Glyph bounds: left, bottom, right, top (in font units)
+in vec2 in_cursor_pos;       // Cursor position for this character
+in vec2 in_world_pos;        // World position for the text string
+in vec4 in_atlas_bounds;     // Atlas bounds: left, bottom, right, top (in atlas pixels)
+in vec2 in_string_offset;    // Offset for string alignment (centering, etc.)
 
 uniform mat4 camera;
-uniform float font_to_world;
-uniform float u_scale;
+uniform float font_to_world; // Scale factor to convert font units to world units
+uniform float u_scale;       // User scale factor
+uniform vec2 atlas_size;     // Atlas texture size in pixels (width, height)
 
 out vec2 frag_texcoord;
 
 void main() {
-    frag_texcoord = in_texcoord;
-    vec2 model = in_pos_str_offset + in_pos_text;
-    vec2 world = model * u_scale * font_to_world + in_pos_world;
-    gl_Position = camera * vec4(world, 0.0, 1.0);
-    frag_texcoord = in_texcoord;
+    // Calculate glyph position from quad position and glyph bounds
+    vec2 glyph_size = in_glyph_bounds.zw-in_glyph_bounds.xy;
+    vec2 glyph_pos = in_glyph_bounds.xy+in_quad_pos*glyph_size;
+
+    // Calculate the final position:
+    // 1. Start with glyph position relative to its origin
+    // 2. Add cursor position to place the glyph in the string
+    // 3. Add string offset for alignment (centering, etc.)
+    // 4. Scale to world coordinates
+    // 5. Add world position
+    vec2 local_pos = glyph_pos+in_cursor_pos+in_string_offset;
+    vec2 world_pos = local_pos*u_scale*font_to_world+in_world_pos;
+
+    gl_Position = camera*vec4(world_pos, 0.0, 1.0);
+
+    // Calculate texture coordinates from atlas bounds and quad position  
+    // Use atlas coordinates directly and flip Y at the end
+    vec2 atlas_min = vec2(in_atlas_bounds.x, in_atlas_bounds.y);  // left, bottom
+    vec2 atlas_max = vec2(in_atlas_bounds.z, in_atlas_bounds.w);  // right, top
+
+    // Interpolate within the glyph rectangle
+    vec2 atlas_pos = atlas_min+in_quad_pos*(atlas_max-atlas_min);
+    // Normalize and flip Y coordinate
+    frag_texcoord = vec2(atlas_pos.x/atlas_size.x, 1.0-atlas_pos.y/atlas_size.y);
 }
