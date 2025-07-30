@@ -14,13 +14,13 @@ class TrackLabelLocationData():
 
 class TrackLabelLocation(Enum):
     TOP_LEFT = TrackLabelLocationData(0, (0, 0), "Top Left", (-1, 0))
-    TOP_CENTER = TrackLabelLocationData(1, (1, 0), "Top", (-0.5, 0))
-    TOP_RIGHT = TrackLabelLocationData(2, (2, 0), "Top Right", (0.0, 0.0))
-    LEFT = TrackLabelLocationData(3, (0, 1), "Left", (-1, 0.5))
+    TOP_CENTER = TrackLabelLocationData(1, (0, 1), "Top", (-0.5, 0))
+    TOP_RIGHT = TrackLabelLocationData(2, (0, 2), "Top Right", (0.0, 0.0))
+    LEFT = TrackLabelLocationData(3, (1, 0), "Left", (-1, 0.5))
     CENTER = TrackLabelLocationData(4, (1, 1), "Center", (-0.5, 0.5))
-    RIGHT = TrackLabelLocationData(5, (2, 1), "Right", (0.0, 0.5))
-    BOTTOM_LEFT = TrackLabelLocationData(6, (0, 2), "Bottom Left", (-1, -1))
-    BOTTOM_CENTER = TrackLabelLocationData(7, (1, 2), "Bottom Center", (-0.5, -1))
+    RIGHT = TrackLabelLocationData(5, (1, 2), "Right", (0.0, 0.5))
+    BOTTOM_LEFT = TrackLabelLocationData(6, (2, 0), "Bottom Left", (-1, -1))
+    BOTTOM_CENTER = TrackLabelLocationData(7, (2, 1), "Bottom Center", (-0.5, -1))
     BOTTOM_RIGHT = TrackLabelLocationData(8, (2, 2), "Bottom Right", (0.0, -1))
 
     def __eq__(self, value: object) -> bool:
