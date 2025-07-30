@@ -14,51 +14,24 @@ from util.track_labels import TrackLabelLocation
 
 def orient_text_rect(location: TrackLabelLocation, object_size: tuple[float, float] = (0, 0)) -> tuple[float, float]:
     """Calculate the offset in model space for a text string based on the rendered bounding box of the string."""
-    scales = {
-        TrackLabelLocation.TOP_LEFT: (-1, 0),
-        TrackLabelLocation.TOP_CENTER: (-0.5, 0),
+    width, height = object_size
+
+    # Calculate offsets based on location
+    # For X: LEFT = -width, CENTER = -width/2, RIGHT = 0
+    # For Y: TOP = 0, CENTER = -height/2, BOTTOM = -height
+    offsets = {
+        TrackLabelLocation.TOP_LEFT: (-width, 0),
+        TrackLabelLocation.TOP_CENTER: (-width / 2, 0),
         TrackLabelLocation.TOP_RIGHT: (0, 0),
-        TrackLabelLocation.LEFT: (-1, 0.5),
-        TrackLabelLocation.CENTER: (-0.5, 0.5),
-        TrackLabelLocation.RIGHT: (0, 0.5),
-        TrackLabelLocation.BOTTOM_LEFT: (-1, -1),
-        TrackLabelLocation.BOTTOM_CENTER: (-0.5, -1),
-        TrackLabelLocation.BOTTOM_RIGHT: (0, -1),
+        TrackLabelLocation.LEFT: (-width, -height / 2),
+        TrackLabelLocation.CENTER: (-width / 2, -height / 2),
+        TrackLabelLocation.RIGHT: (0, -height / 2),
+        TrackLabelLocation.BOTTOM_LEFT: (-width, -height),
+        TrackLabelLocation.BOTTOM_CENTER: (-width / 2, -height),
+        TrackLabelLocation.BOTTOM_RIGHT: (0, -height),
     }
-    scale_x, scale_y = scales[location]
-    return (
-        object_size[0] * scale_x,
-        object_size[1] * scale_y * -1.0
-    )
+    return offsets.get(location, (0, 0))
 
-# def orient_text_rect(location: TrackLabelLocation, obect_size: tuple[int, int] = (0, 0)) -> RectInvY:
-
-#     if location == TrackLabelLocation.TOP_LEFT:
-#         offset = (-obect_size[0] // 2, obect_size[1] // 2)
-#         rect.bottom_right = offset
-#     elif location == TrackLabelLocation.TOP_CENTER:
-#         offset = (0, obect_size[1] // 2)
-#         rect.bottom_center = offset
-#     elif location == TrackLabelLocation.TOP_RIGHT:
-#         offset = (obect_size[0] // 2, obect_size[1] // 2)
-#         rect.bottom_left = offset
-#     elif location == TrackLabelLocation.LEFT:
-#         offset = (-obect_size[0] // 2, 0)
-#         rect.right_center = offset
-#     elif location == TrackLabelLocation.RIGHT:
-#         offset = (obect_size[0] // 2, 0)
-#         rect.left_center = offset
-#     elif location == TrackLabelLocation.BOTTOM_LEFT:
-#         offset = (-obect_size[0] // 2, -obect_size[1] // 2)
-#         rect.top_right = offset
-#     elif location == TrackLabelLocation.BOTTOM_CENTER:
-#         offset = (0, -obect_size[1] // 2)
-#         rect.top_center = offset
-#     elif location == TrackLabelLocation.BOTTOM_RIGHT:
-#         offset = (obect_size[0] // 2, -obect_size[1] // 2)
-#         rect.top_left = offset
-
-#     return rect
 
 def load_atlas(context: mgl.Context, atlas_name: str, atlas_path: str):
     atlas_image_path = os.path.join(atlas_path, f"{atlas_name}.png")
@@ -96,7 +69,11 @@ def make_text_renderer(context: mgl.Context,
 
 class TextRendererMsdf:
 
-    def __init__(self, context: mgl.Context, texture: mgl.Texture, metadata: dict, scene: Scene,
+    def __init__(self,
+                 context: mgl.Context,
+                 texture: mgl.Texture,
+                 metadata: dict,
+                 scene: Scene,
                  scale_source: Optional[tuple[str, str]] = None):
         self._atlas = texture
         self._metadata = metadata
@@ -105,145 +82,194 @@ class TextRendererMsdf:
         fragment_shader = open(os.path.join("resources", "shaders", "text_frag.glsl")).read()
         self._program = context.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         self._scene = scene
-        self.init_buffers()
         self._scale_source = scale_source
 
-    def init_buffers(self):
-        """"""
-        self._atlas.use()
-        self.vertex_batches = []
-        self.index_batches = []
-        self.vertex_count = 0
+        # Create shared quad geometry (per-vertex data)
+        self._create_quad_geometry()
+        self.init_buffers()
+        self._precompute_valid_chars()
 
-    def draw_text(self, text: str, x_world: int, y_world: int, scale=60, centered=False,
-                  location: TrackLabelLocation = TrackLabelLocation.BOTTOM_LEFT,
+    def _precompute_valid_chars(self):
+        """Precompute valid character codes and their glyph indices for fast lookup."""
+        glyphs = self._metadata['glyphs']
+
+        # Create array of valid character codes (32-126 typically)
+        valid_codes = []
+        valid_glyph_indices = []
+        valid_advances = []
+        valid_plane_bounds = []
+        valid_atlas_bounds = []
+
+        for i, glyph in enumerate(glyphs):
+            char_code = i + 32
+            if 'planeBounds' in glyph and 'atlasBounds' in glyph:
+                # Ensure character code fits in our lookup table
+                assert char_code < 256, f"Character code {char_code} ('{chr(char_code)}') exceeds lookup table size (256)"
+                valid_codes.append(char_code)
+                valid_glyph_indices.append(i)
+                valid_advances.append(glyph['advance'])
+
+                plane = glyph['planeBounds']
+                atlas = glyph['atlasBounds']
+                valid_plane_bounds.append([plane['left'], plane['bottom'], plane['right'], plane['top']])
+                valid_atlas_bounds.append([atlas['left'], atlas['bottom'], atlas['right'], atlas['top']])
+
+        self._valid_char_codes = np.array(valid_codes, dtype=np.int32)
+        self._valid_glyph_indices = np.array(valid_glyph_indices, dtype=np.int32)
+        self._valid_advances = np.array(valid_advances, dtype=np.float32)
+        self._valid_plane_bounds = np.array(valid_plane_bounds, dtype=np.float32)
+        self._valid_atlas_bounds = np.array(valid_atlas_bounds, dtype=np.float32)
+
+        # Create lookup tables for all possible character codes (0-255)
+        # This allows O(1) lookup instead of searchsorted
+        self._advance_lookup = np.full(256, -1.0, dtype=np.float32)
+        self._glyph_lookup = np.full(256, -1, dtype=np.int32)
+        self._plane_bounds_lookup = np.full((256, 4), -1.0, dtype=np.float32)
+        self._atlas_bounds_lookup = np.full((256, 4), -1.0, dtype=np.float32)
+
+        for i, code in enumerate(valid_codes):
+            self._advance_lookup[code] = valid_advances[i]
+            self._glyph_lookup[code] = valid_glyph_indices[i]
+            self._plane_bounds_lookup[code] = valid_plane_bounds[i]
+            self._atlas_bounds_lookup[code] = valid_atlas_bounds[i]
+
+        # Special case for space character
+        space_code = ord(' ')
+        self._advance_lookup[space_code] = 0.5
+
+    def _create_quad_geometry(self):
+        """Create the shared quad geometry used for all glyph instances."""
+        # Quad vertices: (x, y) for a unit quad from (0,0) to (1,1)
+        quad_vertices = np.array(
+            [
+                0.0,
+                0.0,  # Bottom-left
+                1.0,
+                0.0,  # Bottom-right
+                1.0,
+                1.0,  # Top-right
+                0.0,
+                1.0,  # Top-left
+            ],
+            dtype='f4')
+
+        # Quad indices
+        quad_indices = np.array([0, 1, 2, 2, 3, 0], dtype='i4')
+
+        self._quad_vbo = self._ctx.buffer(quad_vertices.tobytes())
+        self._quad_ibo = self._ctx.buffer(quad_indices.tobytes())
+
+    def init_buffers(self):
+        """Initialize instance data buffers."""
+        self._atlas.use()
+        self.instance_batches = []
+        self.instance_count = 0
+
+    def _get_string_height(self):
+        """Get the height of a typical character for string alignment."""
+        glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
+        if glyph_E and 'planeBounds' in glyph_E:
+            return glyph_E['planeBounds']['top']
+        return self._metadata['metrics']['ascender']
+
+    def draw_text(self,
+                  text: str,
+                  x_world: int,
+                  y_world: int,
+                  scale=60,
+                  centered=False,
+                  location: TrackLabelLocation = TrackLabelLocation.CENTER,
                   location_offset: tuple[int, int] = (0, 0)):
 
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
         atlas_height = self._metadata['atlas']['height']
 
-        vertices = np.zeros(len(text) * 32, dtype='f4')
-        indices = np.zeros(len(text) * 6, dtype='i4')
-        indices_for_quad = np.array([0, 1, 2, 2, 3, 0], dtype='i4')
-        x = y = 0
+        char_codes = np.fromiter((ord(c) for c in text), dtype=np.int32, count=len(text))
 
-        cursor_x = 0
-        vert_idx = 0
-        char_count = 0
-        for char in text:
-            if char == ' ':
-                cursor_x += 0.5
-                continue
-            # Skip characters without glyph data
-            index = ord(char) - 32
-            if index < 0 or index >= len(glyphs):
-                # print(f"Skipping unknown character: {char}")
-                continue
+        advances = self._advance_lookup[char_codes]
+        glyph_indices = self._glyph_lookup[char_codes]
 
-            glyph = glyphs[index]
-            if 'planeBounds' not in glyph or 'atlasBounds' not in glyph:
-                print(f"Skipping incomplete glyph: {index}")
-                continue  # Skip glyphs without valid bounds
+        valid_mask = advances >= 0
 
-            # Glyph metrics
-            plane = glyph['planeBounds']
-            atlas = glyph['atlasBounds']
-            advance = glyph['advance']
+        if not np.any(valid_mask):
+            return
 
-            quad_x = plane['left']
-            quad_y = plane['bottom']
-            quad_w = plane['right']
-            quad_h = plane['top']
+        final_advances = advances[valid_mask]
+        final_glyph_indices = glyph_indices[valid_mask]
+        final_char_codes = char_codes[valid_mask]
 
-            glyph_bottom = atlas_height - atlas['bottom']
-            glyph_top = atlas_height - atlas['top']
+        if len(final_glyph_indices) == 0:
+            return
 
-            # Calculate texture coordinates
-            tex_x = atlas['left'] / atlas_width
-            tex_y = (glyph_top) / atlas_height
-            tex_w = (atlas['right'] - atlas['left']) / atlas_width
-            tex_h = (glyph_top - glyph_bottom) / atlas_height
+        cursor_positions = np.cumsum(np.concatenate([[0], final_advances[:-1]]))
 
-            # Debug: Print glyph metrics
-            # print(f"Rendering '{char}': tex=({tex_x}, {tex_y}, {tex_w}, {tex_h})")
+        instances = np.zeros(len(final_glyph_indices) * 14, dtype='f4')
 
-            # Set up vertex data
-            quad = np.array([
-                [cursor_x + quad_x, quad_h - quad_y, x_world, y_world, tex_x, tex_y - tex_h, 0.0, 0.0],
-                [cursor_x + quad_w, quad_h - quad_y, x_world, y_world, tex_x + tex_w, tex_y - tex_h, 0.0, 0.0],
-                [cursor_x + quad_w, 0.0, x_world, y_world, tex_x + tex_w, tex_y, 0.0, 0.0],
-                [cursor_x + quad_x, 0.0, x_world, y_world, tex_x, tex_y, 0.0, 0.0],
-            ],
-                            dtype='f4')
+        string_height = self._get_string_height()
+        total_advance = float(np.sum(final_advances))
+        string_offset_x, string_offset_y = orient_text_rect(location, (total_advance, string_height))
 
-            # index buffer index
-            ib_idx = char_count * 6
-            vert_idx = char_count * 32
+        # Vectorized instance data generation using precomputed lookup tables
+        num_chars = len(final_char_codes)
 
-            vertices[vert_idx:vert_idx + 32] = quad.flatten()
-            indices[ib_idx:ib_idx + 6] = indices_for_quad + (char_count * 4) + self.vertex_count * 4
-            cursor_x += advance
-            char_count += 1
+        # Use precomputed bounds lookup tables for vectorized access
+        plane_bounds = self._plane_bounds_lookup[final_char_codes]
+        atlas_bounds = self._atlas_bounds_lookup[final_char_codes]
 
+        # Create arrays for repeated values
+        cursor_y = np.zeros(num_chars, dtype=np.float32)
+        world_x = np.full(num_chars, x_world, dtype=np.float32)
+        world_y = np.full(num_chars, y_world, dtype=np.float32)
+        offset_x = np.full(num_chars, string_offset_x, dtype=np.float32)
+        offset_y = np.full(num_chars, string_offset_y, dtype=np.float32)
 
-        # For vertical centering, adjust y_offset based on the top of a capital letter
-        glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
-        if glyph_E:
-            y_offset = -glyph_E['planeBounds']['top'] / 2
-        else:
-            y_offset = -self._metadata['metrics']['ascender'] / 2
-        offset_x, offset_y = orient_text_rect(location, (cursor_x, y_offset))        
-        vertices[6::8] = offset_x
-        vertices[7::8] = offset_y
+        # Stack all data in the correct order: plane(4) + cursor(2) + world(2) + atlas(4) + offset(2) = 14
+        instances = np.column_stack([
+            plane_bounds,  # 4 values: left, bottom, right, top
+            cursor_positions,
+            cursor_y,  # 2 values: cursor_x, cursor_y (0)
+            world_x,
+            world_y,  # 2 values: world_x, world_y
+            atlas_bounds,  # 4 values: left, bottom, right, top
+            offset_x,
+            offset_y  # 2 values: offset_x, offset_y
+        ]).flatten().astype(np.float32)
 
-        # if centered:
-        #     x_offset = -cursor_x / 2
+        # print(f"Rendering text: '{text}' at ({x_world}, {y_world}) with {len(final_glyph_indices)} characters")
 
-        #     # For vertical centering, adjust y_offset based on the top of a capital letter
-        #     glyph_E = next((g for g in self._metadata['glyphs'] if 'unicode' in g and g['unicode'] == 69), None)
-        #     if glyph_E:
-        #         y_offset = -glyph_E['planeBounds']['top'] / 2
-        #     else:
-        #         y_offset = -self._metadata['metrics']['ascender'] / 2
-
-        #     vertices[::6] += x_offset
-        #     vertices[1::6] += y_offset
-
-
-        # text_rect = RectInvY(0, 0, cursor_x, height)
-        # text_rect = orient_text_rect(text_rect, location, location_offset)
-
-        self.vertex_batches.append(vertices)
-        self.index_batches.append(indices)
-        self.vertex_count += char_count
+        self.instance_batches.append(instances)
+        self.instance_count += len(final_glyph_indices)
 
     def render(self):
         """Call this once per frame, after rendering all the text you need.
         """
-        if not self.vertex_batches or not self.index_batches:
+        if not self.instance_batches:
             return
-        vertices = np.concat(self.vertex_batches)
-        indices = np.concat(self.index_batches)
-        vbo = self._ctx.buffer(vertices.tobytes())
-        ibo = self._ctx.buffer(indices.tobytes())
 
-        # Render glyph
-        self._program['camera'].write(self._scene.get_vp()) # type: ignore
+        # Combine all instance data
+        instances = np.concatenate(self.instance_batches)
+        instance_vbo = self._ctx.buffer(instances.tobytes())
+
+        # Set uniforms
+        self._program['camera'].write(self._scene.get_vp())  # type: ignore
 
         font_scale = config.app_config.get_float(*self._scale_source) if self._scale_source else 40.0
         self._program['u_scale'] = font_scale
 
         map_scale = self._scene.map_size_m / self._scene.display_size[1] / self._scene.zoom_level * .6
         self._program['font_to_world'] = map_scale
-        self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
-        self._ctx.enable(mgl.BLEND) # TODO is this the right place to call this?
 
-        vao = self._ctx.simple_vertex_array(self._program,
-                                            vbo,
-                                            'in_pos_text',
-                                            'in_pos_world',
-                                            'in_texcoord',
-                                            'in_pos_str_offset',
-                                            index_buffer=ibo)
-        vao.render(mgl.TRIANGLES)
+        atlas_width = self._metadata['atlas']['width']
+        atlas_height = self._metadata['atlas']['height']
+        self._program['atlas_size'] = (atlas_width, atlas_height)
+
+        self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
+        self._ctx.enable(mgl.BLEND)
+
+        vao = self._ctx.vertex_array(self._program,
+                                     [(self._quad_vbo, '2f', 'in_quad_pos'),
+                                      (instance_vbo, '4f 2f 2f 4f 2f/i', 'in_glyph_bounds', 'in_cursor_pos',
+                                       'in_world_pos', 'in_atlas_bounds', 'in_string_offset')], self._quad_ibo)
+
+        vao.render(instances=self.instance_count)
