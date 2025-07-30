@@ -1,10 +1,9 @@
-import select
-import imgui
-from imgui.integrations.glfw import GlfwRenderer
+from imgui_bundle import imgui
+from imgui_bundle.python_backends.glfw_backend import GlfwRenderer
+
 import numpy as np
 import datetime
 import os
-from dataclasses import fields
 
 from draw.scene import Scene
 from draw.map_gl import MapGL
@@ -66,11 +65,12 @@ class ImguiUserInterface:
         self.display_data = display_data
         self.annotations = annotations
         self.data_client = data_client
-
+        
         imgui.create_context()
         io = imgui.get_io()
         io.display_size = self.size
         io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18)
+        
         self.impl = GlfwRenderer(window, attach_callbacks=False)
         self._time: datetime.datetime = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
@@ -150,62 +150,63 @@ class ImguiUserInterface:
 
     def ui_main_menu(self):
 
-        with imgui.begin_main_menu_bar() as main_menu_bar:
-            if main_menu_bar.opened:
+        if imgui.begin_main_menu_bar():
 
-                # File Dropdown
-                with imgui.begin_menu('File', True) as file_menu:
-                    if file_menu.opened:
+            # File Dropdown
+            if imgui.begin_menu('File', True):
+                # Map submenu
+                if imgui.begin_menu('Map', True):
+                    # submenu
+                    if imgui.begin_menu('Load', True):
+                        self.map_list_menu()
+                        if imgui.menu_item('Custom', '', False, True)[0]:
+                            self.map_selection_dialog_open = True
+                        imgui.end_menu()
 
-                        # Map submenu
-                        with imgui.begin_menu('Map', True) as map_menu:
-                            if map_menu.opened:
-                                # submenu
-                                with imgui.begin_menu('Load', True) as open_recent_menu:
-                                    if open_recent_menu.opened:
-                                        self.map_list_menu()
-                                        if imgui.menu_item('Custom', '', False, True)[0]:
-                                            self.map_selection_dialog_open = True
+                    if imgui.menu_item('Clear', '', False, True)[0]:
+                        self.map_gl.clear_map()
+                        
+                    imgui.end_menu()
 
-                                if imgui.menu_item('Clear', '', False, True)[0]:
-                                    self.map_gl.clear_map()
+                # Ini submenu
+                if imgui.begin_menu('Ini', True):
+                    if imgui.menu_item('Load', "", False, True)[0]:
+                        self.annotations.load_ini(open_file_dialog())
+                    if imgui.menu_item('Clear', '', False, True)[0]:
+                        self.annotations.clear()
+                    imgui.end_menu()
 
-                        # Ini submenu
-                        with imgui.begin_menu('Ini', True) as ini_menu:
-                            if ini_menu.opened:
-                                if imgui.menu_item('Load', None, False, True)[0]:
-                                    self.annotations.load_ini(open_file_dialog())
-                                if imgui.menu_item('Clear', '', False, True)[0]:
-                                    self.annotations.clear()
+                if imgui.menu_item('Settings', "", self.settings_window_open, True)[0]:
+                    self.settings_window_open = not self.settings_window_open
 
-                        if imgui.menu_item('Settings', None, self.settings_window_open, True)[0]:
-                            self.settings_window_open = not self.settings_window_open
+                imgui.end_menu()
+                
+            # Windows Dropdown
+            if imgui.begin_menu('Windows', True):
+                if imgui.menu_item('Server', '', self.server_window_open, True)[0]:
+                    self.server_window_open = not self.server_window_open
+                if imgui.menu_item('Layers', '', self.layers_window_open, True)[0]:
+                    self.layers_window_open = not self.layers_window_open
+                if imgui.menu_item('Notepad', '', self.notepad_window_open, True)[0]:
+                    self.notepad_window_open = not self.notepad_window_open
+                if imgui.menu_item('Track Labels', '', self.track_labels_window_open, True)[0]:
+                    self.track_labels_window_open = not self.track_labels_window_open
+                if imgui.menu_item('FPS', '', self.fps_window_open, True)[0]:
+                    self.fps_window_open = not self.fps_window_open
+                if imgui.menu_item('Debug', '', self.debug_window_open, True)[0]:
+                    self.debug_window_open = not self.debug_window_open
+                imgui.end_menu()
 
-                # Windows Dropdown
-                with imgui.begin_menu('Windows', True) as windows_menu:
-                    if windows_menu.opened:
-
-                        if imgui.menu_item('Server', '', self.server_window_open, True)[0]:
-                            self.server_window_open = not self.server_window_open
-                        if imgui.menu_item('Layers', '', self.layers_window_open, True)[0]:
-                            self.layers_window_open = not self.layers_window_open
-                        if imgui.menu_item('Notepad', '', self.notepad_window_open, True)[0]:
-                            self.notepad_window_open = not self.notepad_window_open
-                        if imgui.menu_item('Track Labels', '', self.track_labels_window_open, True)[0]:
-                            self.track_labels_window_open = not self.track_labels_window_open
-                        if imgui.menu_item('FPS', '', self.fps_window_open, True)[0]:
-                            self.fps_window_open = not self.fps_window_open
-                        if imgui.menu_item('Debug', '', self.debug_window_open, True)[0]:
-                            self.debug_window_open = not self.debug_window_open
+            imgui.end_main_menu_bar()
 
     def map_list_menu(self):
         maps = self.map_gl.list_maps()
         for theatre, data in maps.items():
-            with imgui.begin_menu(theatre, True) as theatre_menu:
-                if theatre_menu.opened:
-                    for map_entry in data["maps"]:
-                        if imgui.menu_item(map_entry["style"], None, False, True)[0]:
-                            self.map_gl.load_map(map_entry["path"], data["theatre_size_km"])
+            if imgui.begin_menu(theatre, True):
+                for map_entry in data["maps"]:
+                    if imgui.menu_item(map_entry["style"], "", False, True)[0]:
+                        self.map_gl.load_map(map_entry["path"], data["theatre_size_km"])
+                imgui.end_menu()
 
     def map_selection_dialog(self):
 
@@ -214,7 +215,7 @@ class ImguiUserInterface:
             if imgui.begin_popup_modal("Map Selection", True)[0]:
 
                 # Create input text field with folder path
-                imgui.input_text("", self.map_selection_dialog_path, -1, imgui.INPUT_TEXT_READ_ONLY)
+                imgui.input_text("##mapfiledialog", self.map_selection_dialog_path, imgui.InputTextFlags_.read_only.value)
 
                 # Button with folder icon
                 imgui.same_line()
@@ -236,15 +237,18 @@ class ImguiUserInterface:
 
     def ui_bottom_bar(self):
 
-        bottom_flags = (imgui.WINDOW_NO_TITLE_BAR | imgui.WINDOW_NO_RESIZE | imgui.WINDOW_NO_MOVE
-                        | imgui.WINDOW_NO_COLLAPSE)
+        bottom_flags = (imgui.WindowFlags_.no_resize.value | 
+                        imgui.WindowFlags_.no_move.value | 
+                        imgui.WindowFlags_.no_title_bar.value | 
+                        imgui.WindowFlags_.no_collapse.value)
         width = imgui.get_io().display_size[0]
         height = 50
 
-        imgui.set_next_window_size(width, height)
-        imgui.set_next_window_position(0, imgui.get_io().display_size[1] - height)
-        with imgui.begin("Bottom Bar", True, flags=bottom_flags):
+        imgui.set_next_window_size(imgui.ImVec2(width, height))
+        imgui.set_next_window_pos(imgui.ImVec2(0, imgui.get_io().display_size[1] - height))
+        if imgui.begin("Bottom Bar", True, flags=bottom_flags):
             TextCentered(self._time.strftime("%H:%M:%SZ"))
+            imgui.end()
 
     def fps_counter(self):
         if not self.fps_window_open:
@@ -268,19 +272,20 @@ class ImguiUserInterface:
 
         _, open = imgui.begin("Settings", True)
         if imgui.begin_tab_bar("Settings Tabs"):
-            if imgui.begin_tab_item("Map").selected:
+            if imgui.begin_tab_item("Map")[0]:
                 self.settings_tab_map()
                 imgui.end_tab_item()
-            if imgui.begin_tab_item("Annotations").selected:
+            if imgui.begin_tab_item("Annotations")[0]:
                 self.settings_tab_annotations()
                 imgui.end_tab_item()
-            if imgui.begin_tab_item("Radar").selected:
+            if imgui.begin_tab_item("Radar")[0]:
                 self.settings_tab_radar()
                 imgui.end_tab_item()
-        imgui.end_tab_bar()
+            imgui.end_tab_bar()
         imgui.end()
 
         if not open:
+            print("Settings window closed")
             self.settings_window_open = False
             config.app_config.save()
 
@@ -288,7 +293,7 @@ class ImguiUserInterface:
         map_alpha = config.app_config.get_int("map", "map_alpha")
         map_background_color = config.app_config.get_color_normalized("map", "background_color")
 
-        bg_color_picker = imgui.color_edit3("Background Color", *map_background_color)
+        bg_color_picker = imgui.color_edit3("Background Color", [*map_background_color])
         imgui.same_line()
         imgui.text_disabled("(?)")
         if imgui.is_item_hovered():
@@ -303,7 +308,8 @@ class ImguiUserInterface:
         if alpha_slider[0]:
             config.app_config.set("map", "map_alpha", alpha_slider[1])
         if bg_color_picker[0]:
-            config.app_config.set_color_from_normalized("map", "background_color", bg_color_picker[1])
+            color = tuple(bg_color_picker[1])
+            config.app_config.set_color_from_normalized("map", "background_color", color) # type: ignore
 
     def settings_tab_annotations(self):
 
@@ -311,14 +317,15 @@ class ImguiUserInterface:
         ini_color = config.app_config.get_color_normalized("annotations", "ini_color")
         ini_font_scale = config.app_config.get_float("annotations", "ini_font_scale")
 
-        ini_color_picker = imgui.color_edit3("Ini Color", *ini_color)
+        ini_color_picker = imgui.color_edit3("Ini Color", [*ini_color])
         ini_width_slider = imgui.slider_int("Ini Line Width", ini_width, 1, 40)
         ini_font_scale_slider = imgui.slider_float("Ini Font Scale", ini_font_scale, 20, 100)
 
         if ini_width_slider[0]:
             config.app_config.set("annotations", "ini_width", ini_width_slider[1])
         if ini_color_picker[0]:
-            config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1])
+            color = tuple(ini_color_picker[1])
+            config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1]) # type: ignore
         if ini_font_scale_slider[0]:
             config.app_config.set("annotations", "ini_font_scale", ini_font_scale_slider[1])
 
@@ -342,7 +349,9 @@ class ImguiUserInterface:
     def layers_window(self):
         if not self.layers_window_open:
             return
-        with imgui.begin("Layers"):
+        if imgui.begin("Layers"):
+            imgui.text("Layers window is not implemented yet.")
+            imgui.end()
             pass  #TODO add layers window
 
     def server_window(self):
@@ -355,20 +364,20 @@ class ImguiUserInterface:
         if status in [ThreadState.CONNECTED, ThreadState.CONNECTING]:
             connected = True
 
-        _, open = imgui.begin("Server", True, imgui.WINDOW_ALWAYS_AUTO_RESIZE)
+        _, open = imgui.begin("Server", True, imgui.WindowFlags_.always_auto_resize.value)
 
         if connected:
-            imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
+            imgui.begin_disabled()
 
         address_changed, address = imgui.input_text("Address##server_address",
-                                                    config.app_config.get_str("server", "address"), -1)
+                                                    config.app_config.get_str("server", "address"))
 
         port_changed, port = imgui.input_int("Port##server_port", config.app_config.get_int("server", "port"))
         imgui.same_line()
-        if imgui.button("Default", width=80):
+        if imgui.button("Default"): # TODO: width 80?
             config.app_config.set_default("server", "port")
 
-        pw_changed, password = imgui.input_text("Password##server_password", self.server_password, -1)
+        pw_changed, password = imgui.input_text("Password##server_password", self.server_password)
 
         retries_changed, retries = imgui.input_int("Retries", config.app_config.get_int("server", "retries"))
 
@@ -376,7 +385,7 @@ class ImguiUserInterface:
                                                           config.app_config.get_bool("server", "autoconnect"))
 
         if connected:
-            imgui.internal.pop_item_flag()
+            imgui.end_disabled()
 
         imgui.text("Status: ")
         imgui.same_line()
@@ -415,8 +424,10 @@ class ImguiUserInterface:
         notes = config.app_config.get_str("notepad", "notes")
 
         # Get window size
-        width, height = imgui.get_content_region_available()
-        changed, notes = imgui.input_text_multiline("", notes, -1, width, height, imgui.INPUT_TEXT_ALLOW_TAB_INPUT)
+        width, height = imgui.get_content_region_avail()
+        changed, notes = imgui.input_text_multiline(
+            "##notepad", notes, imgui.ImVec2(width, height), imgui.InputTextFlags_.allow_tab_input.value
+        )
         imgui.end()
 
         if changed:
@@ -428,9 +439,11 @@ class ImguiUserInterface:
         if not self.debug_window_open:
             return
         _, open = imgui.begin("Debug", True)
-        imgui.text(f"Mouse Pos: {imgui.get_mouse_pos()}")
-        imgui.text(f"Mouse Pos (World (m)): {self.scene.screen_to_world(imgui.get_mouse_pos())}")
-        imgui.text(f"Mouse Pos (World (ft)): {self.scene.screen_to_world(imgui.get_mouse_pos()) * METERS_TO_FT}")
+        mouse_pos = imgui.get_mouse_pos()
+        tuple_mouse_pos = (mouse_pos.x, mouse_pos.y)
+        imgui.text(f"Mouse Pos: {tuple_mouse_pos}")
+        imgui.text(f"Mouse Pos (World (m)): {self.scene.screen_to_world(tuple_mouse_pos)}")
+        imgui.text(f"Mouse Pos (World (ft)): {self.scene.screen_to_world(tuple_mouse_pos) * METERS_TO_FT}")
         imgui.text(f"Pan: {self.scene._pan_screen}")
         imgui.text(f"Zoom: {self.scene.zoom_level}")
         imgui.text(f"Map Size: {self.scene.map_size_m}")
@@ -449,7 +462,7 @@ class ImguiUserInterface:
 
         imgui.begin_tab_bar("Track Types")
         for track_type in GameObjectClassType:
-            if imgui.begin_tab_item(track_type.value.display_name).selected:
+            if imgui.begin_tab_item(track_type.value.display_name)[0]:
 
                 labels = deserialize_track_labels(track_type.name, config.app_config.get_str(
                     "labels", track_type.name))  # TODO: this may be slow, consider caching
@@ -466,9 +479,9 @@ class ImguiUserInterface:
                 if imgui.begin_table("Label Location Table",
                                      3,
                                      inner_width=50,
-                                     flags=imgui.TABLE_BORDERS
-                                     | imgui.TABLE_SIZING_FIXED_SAME
-                                     | imgui.TABLE_NO_HOST_EXTEND_X):
+                                     flags=imgui.TableFlags_.borders.value
+                                     | imgui.TableFlags_.sizing_fixed_same.value
+                                     | imgui.TableFlags_.no_host_extend_x.value):
 
                     for i in range(3):
                         imgui.table_next_row()
@@ -485,9 +498,8 @@ class ImguiUserInterface:
 
                             if imgui.selectable(f"{label_name}##{i}{j}",
                                                 selected,
-                                                imgui.SELECTABLE_DONT_CLOSE_POPUPS,
-                                                width=50,
-                                                height=50)[0]:
+                                                imgui.SelectableFlags_.no_auto_close_popups.value,
+                                                imgui.ImVec2(50, 50))[0]:
                                 self.track_labels_selected_square = (i, j)
                                 # print(f"Selected square ({i}, {j})")
                     imgui.end_table()
@@ -499,7 +511,7 @@ class ImguiUserInterface:
                 imgui.same_line()
                 help_marker("The name of the label. This is only used for your reference in the UI")
                 imgui.push_item_width(50)
-                changed, label_name = imgui.input_text("##LabelName", selected_label.label_name, -1)
+                changed, label_name = imgui.input_text("##LabelName", selected_label.label_name)
                 imgui.pop_item_width()
                 if changed:
                     selected_label.label_name = label_name
@@ -528,7 +540,7 @@ class ImguiUserInterface:
                             "This can be a static string or a formatted string with variables."
                             "Valid variables include: \n" + "\n".join(get_all_attributes(example_track).keys()))
 
-                changed, user_input = imgui.input_text("##Label Contents", selected_label.label_format, -1)
+                changed, user_input = imgui.input_text("##Label Contents", selected_label.label_format)
                 if changed:
                     selected_label.label_format = user_input
                     if selected_coords not in labels.labels:

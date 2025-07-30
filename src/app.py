@@ -4,7 +4,7 @@ import queue
 import ctypes
 
 import glfw
-import imgui
+from imgui_bundle import imgui
 import glm
 from OpenGL.GL.ARB import timer_query
 from PIL import Image
@@ -103,28 +103,19 @@ class App:
 
         # Create the Tacview RT Relemetry client
         self.data_queue: queue.Queue[str] = queue.Queue()
-
         self.data_client = TRTTClientThread(self.data_queue)
         self.data_client.start()
 
         self.gamestate = GameState(self.data_queue)
 
-        event_handlers = {
-            'window_close': self.handle_quit,
-            'window_pos': self.handle_window_moved,
-            'window_size': self.handle_window_resized,
-            'scroll': self.handle_mouse_wheel,
-            'mouse_button': self.handle_mouse_button,
-            'cursor_pos': self.handle_mouse_motion,
-            'key': self.handle_key,
-            'char': self.handle_char
-        }
-
-        for handler_name in event_handlers:
-            fname = f'set_{handler_name}_callback'
-            set_callback = getattr(glfw, fname)
-            result = set_callback(self.window, event_handlers[handler_name])
-            assert (result is None)
+        glfw.set_window_close_callback(self.window, self.window_close_callback)
+        glfw.set_window_pos_callback(self.window, self.handle_window_moved)
+        glfw.set_window_size_callback(self.window, self.handle_window_resized)
+        glfw.set_scroll_callback(self.window, self.handle_mouse_wheel)
+        glfw.set_mouse_button_callback(self.window, self.handle_mouse_button)
+        glfw.set_cursor_pos_callback(self.window, self.handle_mouse_motion)
+        glfw.set_key_callback(self.window, self.handle_key)
+        glfw.set_char_callback(self.window, self.handle_char)
 
         self._running = True
 
@@ -143,7 +134,7 @@ class App:
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
 
-    def handle_quit(self, event):
+    def window_close_callback(self, event):
         self._running = False
 
     def handle_window_moved(self, window, xpos, ypos):
@@ -156,14 +147,15 @@ class App:
         self._ImguiUI.impl.resize_callback(window, width, height)
 
     def handle_mouse_wheel(self, window, scroll_x, scroll_y):
+        self._ImguiUI.impl.scroll_callback(window, scroll_x, scroll_y)
         if imgui.get_io().want_capture_mouse:
-            self._ImguiUI.impl.scroll_callback(window, scroll_x, scroll_y)
             return
         if scroll_y != 0.0:
             pos = glfw.get_cursor_pos(self.window)
             self.scene.zoom_at(pos, scroll_y)
 
     def handle_mouse_button(self, window, button, action, mods):
+        self._ImguiUI.impl.mouse_button_callback(window, button, action, mods)
         if imgui.get_io().want_capture_mouse:
             return
         pos = glfw.get_cursor_pos(self.window)
@@ -191,8 +183,8 @@ class App:
             p = self.scene.screen_to_world(glm.vec2(*pos))
 
     def handle_mouse_motion(self, window, xpos, ypos):
+        self._ImguiUI.impl.mouse_callback(window, xpos, ypos)
         if imgui.get_io().want_capture_mouse:
-            self._ImguiUI.impl.mouse_callback(window, xpos, ypos)
             return
         if self.mouseDragDown:  # dragging
             difX = xpos - self._startPan[0]
@@ -203,16 +195,17 @@ class App:
         #     self._radar.braa(True, self._startBraa, event.pos)
 
     def handle_key(self, window, key, scancode, action, mods):
+        self._ImguiUI.impl.keyboard_callback(window, key, scancode, action, mods)
         if imgui.get_io().want_capture_keyboard:
-            self._ImguiUI.impl.keyboard_callback(window, key, scancode, action, mods)
             return
         if action == glfw.PRESS:
             if key == glfw.KEY_ESCAPE:
                 self._running = False
 
     def handle_char(self, window, char):
+        self._ImguiUI.impl.char_callback(window, char)
         if imgui.get_io().want_capture_keyboard:
-            self._ImguiUI.impl.char_callback(window, char)
+            return
 
     def on_loop(self, delta_time):
         """
@@ -229,8 +222,6 @@ class App:
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.frame_time
         self._ImguiUI.time = self.gamestate.get_time()
-        
-        
 
     def on_render(self, delta_time):
         """
