@@ -8,12 +8,12 @@ from util import bms_math
 
 class Scene:
 
-    def __init__(self, display_size, mgl_context: mgl.Context):
+    def __init__(self, display_size: tuple[int, int], mgl_context: mgl.Context):
 
         self.display_size = display_size
         self.mgl_context = mgl_context
 
-        self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
+        self.map_size_m = int(bms_math.THEATRE_DEFAULT_SIZE_METERS)
         self._pan_screen = glm.vec2(0.0)
         self.zoom_level = 1.0
         self.vp = glm.mat4(1.0)
@@ -30,11 +30,11 @@ class Scene:
     def get_scale(self):
         return self.map_size_m / self.display_size[1]
 
-    def set_size(self, scene_size):
+    def set_size(self, scene_size: int):
         self.map_size_m = scene_size
         self.make_camera_matrix()
 
-    def resize(self, display_size):
+    def resize(self, display_size: tuple[int, int]):
         ### This is the function that needs to be called when the window is resized
         self.display_size = display_size
         gl.glViewport(0, 0, *display_size)
