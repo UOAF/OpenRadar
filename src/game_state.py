@@ -110,7 +110,7 @@ class GameState:
             else:
                 print(f"Unknown action {acmiline.action} in {acmiline}")
 
-    def get_nearest_object(self, world_pos: tuple[float, float], hover_dist_world: float) -> GameObject | None:
+    def get_nearest_object(self, world_pos: tuple[float, float], hover_dist_world: float = float('inf')) -> GameObject | None:
         """
         Gets the object ID of the object that is being hovered over.
         

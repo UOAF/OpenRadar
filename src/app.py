@@ -184,6 +184,8 @@ class App:
 
     def handle_mouse_motion(self, window, xpos, ypos):
         self._ImguiUI.impl.mouse_callback(window, xpos, ypos)
+        mouse_world = self.scene.screen_to_world(glm.vec2(xpos, ypos))
+        nearest_object = self.gamestate.get_nearest_object((mouse_world.x, mouse_world.y))  # Update nearest object on hover
         if imgui.get_io().want_capture_mouse:
             return
         if self.mouseDragDown:  # dragging

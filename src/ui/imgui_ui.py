@@ -441,14 +441,23 @@ class ImguiUserInterface:
         _, open = imgui.begin("Debug", True)
         mouse_pos = imgui.get_mouse_pos()
         tuple_mouse_pos = (mouse_pos.x, mouse_pos.y)
+        mouse_pos_world = self.scene.screen_to_world((mouse_pos.x, mouse_pos.y))
         imgui.text(f"Mouse Pos: {tuple_mouse_pos}")
-        imgui.text(f"Mouse Pos (World (m)): {self.scene.screen_to_world(tuple_mouse_pos)}")
-        imgui.text(f"Mouse Pos (World (ft)): {self.scene.screen_to_world(tuple_mouse_pos) * METERS_TO_FT}")
+        imgui.text(f"Mouse Pos (World (m)): {mouse_pos_world}")
+        imgui.text(f"Mouse Pos (World (ft)): {mouse_pos_world * METERS_TO_FT}")
         imgui.text(f"Pan: {self.scene._pan_screen}")
         imgui.text(f"Zoom: {self.scene.zoom_level}")
         imgui.text(f"Map Size: {self.scene.map_size_m}")
         if imgui.button("Load test ini"):
             self.annotations.load_ini(os.path.join(os.getcwd(), "Data", "test.ini"))
+        
+        nearest_object = self.gamestate.get_nearest_object(mouse_pos_world.to_tuple())
+        if nearest_object:
+            imgui.text(f"Nearest Object: {nearest_object.data.Name} ({nearest_object.data.object_id})")
+            imgui.text(f"Object Pilot: {nearest_object.data.Pilot}")
+            imgui.text(f"Position (World): {nearest_object.data.T.U, nearest_object.data.T.V}")
+            imgui.text(f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
+
         imgui.end()
         if not open:
             self.debug_window_open = False
