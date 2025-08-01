@@ -1,12 +1,10 @@
 import os
 import sys
 import queue
-import ctypes
 
 import glfw
 from imgui_bundle import imgui
 import glm
-from OpenGL.GL.ARB import timer_query
 from PIL import Image
 import OpenGL.GL as gl
 import moderngl as mgl
@@ -22,6 +20,7 @@ from draw.scene import Scene
 from draw.annotations import MapAnnotations
 from sensor_tracks import SensorTracks
 from display_data import DisplayData
+from gpu_timer import GPUTimer
 
 from util.os_utils import from_path
 from util.bms_math import THEATRE_DEFAULT_SIZE_FT
@@ -63,8 +62,13 @@ class App:
         self._startBraa = (0, 0)
         self._mgl_ctx: mgl.Context
         self.clock: Clock
-        self.frame_time = 0
+        self.gpu_frame_time_us = 0
+        self.cpu_frame_time = 0
         self.radar_sleep = 0
+
+        # GPU timing management must only be initialized after OpenGL context has been created
+        self.gpu_timer: GPUTimer | None = None
+
         try:
             os.chdir(sys._MEIPASS)  # type: ignore
         except AttributeError:
@@ -83,10 +87,10 @@ class App:
         config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int, int])  # type: ignore
         h, w = config_size
         self.window = glfw.create_window(h, w, 'OpenRadar', None, None)
-        
+
         window_x, window_y = config.app_config.get("window", "location", tuple[int, int])  # type: ignore
         glfw.set_window_pos(self.window, window_x, window_y)
-        
+
         glfw.show_window(self.window)
 
         glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_NORMAL)
@@ -99,9 +103,6 @@ class App:
         glfw.make_context_current(self.window)
 
         glfw.swap_interval(int(VSYNC_ENABLE))
-        queries = gl.glGenQueries(2)
-        self.start_query = queries[0]
-        self.end_query = queries[1]
 
         # Create the Tacview RT Relemetry client
         self.data_queue: queue.Queue[str] = queue.Queue()
@@ -126,12 +127,15 @@ class App:
         self.scene = Scene(self.size, self.mgl_ctx)
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)
 
+        # Must be initialized after the OpenGL context is created
+        self.gpu_timer = GPUTimer()
+
         self._annotations = MapAnnotations(self.scene)
         self._tracks = SensorTracks(self.gamestate)
         self._display_data = DisplayData(self.scene, self.gamestate, self._tracks)
 
-        self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate, self._tracks, self._display_data,
-                                           self._annotations, self.data_client)
+        self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate,
+                                           self._tracks, self._display_data, self._annotations, self.data_client)
 
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
@@ -187,13 +191,12 @@ class App:
                     self._ImguiUI.open_track_context_menu(nearest_track)
         elif button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False
-            p_screen = glm.vec2(*pos)
-            p = self.scene.screen_to_world(glm.vec2(*pos))
 
     def handle_mouse_motion(self, window, xpos, ypos):
         self._ImguiUI.impl.mouse_callback(window, xpos, ypos)
         mouse_world = self.scene.screen_to_world(glm.vec2(xpos, ypos))
-        nearest_object = self.gamestate.get_nearest_object((mouse_world.x, mouse_world.y))  # Update nearest object on hover
+        nearest_object = self.gamestate.get_nearest_object(
+            (mouse_world.x, mouse_world.y))  # Update nearest object on hover
         if imgui.get_io().want_capture_mouse:
             return
         if self.mouseDragDown:  # dragging
@@ -222,15 +225,17 @@ class App:
         Performs any necessary updates or calculations for the application.
         """
         self.gamestate.update_state()
-        
+
         self.radar_sleep += delta_time
-        if self.radar_sleep > config.app_config.get("radar", "update_interval", float): #TODO implement in sensor_tracks
+        if self.radar_sleep > config.app_config.get("radar", "update_interval",
+                                                    float):  #TODO implement in sensor_tracks
             self.radar_sleep = 0
             self._tracks.update()
             self._display_data.generate_render_arrays()
         self._ImguiUI.update()
         self._ImguiUI.fps = self.clock.fps
-        self._ImguiUI.frame_time = self.frame_time
+        self._ImguiUI.frame_time = self.gpu_frame_time_us
+        self._ImguiUI.cpu_frame_time = self.cpu_frame_time
         self._ImguiUI.time = self.gamestate.get_time()
 
     def on_render(self, delta_time):
@@ -247,6 +252,8 @@ class App:
         """
         Cleans up and quits the application.
         """
+        if self.gpu_timer:
+            self.gpu_timer.cleanup()
         glfw.terminate()
 
     def on_execute(self, args):
@@ -265,21 +272,42 @@ class App:
         while self._running:
             dt = self.clock.tick()
             time_sum += dt
-            gl.glQueryCounter(self.start_query, timer_query.GL_TIMESTAMP)
-            start_time_ns = ctypes.c_ulonglong()
-            end_time_ns = ctypes.c_ulonglong()
+
+            frame_start_time = glfw.get_time()
+            self._start_gpu_timing()
 
             self.on_loop(dt)
             self.on_render(dt)
 
-            gl.glQueryCounter(self.end_query, timer_query.GL_TIMESTAMP)
+            cpu_frame_end_time = glfw.get_time()
+            self.cpu_frame_time = (cpu_frame_end_time - frame_start_time) * 1_000_000
+
+            self._end_gpu_timing_query()
             glfw.swap_buffers(self.window)
             glfw.poll_events()
-            # gl.glGetQueryObjectui64v(self.start_query, gl.GL_QUERY_RESULT, ctypes.byref(start_time_ns))
-            # gl.glGetQueryObjectui64v(self.end_query, gl.GL_QUERY_RESULT, ctypes.byref(end_time_ns))
-            self.frame_time = end_time_ns.value - start_time_ns.value
+
+            self._check_gpu_timing_results()
 
         self.on_cleanup()
+
+    def _start_gpu_timing(self):
+        gpu_timer_available = self.gpu_timer is not None
+        if gpu_timer_available:
+            assert self.gpu_timer is not None
+            self.gpu_timer.start_frame_timing()
+
+    def _end_gpu_timing_query(self):
+        gpu_timer_available = self.gpu_timer is not None
+        if gpu_timer_available:
+            assert self.gpu_timer is not None
+            self.gpu_timer.end_query_only()
+
+    def _check_gpu_timing_results(self):
+        gpu_timer_available = self.gpu_timer is not None
+        if gpu_timer_available:
+            assert self.gpu_timer is not None
+            self.gpu_timer.check_results_and_advance()
+            self.gpu_frame_time_us = self.gpu_timer.get_last_gpu_time_us()
 
     def __del__(self):
         try:

@@ -65,19 +65,21 @@ class ImguiUserInterface:
         self.display_data = display_data
         self.annotations = annotations
         self.data_client = data_client
-        
+
         imgui.create_context()
         io = imgui.get_io()
         io.display_size = self.size
         io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18)
-        
+
         self.impl = GlfwRenderer(window, attach_callbacks=False)
         self._time: datetime.datetime = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
         self._fps = 0
-        self._fps_history = [0] * 100
+        self._fps_history = [0.0] * 4000
         self._frame_time = 0.0
-        self._frame_time_history = [0] * 100
+        self._frame_time_history = [0.0] * 4000
+        self._cpu_frame_time = 0.0
+        self._cpu_frame_time_history = [0.0] * 4000
         self.context_track: Track | None = None
         self.flag_open_context_menu = False
 
@@ -131,6 +133,14 @@ class ImguiUserInterface:
     def frame_time(self, t):
         self._frame_time = t
 
+    @property
+    def cpu_frame_time(self):
+        return self._cpu_frame_time
+
+    @cpu_frame_time.setter
+    def cpu_frame_time(self, t):
+        self._cpu_frame_time = t
+
     def open_track_context_menu(self, track: Track | None):
         """
         Set the track for the context menu.
@@ -143,8 +153,11 @@ class ImguiUserInterface:
         self._fps_history.append(self._fps)
         self._fps_history.pop(0)
 
-        self._frame_time_history.append(int(self._frame_time))
+        self._frame_time_history.append(self._frame_time)  # Keep as float
         self._frame_time_history.pop(0)
+
+        self._cpu_frame_time_history.append(self._cpu_frame_time)  # Keep as float
+        self._cpu_frame_time_history.pop(0)
 
         imgui.new_frame()
         self.ui_main_menu()
@@ -176,7 +189,7 @@ class ImguiUserInterface:
 
                     if imgui.menu_item('Clear', '', False, True)[0]:
                         self.map_gl.clear_map()
-                        
+
                     imgui.end_menu()
 
                 # Ini submenu
@@ -191,7 +204,7 @@ class ImguiUserInterface:
                     self.settings_window_open = not self.settings_window_open
 
                 imgui.end_menu()
-                
+
             # Windows Dropdown
             if imgui.begin_menu('Windows', True):
                 if imgui.menu_item('Server', '', self.server_window_open, True)[0]:
@@ -226,7 +239,8 @@ class ImguiUserInterface:
             if imgui.begin_popup_modal("Map Selection", True)[0]:
 
                 # Create input text field with folder path
-                imgui.input_text("##mapfiledialog", self.map_selection_dialog_path, imgui.InputTextFlags_.read_only.value)
+                imgui.input_text("##mapfiledialog", self.map_selection_dialog_path,
+                                 imgui.InputTextFlags_.read_only.value)
 
                 # Button with folder icon
                 imgui.same_line()
@@ -248,10 +262,8 @@ class ImguiUserInterface:
 
     def ui_bottom_bar(self):
 
-        bottom_flags = (imgui.WindowFlags_.no_resize.value | 
-                        imgui.WindowFlags_.no_move.value | 
-                        imgui.WindowFlags_.no_title_bar.value | 
-                        imgui.WindowFlags_.no_collapse.value)
+        bottom_flags = (imgui.WindowFlags_.no_resize.value | imgui.WindowFlags_.no_move.value
+                        | imgui.WindowFlags_.no_title_bar.value | imgui.WindowFlags_.no_collapse.value)
         width = imgui.get_io().display_size[0]
         height = 50
 
@@ -265,12 +277,40 @@ class ImguiUserInterface:
         if not self.fps_window_open:
             return
         _, open = imgui.begin("FPS", True)
-        fps_history = np.array(self._fps_history, np.float32)
-        imgui.plot_lines("FPS", fps_history, graph_size=(0, 100))
-        imgui.text(f"FPS: {self.fps:.2f}")
-        frame_time_history = np.array(self._frame_time_history, np.float32)
-        imgui.plot_lines("Frame time", frame_time_history, graph_size=(0, 100))
-        imgui.text(f"Frame time: {np.mean(frame_time_history):.0f} ns")
+
+        display_samples = 1000
+        avg_samples = 1000
+
+        fps_history = np.array(self._fps_history[-display_samples:], np.float32)
+        imgui.plot_lines("FPS", fps_history, graph_size=(0, 128))
+
+        # HACK: Calculate average only over valid samples (non-zero values from the end)
+        fps_array = np.array(self._fps_history[-avg_samples:])
+        fps_nonzero_mask = fps_array > 0
+        fps_avg = np.mean(fps_array[fps_nonzero_mask]) if np.any(fps_nonzero_mask) else 0.0
+
+        imgui.text(f"FPS: avg {fps_avg:6.2f} | cur {self.fps:6.2f}")
+
+        # GPU Frame Time
+        frame_time_history = np.array(self._frame_time_history[-display_samples:], np.float32)
+        imgui.plot_lines("GPU Render Time (us)", frame_time_history, graph_size=(0, 128))
+
+        gpu_array = np.array(self._frame_time_history[-avg_samples:])
+        gpu_nonzero_mask = gpu_array > 0
+        gpu_avg = np.mean(gpu_array[gpu_nonzero_mask]) if np.any(gpu_nonzero_mask) else 0.0
+
+        imgui.text(f"GPU: avg {gpu_avg:7.1f} | cur {self._frame_time:7.1f} us")
+
+        # CPU Frame Processing Time
+        cpu_frame_time_history = np.array(self._cpu_frame_time_history[-display_samples:], np.float32)
+        imgui.plot_lines("CPU Frame Process Time (us)", cpu_frame_time_history, graph_size=(0, 128))
+
+        cpu_array = np.array(self._cpu_frame_time_history[-avg_samples:])
+        cpu_nonzero_mask = cpu_array > 0
+        cpu_avg = np.mean(cpu_array[cpu_nonzero_mask]) if np.any(cpu_nonzero_mask) else 0.0
+
+        imgui.text(f"CPU: avg {cpu_avg:7.1f} | cur {self._cpu_frame_time:7.1f} us")
+
         imgui.end()
 
         if not open:
@@ -320,7 +360,7 @@ class ImguiUserInterface:
             config.app_config.set("map", "map_alpha", alpha_slider[1])
         if bg_color_picker[0]:
             color = tuple(bg_color_picker[1])
-            config.app_config.set_color_from_normalized("map", "background_color", color) # type: ignore
+            config.app_config.set_color_from_normalized("map", "background_color", color)  # type: ignore
 
     def settings_tab_annotations(self):
 
@@ -336,20 +376,20 @@ class ImguiUserInterface:
             config.app_config.set("annotations", "ini_width", ini_width_slider[1])
         if ini_color_picker[0]:
             color = tuple(ini_color_picker[1])
-            config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1]) # type: ignore
+            config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1])  # type: ignore
         if ini_font_scale_slider[0]:
             config.app_config.set("annotations", "ini_font_scale", ini_font_scale_slider[1])
 
     def settings_tab_radar(self):
-        
+
         stoke_width = config.app_config.get_float("radar", "contact_stroke")
         shape_size = config.app_config.get_float("radar", "contact_size")
         font_scale = config.app_config.get_int("radar", "contact_font_scale")
-        
+
         stoke_width_slider = imgui.slider_float("Contact Stroke Width", stoke_width, 1, 10.0)
         shape_size_slider = imgui.slider_float("Contact Shape Size", shape_size, 1, 40.0)
         font_scale_slider = imgui.slider_int("Contact Font Scale", font_scale, 10, 100)
-        
+
         if stoke_width_slider[0]:
             config.app_config.set("radar", "contact_stroke", stoke_width_slider[1])
         if shape_size_slider[0]:
@@ -391,7 +431,7 @@ class ImguiUserInterface:
         if ships_changed:
             config.app_config.set("layers", "show_ships", show_ships)
         if missiles_changed:
-            config.app_config.set("layers", "show_missiles", show_missiles) 
+            config.app_config.set("layers", "show_missiles", show_missiles)
 
         if not open:
             self.layers_window_open = False
@@ -417,7 +457,7 @@ class ImguiUserInterface:
 
         port_changed, port = imgui.input_int("Port##server_port", config.app_config.get_int("server", "port"))
         imgui.same_line()
-        if imgui.button("Default"): # TODO: width 80?
+        if imgui.button("Default"):  # TODO: width 80?
             config.app_config.set_default("server", "port")
 
         pw_changed, password = imgui.input_text("Password##server_password", self.server_password)
@@ -468,9 +508,8 @@ class ImguiUserInterface:
 
         # Get window size
         width, height = imgui.get_content_region_avail()
-        changed, notes = imgui.input_text_multiline(
-            "##notepad", notes, imgui.ImVec2(width, height), imgui.InputTextFlags_.allow_tab_input.value
-        )
+        changed, notes = imgui.input_text_multiline("##notepad", notes, imgui.ImVec2(width, height),
+                                                    imgui.InputTextFlags_.allow_tab_input.value)
         imgui.end()
 
         if changed:
@@ -493,13 +532,14 @@ class ImguiUserInterface:
         imgui.text(f"Map Size: {self.scene.map_size_m}")
         if imgui.button("Load test ini"):
             self.annotations.load_ini(os.path.join(os.getcwd(), "Data", "test.ini"))
-        
+
         nearest_object = self.gamestate.get_nearest_object(mouse_pos_world.to_tuple())
         if nearest_object:
             imgui.text(f"Nearest Object: {nearest_object.data.Name} ({nearest_object.data.object_id})")
             imgui.text(f"Object Pilot: {nearest_object.data.Pilot}")
             imgui.text(f"Position (World): {nearest_object.data.T.U, nearest_object.data.T.V}")
-            imgui.text(f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
+            imgui.text(
+                f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
 
         imgui.end()
         if not open:
@@ -549,8 +589,7 @@ class ImguiUserInterface:
                                 label_name = labels.labels[location].label_name
 
                             if imgui.selectable(f"{label_name}##{i}{j}",
-                                                selected,
-                                                imgui.SelectableFlags_.no_auto_close_popups.value,
+                                                selected, imgui.SelectableFlags_.no_auto_close_popups.value,
                                                 imgui.ImVec2(50, 50))[0]:
                                 self.track_labels_selected_square = (i, j)
                                 # print(f"Selected square ({i}, {j})")
@@ -585,7 +624,6 @@ class ImguiUserInterface:
                         labels.labels[selected_coords] = selected_label
                     config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
 
-
                 imgui.text("Label Contents")
                 imgui.same_line()
                 help_marker("Add the text to be displayed on the label. "
@@ -601,7 +639,7 @@ class ImguiUserInterface:
 
                 imgui.text("Preview")
                 imgui.text(evaluate_input_format(user_input, example_track))
-                
+
                 if imgui.button("Delete Label"):
                     labels.labels.pop(get_label_loc_by_ui_coords(self.track_labels_selected_square))
                     config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
@@ -617,15 +655,15 @@ class ImguiUserInterface:
     # TODO handle map and ini drag-drops
 
     def context_menu(self):
-        
+
         if self.context_track is None:
             return
-        
+
         if self.flag_open_context_menu:
             self.flag_open_context_menu = False
             imgui.open_popup(f"context_popup")
-        
-        if imgui.begin_popup(f"context_popup"): #Track Context Menu {self.context_track.data.object_id}##
+
+        if imgui.begin_popup(f"context_popup"):  #Track Context Menu {self.context_track.data.object_id}##
             imgui.text(f"hello world")
             # imgui.text(f"Track: {self.context_track.data.Name} ({self.context_track.data.object_id})")
             # if imgui.menu_item("Copy ID")[0]:
