@@ -68,23 +68,29 @@ class TrackRenderer:
         self.clear()
         # print("Building buffers")
 
-        for track_dict in tracks[GameObjectClassType.FIXEDWING].values():
-            self.draw_fixedwing(track_dict)
+        if config.app_config.get_bool("layers", "show_fixed_wing"):
+            for track_dict in tracks[GameObjectClassType.FIXEDWING].values():
+                self.draw_fixedwing(track_dict)
 
-        for track_dict in tracks[GameObjectClassType.ROTARYWING].values():
-            self.draw_rotarywing(track_dict)
+        if config.app_config.get_bool("layers", "show_rotary_wing"):
+            for track_dict in tracks[GameObjectClassType.ROTARYWING].values():
+                self.draw_rotarywing(track_dict)
 
-        for track_dict in tracks[GameObjectClassType.GROUND].values():
-            self.draw_ground_unit(track_dict)
+        if config.app_config.get_bool("layers", "show_ground"):
+            for track_dict in tracks[GameObjectClassType.GROUND].values():
+                self.draw_ground_unit(track_dict)
 
-        for track_dict in tracks[GameObjectClassType.SEA].values():
-            self.draw_sea_unit(track_dict)
+        if config.app_config.get_bool("layers", "show_ships"):
+            for track_dict in tracks[GameObjectClassType.SEA].values():
+                self.draw_sea_unit(track_dict)
 
-        for track_dict in tracks[GameObjectClassType.MISSILE].values():
-            self.draw_missile(track_dict)
-            
-        for tract_dict in tracks[GameObjectClassType.BULLSEYE].values():
-            self.draw_bullseye(tract_dict)
+        if config.app_config.get_bool("layers", "show_missiles"):
+            for track_dict in tracks[GameObjectClassType.MISSILE].values():
+                self.draw_missile(track_dict)
+
+        if config.app_config.get_bool("layers", "show_bullseye"):
+            for track_dict in tracks[GameObjectClassType.BULLSEYE].values():
+                self.draw_bullseye(track_dict)
 
         self.build_shape_arrays()
         self.build_line_arrays()

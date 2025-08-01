@@ -147,6 +147,7 @@ class ImguiUserInterface:
         self.notepad_window()
         self.debug_window()
         self.track_labels_window()
+        self.layers_window()
 
     def ui_main_menu(self):
 
@@ -349,10 +350,42 @@ class ImguiUserInterface:
     def layers_window(self):
         if not self.layers_window_open:
             return
-        if imgui.begin("Layers"):
-            imgui.text("Layers window is not implemented yet.")
-            imgui.end()
-            pass  #TODO add layers window
+
+        show_bullseye = config.app_config.get_bool("layers", "show_bullseye")
+        show_fixed_wing = config.app_config.get_bool("layers", "show_fixed_wing")
+        show_rotary_wing = config.app_config.get_bool("layers", "show_rotary_wing")
+        show_ground = config.app_config.get_bool("layers", "show_ground")
+        show_ships = config.app_config.get_bool("layers", "show_ships")
+        show_missiles = config.app_config.get_bool("layers", "show_missiles")
+
+        _, open = imgui.begin("Layers", True, imgui.WindowFlags_.always_auto_resize.value)
+
+        imgui.text("Enabled Map Layers")
+        bullseye_changed, show_bullseye = imgui.checkbox("Bullseye", show_bullseye)
+        fixed_wing_changed, show_fixed_wing = imgui.checkbox("Fixed Wing", show_fixed_wing)
+        rotary_wing_changed, show_rotary_wing = imgui.checkbox("Rotary Wing", show_rotary_wing)
+        ground_changed, show_ground = imgui.checkbox("Ground", show_ground)
+        ships_changed, show_ships = imgui.checkbox("Ships", show_ships)
+        missiles_changed, show_missiles = imgui.checkbox("Missiles", show_missiles)
+
+        imgui.end()
+
+        if bullseye_changed:
+            config.app_config.set("layers", "show_bullseye", show_bullseye)
+        if fixed_wing_changed:
+            config.app_config.set("layers", "show_fixed_wing", show_fixed_wing)
+        if rotary_wing_changed:
+            config.app_config.set("layers", "show_rotary_wing", show_rotary_wing)
+        if ground_changed:
+            config.app_config.set("layers", "show_ground", show_ground)
+        if ships_changed:
+            config.app_config.set("layers", "show_ships", show_ships)
+        if missiles_changed:
+            config.app_config.set("layers", "show_missiles", show_missiles) 
+
+        if not open:
+            self.layers_window_open = False
+            config.app_config.save()
 
     def server_window(self):
         if not self.server_window_open:
