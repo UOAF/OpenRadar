@@ -78,6 +78,8 @@ class ImguiUserInterface:
         self._fps_history = [0] * 100
         self._frame_time = 0.0
         self._frame_time_history = [0] * 100
+        self.context_track: Track | None = None
+        self.flag_open_context_menu = False
 
         self.fps_window_open = False
         self.layers_window_open = False
@@ -129,6 +131,13 @@ class ImguiUserInterface:
     def frame_time(self, t):
         self._frame_time = t
 
+    def open_track_context_menu(self, track: Track | None):
+        """
+        Set the track for the context menu.
+        """
+        self.context_track = track
+        self.flag_open_context_menu = True
+
     def update(self):
         self.impl.process_inputs()
         self._fps_history.append(self._fps)
@@ -148,6 +157,7 @@ class ImguiUserInterface:
         self.debug_window()
         self.track_labels_window()
         self.layers_window()
+        self.context_menu()
 
     def ui_main_menu(self):
 
@@ -605,3 +615,28 @@ class ImguiUserInterface:
             config.app_config.save()
 
     # TODO handle map and ini drag-drops
+
+    def context_menu(self):
+        
+        if self.context_track is None:
+            return
+        
+        if self.flag_open_context_menu:
+            self.flag_open_context_menu = False
+            imgui.open_popup(f"context_popup")
+        
+        if imgui.begin_popup(f"context_popup"): #Track Context Menu {self.context_track.data.object_id}##
+            imgui.text(f"hello world")
+            # imgui.text(f"Track: {self.context_track.data.Name} ({self.context_track.data.object_id})")
+            # if imgui.menu_item("Copy ID")[0]:
+            #     imgui.set_clipboard_text(self.context_track.data.object_id)
+            # if imgui.menu_item("Copy Name")[0]:
+            #     imgui.set_clipboard_text(self.context_track.data.Name)
+            # if imgui.menu_item("Copy Position")[0]:
+            #     pos = self.context_track.data.T.U, self.context_track.data.T.V
+            #     imgui.set_clipboard_text(f"{pos[0]}, {pos[1]}")
+            imgui.end_popup()
+        else:
+            # If the popup was not opened, reset the context track
+            self.context_track = None
+            self.flag_open_context_menu = False
