@@ -9,10 +9,11 @@ in vec2 i_offset; // This varies per instance
 // in vec2 i_scale; // This varies per instance //px scale
 // in float i_width; // This varies per instance
 in vec4 i_color; // This varies per instance
+in float i_scale; // This varies per instance, used for scaling the line width
 
 uniform mat4  u_mvp;
 uniform vec2  u_resolution;
-uniform vec2  u_scale;
+// uniform vec2  u_scale;
 uniform float u_width;
 
 out vec4 o_color;
@@ -28,7 +29,7 @@ void main()
         vec4 offset = vec4(i_offset, 0, 0);
         va[i] = u_mvp * (vertex[line_i+i] + offset);
         va[i].xyz /= va[i].w;
-        va[i].xy = (va[i].xy + 1.0) * 0.5 * u_resolution + u_scale.xy * vertex[line_i+i].xy;
+        va[i].xy = (va[i].xy + 1.0) * 0.5 * u_resolution + (i_scale, i_scale) * vertex[line_i+i].xy;
     }
     // va is vertex[line_i], vertex[line_i+1], vertex[line_i+2], vertex[line_i+3] in screen space
     // offset and scaled
