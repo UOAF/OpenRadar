@@ -124,6 +124,22 @@ class SensorTracks:
 
     def update_bullseye(self):
         self.bullseye = self.gamestate.get_bullseye_pos()
+        
+    def get_nearest_track(self, world_pos: tuple[float, float]) -> Track | None:
+        """
+        Get the nearest track to the given position.
+        """
+        nearest_track = None
+        nearest_distance = float('inf')
+
+        for classenum, track_dict in self.tracks.items():
+            for track in track_dict.values():
+                distance = math.dist(track.position_m, world_pos)
+                if distance < nearest_distance:
+                    nearest_distance = distance
+                    nearest_track = track
+
+        return nearest_track
 
     def update(self):
         """

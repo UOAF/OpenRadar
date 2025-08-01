@@ -1,5 +1,4 @@
 import os
-from cv2 import line
 import numpy as np
 from numpy.typing import NDArray
 import moderngl as mgl

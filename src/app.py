@@ -11,6 +11,7 @@ from PIL import Image
 import OpenGL.GL as gl
 import moderngl as mgl
 import numpy as np
+import math
 
 import config
 from ui.imgui_ui import ImguiUserInterface
@@ -58,6 +59,7 @@ class App:
         self.mouseDragDown = False
         self.mouseBRAADown = False
         self._startPan = (0, 0)
+        self._panDelta = (0, 0)
         self._startBraa = (0, 0)
         self._mgl_ctx: mgl.Context
         self.clock: Clock
@@ -168,6 +170,7 @@ class App:
         if button == MOUSEDRAGBUTTON:
             self.mouseDragDown = True
             self._startPan = pos
+            self._panDelta = pos
         elif button == MOUSEBRAABUTTON:
             self.mouseBRAADown = True
             self._startBraa = pos
@@ -175,8 +178,13 @@ class App:
     def handle_mouse_button_up(self, button, pos: tuple[float, float], mods):
         if button == MOUSEDRAGBUTTON:
             self.mouseDragDown = False
-            # if math.dist(event.pos, self._startPan) < 5:
-            #     self._radar.select_object(event.pos)  # right click in place not on UI
+            # Open a context menu for the nearest track
+            if math.dist(pos, self._startPan) < 5:
+                mouse_world = self.scene.screen_to_world(glm.vec2(*pos))
+                nearest_track = self._tracks.get_nearest_track((mouse_world.x, mouse_world.y))
+                screen_pos_track = self.scene.world_to_screen(nearest_track.position_m) if nearest_track else None
+                if screen_pos_track and math.dist(screen_pos_track, pos) < 40:
+                    self._ImguiUI.open_track_context_menu(nearest_track)
         elif button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False
             p_screen = glm.vec2(*pos)
@@ -189,10 +197,10 @@ class App:
         if imgui.get_io().want_capture_mouse:
             return
         if self.mouseDragDown:  # dragging
-            difX = xpos - self._startPan[0]
-            difY = ypos - self._startPan[1]
+            difX = xpos - self._panDelta[0]
+            difY = ypos - self._panDelta[1]
             self.scene.pan(difX, difY)
-            self._startPan = (xpos, ypos)
+            self._panDelta = (xpos, ypos)
         # if self.mouseBRAADown:
         #     self._radar.braa(True, self._startBraa, event.pos)
 
