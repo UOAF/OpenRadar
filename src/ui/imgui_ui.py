@@ -14,7 +14,7 @@ from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 import config
 
-from util.bms_math import METERS_TO_FT
+from util.bms_math import METERS_TO_FT, NM_TO_METERS
 from util.os_utils import open_file_dialog
 from util.track_labels import *
 from util.other_utils import get_all_attributes
@@ -102,6 +102,7 @@ class ImguiUserInterface:
         self.debug_window_open = False
         self.track_labels_window_open = False
         self.track_info_window_open = False
+        self.scale_indicator_window_open = True
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -187,6 +188,7 @@ class ImguiUserInterface:
         self.track_labels_window()
         self.layers_window()
         self.context_menu()
+        self.scale_indicator_window()
 
         # Add dockable demo windows
         self.track_info_window()
@@ -297,6 +299,8 @@ class ImguiUserInterface:
                     self.notepad_window_open = not self.notepad_window_open
                 if imgui.menu_item('Track Labels', '', self.track_labels_window_open, True)[0]:
                     self.track_labels_window_open = not self.track_labels_window_open
+                if imgui.menu_item('Scale Indicator', '', self.scale_indicator_window_open, True)[0]:
+                    self.scale_indicator_window_open = not self.scale_indicator_window_open
 
                 imgui.separator()
 
@@ -766,3 +770,138 @@ class ImguiUserInterface:
             # If the popup was not opened, reset the context track
             self.context_track = None
             self.flag_open_context_menu = False
+
+    def scale_indicator_window(self):
+        """Scale indicator showing distance gradations at 1,2,5,10,20,50,100,200 nm"""
+        if not self.scale_indicator_window_open:
+            return
+
+        # Distance gradations in nautical miles
+        scale_gradations_nm = [1, 2, 5, 10, 20, 50, 100, 200]
+
+        # Find the largest scale gradation that fits in a reasonable window size
+        max_window_width = 300  # Maximum width for the scale indicator
+
+        # Calculate pixels per nautical mile based on current zoom
+        # Using the scene's world_to_screen_distance method
+        nm_in_meters = NM_TO_METERS
+        pixels_per_nm = float(self.scene.world_to_screen_distance(nm_in_meters))  # type: ignore
+
+        # Find the largest gradation that fits within our max window width
+        selected_scale_nm = 1
+        for scale_nm in scale_gradations_nm:
+            scale_width_pixels = scale_nm * pixels_per_nm
+            if scale_width_pixels <= max_window_width:
+                selected_scale_nm = scale_nm
+            else:
+                break
+
+        # Calculate the actual pixel width for the selected scale
+        scale_width_pixels = selected_scale_nm * pixels_per_nm
+
+        # Set window size based on the scale width plus some padding
+        window_width = max(150, float(scale_width_pixels + 40))  # Add 40px padding
+        window_height = 80
+
+        # Window flags for scale indicator - invisible unless being moved
+        window_flags = (imgui.WindowFlags_.no_resize.value | imgui.WindowFlags_.no_title_bar.value
+                        | imgui.WindowFlags_.no_scrollbar.value | imgui.WindowFlags_.no_scroll_with_mouse.value
+                        | imgui.WindowFlags_.always_auto_resize.value)
+
+        # Check if the window is being dragged - if so, show frame and title
+        io = imgui.get_io()
+        mouse_dragging = imgui.is_mouse_dragging(imgui.MouseButton_.left.value)
+
+        # Position in bottom-right corner by default
+        if not hasattr(self, '_scale_indicator_pos_set'):
+            viewport = imgui.get_main_viewport()
+            # Calculate position ensuring it stays within viewport bounds
+            pos_x = max(20, float(viewport.work_pos.x + viewport.work_size.x - window_width - 20))
+            pos_y = max(50, float(viewport.work_pos.y + viewport.work_size.y - window_height - 100))  # Above bottom bar
+            imgui.set_next_window_pos(imgui.ImVec2(pos_x, pos_y))
+            self._scale_indicator_pos_set = True
+
+        # If not being dragged, make window background transparent and remove decorations
+        if not mouse_dragging:
+            imgui.push_style_color(imgui.Col_.window_bg.value, imgui.ImVec4(0.0, 0.0, 0.0, 0.0))
+            imgui.push_style_color(imgui.Col_.border.value, imgui.ImVec4(0.0, 0.0, 0.0, 0.0))
+            window_flags |= imgui.WindowFlags_.no_background.value
+
+        imgui.set_next_window_size(imgui.ImVec2(float(window_width), float(window_height)))
+
+        result = imgui.begin("Scale Indicator", self.scale_indicator_window_open, window_flags)
+        window_open = result[0] if isinstance(result, tuple) else result
+
+        if len(result) > 1 and result[1] is not None:
+            self.scale_indicator_window_open = result[1]
+
+        if window_open:
+            # Get current cursor position for drawing
+            cursor_pos = imgui.get_cursor_screen_pos()
+            draw_list = imgui.get_window_draw_list()
+
+            # Draw the scale line
+            line_start_x = float(cursor_pos.x + 10)
+            line_y = float(cursor_pos.y + 25)
+            line_end_x = float(line_start_x + scale_width_pixels)
+
+            # Colors for the lines
+            white_color = imgui.get_color_u32(imgui.ImVec4(1.0, 1.0, 1.0, 1.0))
+            white_transparent = imgui.get_color_u32(imgui.ImVec4(1.0, 1.0, 1.0, 0.7))
+
+            # Draw main scale line (white)
+            draw_list.add_line(imgui.ImVec2(line_start_x, line_y), imgui.ImVec2(line_end_x, line_y), white_color, 2.0)
+
+            # Draw tick marks at start and end
+            tick_height = 8
+            # Start tick
+            draw_list.add_line(imgui.ImVec2(line_start_x, float(line_y - tick_height // 2)),
+                               imgui.ImVec2(line_start_x, float(line_y + tick_height // 2)), white_color, 2.0)
+            # End tick
+            draw_list.add_line(imgui.ImVec2(line_end_x, float(line_y - tick_height // 2)),
+                               imgui.ImVec2(line_end_x, float(line_y + tick_height // 2)), white_color, 2.0)
+
+            # Add intermediate tick marks for smaller subdivisions
+            if selected_scale_nm >= 10:
+                # For scales 10nm and above, add marks every 5nm
+                subdivision = 5
+                while subdivision < selected_scale_nm:
+                    subdivision_pixels = (subdivision / selected_scale_nm) * scale_width_pixels
+                    tick_x = float(line_start_x + subdivision_pixels)
+                    draw_list.add_line(imgui.ImVec2(tick_x, float(line_y - tick_height // 4)),
+                                       imgui.ImVec2(tick_x, float(line_y + tick_height // 4)), white_transparent, 1.0)
+                    subdivision += 5
+            elif selected_scale_nm >= 5:
+                # For 5nm scale, add mark at 2.5nm
+                subdivision_pixels = (2.5 / selected_scale_nm) * scale_width_pixels
+                tick_x = float(line_start_x + subdivision_pixels)
+                draw_list.add_line(imgui.ImVec2(tick_x, float(line_y - tick_height // 4)),
+                                   imgui.ImVec2(tick_x, float(line_y + tick_height // 4)), white_transparent, 1.0)
+            elif selected_scale_nm == 2:
+                # For 2nm scale, add mark at 1nm
+                subdivision_pixels = (1.0 / selected_scale_nm) * scale_width_pixels
+                tick_x = float(line_start_x + subdivision_pixels)
+                draw_list.add_line(imgui.ImVec2(tick_x, float(line_y - tick_height // 4)),
+                                   imgui.ImVec2(tick_x, float(line_y + tick_height // 4)), white_transparent, 1.0)
+
+            # Draw text labels
+            imgui.set_cursor_pos(imgui.ImVec2(10, 5))
+            imgui.text("0")
+
+            # Position the end label
+            text_width = imgui.calc_text_size(f"{selected_scale_nm} nm").x
+            imgui.set_cursor_pos(imgui.ImVec2(float(10 + scale_width_pixels - text_width), 5))
+            imgui.text(f"{selected_scale_nm} nm")
+
+            # Add debug info if in debug mode
+            if hasattr(self, 'debug_window_open') and self.debug_window_open:
+                imgui.set_cursor_pos(imgui.ImVec2(10, 40))
+                imgui.text(f"Zoom: {self.scene.zoom_level:.2f}")
+                imgui.set_cursor_pos(imgui.ImVec2(10, 55))
+                imgui.text(f"px/nm: {pixels_per_nm:.1f}")
+
+        imgui.end()
+
+        # Pop style colors if they were pushed
+        if not mouse_dragging:
+            imgui.pop_style_color(2)
