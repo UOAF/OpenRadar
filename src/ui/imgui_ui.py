@@ -71,6 +71,17 @@ class ImguiUserInterface:
         io.display_size = self.size
         io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18)
 
+        # Enable docking support
+        io.config_flags = imgui.ConfigFlags_.docking_enable.value
+        # Optional: Enable viewports for multi-monitor support
+        # io.config_flags |= imgui.ConfigFlags_.viewports_enable.value
+
+        # Configure docking behavior
+        io.config_docking_no_split = False
+        io.config_docking_with_shift = False
+        io.config_docking_always_tab_bar = False
+        io.config_docking_transparent_payload = True
+
         self.impl = GlfwRenderer(window, attach_callbacks=False)
         self._time: datetime.datetime = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
@@ -86,10 +97,11 @@ class ImguiUserInterface:
         self.fps_window_open = False
         self.layers_window_open = False
         self.settings_window_open = False
-        self.server_window_open = False
+        self.server_window_open = True
         self.notepad_window_open = False
         self.debug_window_open = False
         self.track_labels_window_open = False
+        self.track_info_window_open = False
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -160,6 +172,10 @@ class ImguiUserInterface:
         self._cpu_frame_time_history.pop(0)
 
         imgui.new_frame()
+
+        # Setup dockspace
+        self._setup_dockspace()
+
         self.ui_main_menu()
         self.ui_bottom_bar()
         self.map_selection_dialog()
@@ -171,6 +187,72 @@ class ImguiUserInterface:
         self.track_labels_window()
         self.layers_window()
         self.context_menu()
+
+        # Add dockable demo windows
+        self.track_info_window()
+
+    def _setup_dockspace(self):
+        """Setup the main dockspace for docking windows."""
+        # Create a fullscreen window for the dockspace, but leave space for bottom bar
+        viewport = imgui.get_main_viewport()
+        bottom_bar_height = 50  # Height of the bottom bar
+
+        # Position dockspace to cover the viewport except for the bottom bar
+        imgui.set_next_window_pos(viewport.work_pos)
+        dockspace_size = imgui.ImVec2(viewport.work_size.x, viewport.work_size.y - bottom_bar_height)
+        imgui.set_next_window_size(dockspace_size)
+
+        # Window flags for the dockspace window - combine using values
+        window_flags = (imgui.WindowFlags_.no_title_bar.value | imgui.WindowFlags_.no_collapse.value
+                        | imgui.WindowFlags_.no_resize.value | imgui.WindowFlags_.no_move.value
+                        | imgui.WindowFlags_.no_bring_to_front_on_focus.value | imgui.WindowFlags_.no_nav_focus.value
+                        | imgui.WindowFlags_.no_background.value | imgui.WindowFlags_.no_decoration.value
+                        | imgui.WindowFlags_.no_docking.value)
+
+        # Make the dockspace window completely transparent
+        imgui.push_style_var(imgui.StyleVar_.window_rounding.value, 0.0)
+        imgui.push_style_var(imgui.StyleVar_.window_border_size.value, 0.0)
+        imgui.push_style_var(imgui.StyleVar_.window_padding.value, imgui.ImVec2(0.0, 0.0))
+        imgui.push_style_color(imgui.Col_.window_bg.value, imgui.ImVec4(0.0, 0.0, 0.0, 0.0))  # Fully transparent
+
+        imgui.begin("DockSpace", None, window_flags)
+        imgui.pop_style_var(3)
+        imgui.pop_style_color(1)
+
+        # Create the dockspace with pass-through flag to allow clicking through
+        dockspace_flags = (imgui.DockNodeFlags_.none.value | imgui.DockNodeFlags_.passthru_central_node.value)
+        # Optional: Disable the central node to prevent docking in the center
+        # dockspace_flags |= imgui.DockNodeFlags_.no_docking_in_central_node.value
+
+        dockspace_id = imgui.get_id("MainDockSpace")
+        imgui.dock_space(dockspace_id, imgui.ImVec2(0.0, 0.0), dockspace_flags)
+
+        imgui.end()
+
+    def track_info_window(self):
+
+        # Track Information Window
+        if self.track_info_window_open:
+            result = imgui.begin("Track Information", self.track_info_window_open)
+            expanded = result[0] if isinstance(result, tuple) else result
+            if len(result) > 1 and result[1] is not None:
+                self.track_info_window_open = result[1]
+
+            if expanded:
+
+                if self.context_track:
+                    imgui.text(f"Selected Track: {self.context_track.id}")
+                    imgui.text(f"Label: {self.context_track.label}")
+                    imgui.text(
+                        f"Position: {self.context_track.position_m[0]:.0f}, {self.context_track.position_m[1]:.0f}")
+                    imgui.text(f"Velocity: {self.context_track.velocity_kts:.0f} kts")
+                    imgui.text(f"Heading: {self.context_track.heading_deg:.0f}°")
+                    imgui.text(f"Altitude: {self.context_track.altitude_m * METERS_TO_FT:.0f} ft")
+                else:
+                    imgui.text("No track selected")
+                    imgui.text_disabled("Right-click on a track to select it")
+
+            imgui.end()
 
     def ui_main_menu(self):
 
@@ -215,10 +297,16 @@ class ImguiUserInterface:
                     self.notepad_window_open = not self.notepad_window_open
                 if imgui.menu_item('Track Labels', '', self.track_labels_window_open, True)[0]:
                     self.track_labels_window_open = not self.track_labels_window_open
-                if imgui.menu_item('FPS', '', self.fps_window_open, True)[0]:
-                    self.fps_window_open = not self.fps_window_open
+
+                imgui.separator()
+
+                if imgui.menu_item('Track Information', '', self.track_info_window_open, True)[0]:
+                    self.track_info_window_open = not self.track_info_window_open
                 if imgui.menu_item('Debug', '', self.debug_window_open, True)[0]:
                     self.debug_window_open = not self.debug_window_open
+                if imgui.menu_item('FPS', '', self.fps_window_open, True)[0]:
+                    self.fps_window_open = not self.fps_window_open
+
                 imgui.end_menu()
 
             imgui.end_main_menu_bar()
