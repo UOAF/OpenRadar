@@ -24,10 +24,12 @@ class TrackShapeRenderBuffer:
     colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
     scales: NDArray[np.float32]  # Shape: (N,) -> Scale factor per line
 
+
 @dataclass
 class TrackLineRenderBuffer:
     lines: NDArray[np.float32]  # Shape: (N, P, 2) -> N lines, [(x, y)]
     colors: NDArray[np.float32]  # Shape: (N, 4) -> RGBA color per line
+
 
 class TrackRenderer:
 
@@ -117,17 +119,18 @@ class TrackRenderer:
         self.draw_velocity_vector(track, color)
 
         pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
-        
+
         labels = get_labels_for_class_type(GameObjectClassType.FIXEDWING)
-        
+
         if labels is not None:
             for location, track_label in labels.labels.items():
                 text = evaluate_input_format(track_label.label_format, track)
                 if text is not None and text != "":
-                    self.text_renderer.draw_text(text, pos_x, pos_y,
+                    self.text_renderer.draw_text(text,
+                                                 pos_x,
+                                                 pos_y,
                                                  scale=config.app_config.get_int("radar", "contact_font_scale"),
-                                                 location=location
-                                                 )
+                                                 location=location)
         # self.text_renderer.draw_text(track.id, pos_x, pos_y,
         #                              scale=config.app_config.get_int("radar", "contact_font_scale"),
         #                                 )
@@ -168,40 +171,34 @@ class TrackRenderer:
 
     def draw_missile(self, track: Track):
         pass
-    
+
     def draw_bullseye(self, track: Track):
         """
         Draws the bullseye on the map.
         """
         NUM_RINGS = 6
         RING_DISTANCE_NM = 20
-        ring_distance_px = float(self.scene.world_to_screen_distance(RING_DISTANCE_NM * NM_TO_METERS)) # type: ignore
-        
+        ring_distance_px = float(self.scene.world_to_screen_distance(RING_DISTANCE_NM * NM_TO_METERS))  # type: ignore
+
         # Draw the bullseye cross, by drawing two lines
         half_line_length_m = NM_TO_METERS * RING_DISTANCE_NM * (NUM_RINGS + 1)
 
-        self.draw_line(
-            [(track.position_m[0] - half_line_length_m, track.position_m[1]),
-             (track.position_m[0] + half_line_length_m, track.position_m[1])],
-            glm.vec4(1, 1, 1, 1)
-        )
+        self.draw_line([(track.position_m[0] - half_line_length_m, track.position_m[1]),
+                        (track.position_m[0] + half_line_length_m, track.position_m[1])], glm.vec4(1, 1, 1, 1))
 
-        self.draw_line(
-            [(track.position_m[0], track.position_m[1] - half_line_length_m),
-             (track.position_m[0], track.position_m[1] + half_line_length_m)],
-            glm.vec4(1, 1, 1, 1)
-        )
+        self.draw_line([(track.position_m[0], track.position_m[1] - half_line_length_m),
+                        (track.position_m[0], track.position_m[1] + half_line_length_m)], glm.vec4(1, 1, 1, 1))
 
         # Draw the bullseye circles
         for i in range(NUM_RINGS):
             radius = (i + 1) * ring_distance_px
             color = glm.vec4(0.5, 0.5, 0.5, 1) if i % 2 == 0 else glm.vec4(0.7, 0.7, 0.7, 1)
             self.draw_shape(Shapes.CIRCLE, (track.position_m[0], track.position_m[1]), color, scale=radius)
-            self.text_renderer.draw_text(f"{RING_DISTANCE_NM * (i + 1)} NM", 
-                                         int(track.position_m[0]), int(track.position_m[1]),
+            self.text_renderer.draw_text(f"{RING_DISTANCE_NM * (i + 1)} NM",
+                                         int(track.position_m[0]),
+                                         int(track.position_m[1]),
                                          scale=config.app_config.get_int("radar", "contact_font_scale"),
-                                         location=TrackLabelLocation.TOP_RIGHT
-                                         )
+                                         location=TrackLabelLocation.TOP_RIGHT)
 
         color = glm.vec4(1, 0, 0, 1)
 
@@ -218,10 +215,9 @@ class TrackRenderer:
             if len(item_list) == 0:
                 continue
             positions, colors, scales = zip(*item_list)
-            self.shape_buffers[shape] = TrackShapeRenderBuffer(
-                offsets=np.array(positions, dtype=np.float32),
-                colors=np.array(colors, dtype=np.float32),
-                scales=np.array(scales, dtype=np.float32))
+            self.shape_buffers[shape] = TrackShapeRenderBuffer(offsets=np.array(positions, dtype=np.float32),
+                                                               colors=np.array(colors, dtype=np.float32),
+                                                               scales=np.array(scales, dtype=np.float32))
 
     def build_line_arrays(self):
         if len(self.lines) == 0:
@@ -299,7 +295,6 @@ class TrackRenderer:
         self.program['u_mvp'].write(self.scene.get_vp())  # type: ignore
         self.program['u_resolution'] = self.scene.display_size
 
-
         track_width = config.app_config.get_float("radar", "contact_stroke")
 
         self.program['u_width'] = track_width
@@ -349,7 +344,7 @@ class TrackRenderer:
         # Prepare offsets and scales (default values)
         num_instances = lines.shape[0]
         offsets = np.zeros((num_instances, 2), dtype=np.float32)  # (N, 2)
-        scales = np.zeros((num_instances,), dtype=np.float32)  # (N,)
+        scales = np.zeros((num_instances, ), dtype=np.float32)  # (N,)
 
         for i in range(num_instances):
             # Convert 2D points (x, y) to 4D (x, y, z=0.0, w=1.0)
@@ -367,6 +362,6 @@ class TrackRenderer:
             # Draw the line with specified parameters
             self.render_instances_args(
                 unit_shape=line,
-                offsets=offsets[i:i + 1], # Slice to match shape (1, 2)
-                colors=colors[i:i + 1], # Slice to match shape (1, 4)
-                scales=scales) # Scale is in screenspace so set it to 0)
+                offsets=offsets[i:i + 1],  # Slice to match shape (1, 2)
+                colors=colors[i:i + 1],  # Slice to match shape (1, 4)
+                scales=scales)  # Scale is in screenspace so set it to 0)

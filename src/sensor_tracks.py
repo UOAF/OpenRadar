@@ -8,6 +8,7 @@ import config
 from game_state import GameState, GameObjectClassType
 from util.bms_math import M_PER_SEC_TO_KNOTS
 
+
 class Declaration(Enum):
     FRIENDLY = 0
     HOSTILE = 1
@@ -21,6 +22,7 @@ class Coalition:
     color: tuple[float, float, float, float]
     allies: list[str]
     enemies: list[str]
+
 
 # List of coalitions in the current game state
 game_coalitions: dict[str, Coalition] = {}
@@ -37,7 +39,7 @@ def get_coalition(name: str, color: tuple[float, float, float, float]) -> Coalit
         coalition = Coalition(name, color, [], [])
         game_coalitions[name] = coalition
         return coalition
-    
+
     if name == "":
         return Coalition("Unknown", (1, 0, 1, 1), [], [])
 
@@ -63,15 +65,15 @@ class Track:
     classification: str = "---"
     source: str = ""
     track_id: int = 0
-    
+
     @property
     def velocity_kts(self) -> float:
         return self.velocity_ms * M_PER_SEC_TO_KNOTS
-    
+
     @property
     def heading_rad(self) -> float:
-        return math.radians(self.heading_deg) 
-    
+        return math.radians(self.heading_deg)
+
     @property
     def coalition_name(self) -> str:
         return self.coalition.name
@@ -92,31 +94,34 @@ class Track:
         self.velocity_ms = velocity
         self.heading_deg = heading
         self.altitude = altitude
-        
+
     def get_declaration(self) -> Declaration:
-        controler_coalition = config.app_config.get("controler", "coalition", str) #TODO parse to proper coalition object and link decleration to track for override
+        controler_coalition = config.app_config.get(
+            "controler", "coalition",
+            str)  #TODO parse to proper coalition object and link decleration to track for override
         if controler_coalition not in game_coalitions:
             print(f"Controler coalition {controler_coalition} not found in game_coalitions")
             return Declaration.UNKNOWN
 
-        
-        if controler_coalition == self.coalition.name or controler_coalition in self.coalition.allies: 
+        if controler_coalition == self.coalition.name or controler_coalition in self.coalition.allies:
             return Declaration.FRIENDLY
         if controler_coalition in self.coalition.enemies:
             return Declaration.HOSTILE
-        
-        # TODO remove 
-        if self.coalition.name == "DPRK": # this is only for testing
+
+        # TODO remove
+        if self.coalition.name == "DPRK":  # this is only for testing
             return Declaration.HOSTILE
         return Declaration.UNKNOWN
-        
 
 
 class SensorTracks:
 
     def __init__(self, gamestate: GameState):
         self.gamestate = gamestate
-        self.tracks: dict[GameObjectClassType, dict[str, Track]] = {class_type: {} for class_type in GameObjectClassType}
+        self.tracks: dict[GameObjectClassType, dict[str, Track]] = {
+            class_type: {}
+            for class_type in GameObjectClassType
+        }
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 10
 
@@ -124,7 +129,7 @@ class SensorTracks:
 
     def update_bullseye(self):
         self.bullseye = self.gamestate.get_bullseye_pos()
-        
+
     def get_nearest_track(self, world_pos: tuple[float, float]) -> Track | None:
         """
         Get the nearest track to the given position.
@@ -145,7 +150,8 @@ class SensorTracks:
         """
         Update the radar tracks.
         """
-        self.cur_time = self.gamestate.get_time()  # Only updates the current time when tracks are updated, this may be undeseirable
+        self.cur_time = self.gamestate.get_time(
+        )  # Only updates the current time when tracks are updated, this may be undeseirable
 
         for classenum, object_class_dict in self.gamestate.objects.items():
 
@@ -155,20 +161,14 @@ class SensorTracks:
                     # Create a new track
                     if (classenum == GameObjectClassType.FIXEDWING and
                         (self.cur_time - object.data.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
-                       # Skip if the object has no timestamp or is too old
-                       # will need to rethink this for ground/sea contacts
-                       continue
+                        # Skip if the object has no timestamp or is too old
+                        # will need to rethink this for ground/sea contacts
+                        continue
                     side = get_coalition(object.data.Coalition, object.color)
-                    self.tracks[classenum][object_id] = Track(
-                        object_id,
-                        object.data.Type,
-                        (object.data.T.U, object.data.T.V),
-                        object.data.CAS,
-                        object.data.T.Heading,
-                        object.data.T.Altitude,
-                        object.data.timestamp, 
-                        classenum,
-                        side)
+                    self.tracks[classenum][object_id] = Track(object_id, object.data.Type,
+                                                              (object.data.T.U, object.data.T.V), object.data.CAS,
+                                                              object.data.T.Heading, object.data.T.Altitude,
+                                                              object.data.timestamp, classenum, side)
 
                 else:
                     self.tracks[classenum][object_id].update((object.data.T.U, object.data.T.V), object.data.CAS,
@@ -181,14 +181,14 @@ class SensorTracks:
         for classenum, track_dict in self.tracks.items():
             to_delete = []
             for id, track in track_dict.items():
-                # if track.last_seen is not None:  
-                    if (classenum in [GameObjectClassType.FIXEDWING, GameObjectClassType.ROTARYWING] and 
-                        (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec):
-                        to_delete.append(id)    
-                        # print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
+                # if track.last_seen is not None:
+                if (classenum in [GameObjectClassType.FIXEDWING, GameObjectClassType.ROTARYWING]
+                        and (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec):
+                    to_delete.append(id)
+                    # print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
             for id in to_delete:
-                del self.tracks[classenum][id]  
-                
+                del self.tracks[classenum][id]
+
     def clear(self):
         """
         Clear all tracks.
@@ -196,4 +196,3 @@ class SensorTracks:
         for dict in self.tracks.values():
             dict.clear()
         self.update()
-

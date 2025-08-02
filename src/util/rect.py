@@ -8,11 +8,11 @@ class Rect:
 
     def __repr__(self):
         return f"Rect({self.x}, {self.y}, {self.w}, {self.h})"
-    
+
     def scale(self, scale: float):
         self.w *= scale
         self.h *= scale
-        
+
     def scale_center(self, scale: float):
         self.w *= scale
         self.h *= scale
@@ -93,78 +93,78 @@ class Rect:
 
 
 class RectInvY(Rect):
-    
+
     def __init__(self, x, y, w, h):
         super().__init__(x, y, w, h)
 
     @property
     def bottom_left(self) -> tuple[int, int]:
         return self.x, self.y
-    
+
     @bottom_left.setter
     def bottom_left(self, value: tuple[int, int]):
         self.x, self.y = value
-        
+
     @property
     def bottom_center(self) -> tuple[int, int]:
         return self.x + self.w // 2, self.y
-    
+
     @bottom_center.setter
     def bottom_center(self, value: tuple[int, int]):
         self.x, self.y = value[0] - self.w // 2, value[1]
-        
+
     @property
     def bottom_right(self) -> tuple[int, int]:
         return self.x + self.w, self.y
-    
+
     @bottom_right.setter
     def bottom_right(self, value: tuple[int, int]):
         self.x, self.y = value[0] - self.w, value[1]
-        
+
     @property
     def left_center(self) -> tuple[int, int]:
         return self.x, self.y + self.h // 2
-    
+
     @left_center.setter
     def left_center(self, value: tuple[int, int]):
         self.x, self.y = value[0], value[1] - self.h // 2
-        
+
     @property
     def center(self) -> tuple[int, int]:
         return self.x + self.w // 2, self.y + self.h // 2
-    
+
     @center.setter
     def center(self, value: tuple[int, int]):
         self.x, self.y = value[0] - self.w // 2, value[1] - self.h // 2
-        
+
     @property
     def right_center(self) -> tuple[int, int]:
         return self.x + self.w, self.y + self.h // 2
-    
+
     @right_center.setter
     def right_center(self, value: tuple[int, int]):
         self.x, self.y = value[0] - self.w, value[1] - self.h // 2
-        
+
     @property
     def top_left(self) -> tuple[int, int]:
         return self.x, self.y + self.h
-    
+
     @top_left.setter
     def top_left(self, value: tuple[int, int]):
         self.x, self.y = value[0], value[1] - self.h
-        
+
     @property
     def top_center(self) -> tuple[int, int]:
         return self.x + self.w // 2, self.y + self.h
-    
+
     @top_center.setter
     def top_center(self, value: tuple[int, int]):
         self.x, self.y = value[0] - self.w // 2, value[1] - self.h
-        
+
     @property
     def top_right(self) -> tuple[int, int]:
         return self.x + self.w, self.y + self.h
-    
+
     @top_right.setter
     def top_right(self, value: tuple[int, int]):
         self.x, self.y = value[0] - self.w, value[1] - self.h

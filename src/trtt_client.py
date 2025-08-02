@@ -9,6 +9,7 @@ import datetime
 
 from tomlkit import date
 
+
 @dataclass
 class ThreadStatus:
     status_enum: int
@@ -16,14 +17,17 @@ class ThreadStatus:
     status_color: tuple[int, int, int] | str
     is_connected: bool
 
+
 class ThreadState(ThreadStatus, Enum):
     DISCONNECTED = auto(), "Disconnected", '#dbdbdb', False  # White
-    CONNECTING = auto(), "Connecting", '#f5f52c', False     # Yellow
-    CONNECTED = auto(), "Connected", '#2cf562', True       # Green
-    FAILED = auto(), "Failed", '#f52c4a', False            # Red
-    TERMINATED = auto(), "Terminated", '#f52c4a', False    # Red
+    CONNECTING = auto(), "Connecting", '#f5f52c', False  # Yellow
+    CONNECTED = auto(), "Connected", '#2cf562', True  # Green
+    FAILED = auto(), "Failed", '#f52c4a', False  # Red
+    TERMINATED = auto(), "Terminated", '#f52c4a', False  # Red
+
 
 class Buffer:
+
     def __init__(self, sock: socket.socket):
         self.sock = sock
         self.buffer = b''
@@ -43,7 +47,9 @@ class Buffer:
         except (ConnectionAbortedError, ConnectionResetError, OSError):
             return None
 
+
 class TRTTClientThread(threading.Thread):
+
     def __init__(self, queue: queue.Queue):
         super().__init__(daemon=True)
         self.queue = queue
@@ -58,7 +64,7 @@ class TRTTClientThread(threading.Thread):
         self.tacview_password = ""
         self.max_retries = 3
         self.retries = 0
-        
+
         self.connection_time = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
 
         self.lock = threading.Lock()
@@ -76,7 +82,7 @@ class TRTTClientThread(threading.Thread):
                             self.clientsocket.settimeout(None)
                             self.connecting = False
                             self.connected = True
-                            self.retries = 0 # Reset retries on successful connection
+                            self.retries = 0  # Reset retries on successful connection
                             self.connection_time = datetime.datetime.now()
                         except (ConnectionRefusedError, socket.timeout, OSError):
                             self.retries += 1
@@ -85,7 +91,7 @@ class TRTTClientThread(threading.Thread):
                         continue
                     else:
                         self._set_status(ThreadState.FAILED, f"Failed to connect after {self.retries} retries")
-                        self.retries = 0 # Reset retries on failed connection
+                        self.retries = 0  # Reset retries on failed connection
                         self.connecting = False
                         self.connected = False
 
@@ -95,12 +101,12 @@ class TRTTClientThread(threading.Thread):
                 if not self._perform_handshake(buf, self.tacview_password):
                     self._set_status(ThreadState.FAILED, "Handshake failed")
                     self.disconnect()
-                    
+
                 with self.lock:
                     self._set_status(ThreadState.CONNECTED, "Connected")
-                    
+
                 self._process_data(buf)
-                
+
                 with self.lock:
                     self._set_status(ThreadState.DISCONNECTED, "")
 
@@ -157,7 +163,7 @@ class TRTTClientThread(threading.Thread):
                 self._set_status(ThreadState.DISCONNECTED, "Disconnected")
                 break
             self.queue.put(line)
-            
+
             hours, remainder = divmod((datetime.datetime.now() - self.connection_time).total_seconds(), 3600)
             minutes, seconds = divmod(remainder, 60)
             self._set_status(ThreadState.CONNECTED, f"Connected for {int(hours)}h {int(minutes)}m {int(seconds)}s")

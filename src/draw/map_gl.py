@@ -10,13 +10,13 @@ import config
 import util.bms_math as bms_math
 from draw.scene import Scene
 
+
 class Texture:
 
     def __init__(self, size: tuple[int, int], img: bytes):
         self.ctx = mgl.get_context()
         self.ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
         self.ctx.enable(mgl.BLEND)
-
 
         self.texture = self.ctx.texture(size, 4, img)
         self.sampler = self.ctx.sampler(texture=self.texture)
@@ -69,7 +69,7 @@ class MapGL:
 
         with open(map_dir / "maps.json") as f:
             maps = json.load(f)
-            
+
         return maps
 
     def load_map(self, filename, map_size_km):
@@ -85,7 +85,7 @@ class MapGL:
 
         self.texture = make_image_texture(texture_path)
         self.make_mesh()
-        
+
         self.map_size_m = map_size_km * 1000
 
         config.app_config.set("map", "default_map", str(filename))
@@ -110,9 +110,9 @@ class MapGL:
         config.app_config.set("map", "default_map", "none")
         config.app_config.set("map", "default_map_size_km", bms_math.THEATRE_DEFAULT_SIZE_KM)
         self.scene.set_size(self.map_size_m)
-        
+
         self.make_mesh()
-        
+
     def make_mesh(self):
         if self.texture is None:
             return
