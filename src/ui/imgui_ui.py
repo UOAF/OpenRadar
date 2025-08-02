@@ -967,8 +967,8 @@ class ImguiUserInterface:
 
         # Format the coordinates (3-digit bearing, range in NM)
         bearing_str = f"{bearing_deg:03.0f}°"
-        range_str = f"{distance_nm:.1f} NM"
-        coord_text = f"{bearing_str} / {range_str}"
+        range_str = f"{distance_nm:.0f} NM"
+        coord_text = f"{bearing_str} {range_str}"
 
         # Create an invisible window positioned next to the cursor
         offset_x, offset_y = 15, -10  # Offset from cursor to avoid blocking view
