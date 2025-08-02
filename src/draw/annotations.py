@@ -19,7 +19,10 @@ class MapAnnotations:
         self.annotations = []
         self.lines = []
         self.circles = []
-        self.text_renderer = make_text_renderer(self.mgl_context, "atlas", scene, scale_source=("annotations", "ini_font_scale"))
+        self.text_renderer = make_text_renderer(self.mgl_context,
+                                                "atlas",
+                                                scene,
+                                                scale_source=("annotations", "ini_font_scale"))
         self.scene = scene
 
     def load_ini(self, path):
@@ -94,10 +97,14 @@ class MapAnnotations:
         # Render text labels at circle positions
         for circle in self.circles:
             pos, _, name = circle
-            self.text_renderer.draw_text(name, *pos, centered=True, 
+            self.text_renderer.draw_text(name,
+                                         *pos,
+                                         centered=True,
                                          scale=config.app_config.get_int("annotations", "ini_font_scale"))
 
-        self.renderer.draw_circles_args(offsets, scales, colors, widths_px) # TODO: Modify this line to use the new draw_circles method and store arrays on edit
+        self.renderer.draw_circles_args(
+            offsets, scales, colors,
+            widths_px)  # TODO: Modify this line to use the new draw_circles method and store arrays on edit
 
     def draw_text(self):
         pass

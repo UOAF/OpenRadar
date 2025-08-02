@@ -50,6 +50,7 @@ ACTION_REMOVE = "-"
 ACTION_TIME = "#"
 ACTION_GLOBAL = "global"
 
+
 @dataclass
 class ACMIEntry:
     """
@@ -69,6 +70,7 @@ class ACMIEntry:
     #     self.action = action
     #     self.object_id = object_id
     #     self.timestamp = timestamp
+
 
 @dataclass
 class Orientation:
@@ -95,9 +97,10 @@ class Orientation:
     U: float = 0.0
     V: float = 0.0
     Yaw: float = 0.0
-    
+
+
 @dataclass(kw_only=True)
-class ACMIObject (ACMIEntry):
+class ACMIObject(ACMIEntry):
     """
     Represents an ACMI object.
 
@@ -142,7 +145,7 @@ class ACMIObject (ACMIEntry):
     Pilot: str = ""
     Type: str = ""
     VerticalGForce: float = 0.0
-    
+
     def __init__(self, action, object_id: str, properties: dict, timestamp: datetime.datetime):
         """
         Initialize an ACMIObject object.
@@ -168,7 +171,7 @@ class ACMIObject (ACMIEntry):
         self.properties = {**self.properties, **properties}
 
         for key, value in self.properties.items():
-            
+
             if key == "T":
 
                 for key, value in value.items():
@@ -176,11 +179,14 @@ class ACMIObject (ACMIEntry):
             elif key in _types:
                 setattr(self, str(key), _types[str(key)](value))
 
+
 # Do these once for performance #TODO figure out a cleaner home for these
 _types = get_type_hints(ACMIObject)
 _t_types = get_type_hints(Orientation)
 
+
 class ACMIFileParser:
+
     def __init__(self, file_path: str | None = None):
         """
         Initialize an ACMIFileParser object.
@@ -200,12 +206,12 @@ class ACMIFileParser:
         """
         if self.file_path is None:
             raise FileExistsError("No File given on init")
-        
+
         with open(self.file_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
             for line in lines:
                 self.parse_line(line)
-                
+
     def get_time(self) -> datetime.datetime:
         """
         Returns the current time in the ACMI file.
@@ -214,7 +220,7 @@ class ACMIFileParser:
             datetime.datetime: The current time in the ACMI file.
         """
         return self.reference_time + datetime.timedelta(seconds=self.relative_time)
-                
+
     def get_action(self, line: str) -> str | None:
         """
         Returns the action in the ACMI file.
@@ -231,15 +237,15 @@ class ACMIFileParser:
 
         if line.startswith('#'):
             return ACTION_TIME
-        
+
         if line.startswith('-'):
             return ACTION_REMOVE
-        
+
         parts = line.split(',')
         object_id = parts[0]
-        if object_id == '0': 
+        if object_id == '0':
             return ACTION_GLOBAL
-        
+
         return ACTION_UPDATE
 
     def parse_line(self, line: str) -> ACMIEntry | None:
@@ -272,7 +278,7 @@ class ACMIFileParser:
             return ACMIEntry(ACTION_REMOVE, timestamp=self.get_time(), object_id=object_id)
 
         else:
-            
+
             # Parse object data
             parts = line.split(',')
             object_id = parts[0]
@@ -295,15 +301,14 @@ class ACMIFileParser:
                         break
 
                 properties[key] = value
-            
+
             if object_id == "global":
                 if "ReferenceTime" in properties:
                     # format 2024-6-9T00:00:00Z
-                    self.reference_time = datetime.datetime.strptime(properties["ReferenceTime"],
-                                                                     "%Y-%m-%dT%H:%M:%SZ")
+                    self.reference_time = datetime.datetime.strptime(properties["ReferenceTime"], "%Y-%m-%dT%H:%M:%SZ")
                     self.reference_time = self.reference_time.replace(tzinfo=datetime.timezone.utc)
                 return ACMIObject(ACTION_GLOBAL, object_id, properties, self.get_time())
-            
+
             else:
                 return ACMIObject(ACTION_UPDATE, object_id, properties, self.get_time())
 
@@ -319,7 +324,7 @@ class ACMIFileParser:
         """
         data = t.split('|')
         num_pipes = t.count('|')
-        
+
         if num_pipes == 2:
             # Simple objects in a spherical world
             return None
@@ -327,31 +332,19 @@ class ACMIFileParser:
         if num_pipes == 4:
             # Simple objects from a flat world
             lon, lat, alt, u, v = map(lambda x: float(x.strip()) if x.strip() else None, data)
-            return {
-                "Longitude": lon,
-                "Latitude": lat,
-                "Altitude": alt,
-                "U": u,
-                "V": v
-            }
+            return {"Longitude": lon, "Latitude": lat, "Altitude": alt, "U": u, "V": v}
 
         if num_pipes == 5:
             # Complex objects in a spherical world
-            
+
             # START HACK FOR EXTRA PIPE BAR IN BULLSEYE
             #Todo remove when the extra pipe bar is removed
             print(f"FIX ME | Extra pipe bar in bullseye: {t}")
             lon, lat, alt, u, v, tmp = map(lambda x: float(x.strip()) if x.strip() else None, data)
-            return {
-                "Longitude": lon,
-                "Latitude": lat,
-                "Altitude": alt,
-                "U": u,
-                "V": v
-            }
-            
+            return {"Longitude": lon, "Latitude": lat, "Altitude": alt, "U": u, "V": v}
+
             #END HACK
-            
+
             return None
 
         if num_pipes == 8:
@@ -372,8 +365,15 @@ class ACMIFileParser:
 
         return None  # Invalid format
 
+
 if __name__ == "__main__":
     from pprint import pprint
     parser = ACMIFileParser("Data/test.txt")
-    pprint(parser.parse_line("9341,T=6.852304|7.270763|4572.13|-4.2|3.5|-161.8|701491.99|679328.81|-155.7,Health=1.00,Type=Air+FixedWing,Name=F-16CM-52,Pilot=Falcon42,Coalition=Bosnia,Color=Cyan,LockedTarget=0,FuelWeight=2704,AOA=3.3,AOS=0.0,IAS=188,CAS=188,Mach=0.72,LongitudinalGForce=-0.3,VerticalGForce=1.2,LateralGForce=0.0"))
-    pprint(parser.parse_line("9337,T=6.850307|7.270096|4572.28|-0.0|3.0|-161.6|701287.54|679260.62|-155.4,Health=1.00,Type=Air+FixedWing,Name=F-16CM-52,Pilot=Briland,Coalition=Bosnia,Color=Cyan,LockedTarget=0,FuelWeight=2704,AOA=2.7,AOS=-0.0,IAS=188,CAS=188,Mach=0.72,LongitudinalGForce=-0.3,VerticalGForce=1.0,LateralGForce=0.0"))
+    pprint(
+        parser.parse_line(
+            "9341,T=6.852304|7.270763|4572.13|-4.2|3.5|-161.8|701491.99|679328.81|-155.7,Health=1.00,Type=Air+FixedWing,Name=F-16CM-52,Pilot=Falcon42,Coalition=Bosnia,Color=Cyan,LockedTarget=0,FuelWeight=2704,AOA=3.3,AOS=0.0,IAS=188,CAS=188,Mach=0.72,LongitudinalGForce=-0.3,VerticalGForce=1.2,LateralGForce=0.0"
+        ))
+    pprint(
+        parser.parse_line(
+            "9337,T=6.850307|7.270096|4572.28|-0.0|3.0|-161.6|701287.54|679260.62|-155.4,Health=1.00,Type=Air+FixedWing,Name=F-16CM-52,Pilot=Briland,Coalition=Bosnia,Color=Cyan,LockedTarget=0,FuelWeight=2704,AOA=2.7,AOS=-0.0,IAS=188,CAS=188,Mach=0.72,LongitudinalGForce=-0.3,VerticalGForce=1.0,LateralGForce=0.0"
+        ))

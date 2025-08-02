@@ -145,6 +145,7 @@ def get_half_diamond_points():
     points = np.array([[-1, 0, 0, 1], [0, 1, 0, 1], [1, 0, 0, 1]], dtype=np.float32)
     return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
+
 def get_top_box_points():
     points = np.array([[-1, 0, 0, 1], [-1, 1, 0, 1], [1, 1, 0, 1], [1, 0, 0, 1]], dtype=np.float32)
     return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
@@ -155,7 +156,8 @@ class Shape:
     idx: int
     str: str
     points: np.ndarray
-    
+
+
 class Shapes(Enum):
     CIRCLE = Shape(1, "Circle", get_circle_points(1, 100))
     SQUARE = Shape(2, "Square", get_square_points())

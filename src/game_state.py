@@ -23,12 +23,15 @@ from game_objects import *
 # }
 
 SUPPORTED_CLASSES = Bullseye | fixedWing | rotaryWing | missile | groundUnit | surfaceVessel
+
+
 @dataclass(frozen=True)
 class GameObjectClassDescription:
     id: int
     class_type: Type[SUPPORTED_CLASSES]
     tacview_class: str
     display_name: str
+
 
 class GameObjectClassType(Enum):
     """
@@ -64,7 +67,7 @@ class GameState:
         self.all_objects: dict["str", GameObject] = dict()
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
-        
+
     def get_time(self) -> datetime.datetime:
         return self.parser.get_time()
 
@@ -110,7 +113,8 @@ class GameState:
             else:
                 print(f"Unknown action {acmiline.action} in {acmiline}")
 
-    def get_nearest_object(self, world_pos: tuple[float, float], hover_dist_world: float = float('inf')) -> GameObject | None:
+    def get_nearest_object(self, world_pos: tuple[float, float],
+                           hover_dist_world: float = float('inf')) -> GameObject | None:
         """
         Gets the object ID of the object that is being hovered over.
         

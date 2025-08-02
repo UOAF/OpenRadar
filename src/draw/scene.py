@@ -26,7 +26,7 @@ class Scene:
 
     def get_vp(self):
         return self.vp
-    
+
     def get_scale(self):
         return self.map_size_m / self.display_size[1]
 
@@ -42,15 +42,16 @@ class Scene:
         w, h = display_size
         if h > w:
             self.fit_in_view()
-            
+
     def fit_in_view(self):
         min_dim = min(self.display_size)
-        self.zoom_level = min_dim / self.world_to_screen_distance(self.map_size_m) # TODO look into. Behavior doesnt seem 100% desireable
+        self.zoom_level = min_dim / self.world_to_screen_distance(
+            self.map_size_m)  # TODO look into. Behavior doesnt seem 100% desireable
         self._pan_screen = glm.vec2(0.0)
-        
+
         # Center the map
         map_width_px = self.world_to_screen_distance(self.map_size_m)
-        self._pan_screen = glm.vec2((self.display_size[0] - map_width_px) / 2, 
+        self._pan_screen = glm.vec2((self.display_size[0] - map_width_px) / 2,
                                     (self.display_size[1] - map_width_px) / 2)
 
     def make_camera_matrix(self):
@@ -106,7 +107,7 @@ class Scene:
         point_screen = point_screen_with_pan + pan
         point_screen.y = h - point_screen.y
         return point_screen
-    
+
     def world_to_screen_distance(self, distance_world: glm.vec2 | float):
         w, h = self.display_size
         ratio = h / self.map_size_m
@@ -116,7 +117,7 @@ class Scene:
         # adjust the pan so that the world position of the mouse is preserved before and after zoom
         mouse_world_old = self.screen_to_world(glm.vec2(*mouse_pos))
 
-        self.zoom_level /=  1 - (factor / 10)
+        self.zoom_level /= 1 - (factor / 10)
         self.zoom_level = max(0.05, self.zoom_level)
 
         mouse_world_new = self.screen_to_world(glm.vec2(*mouse_pos))
