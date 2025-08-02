@@ -113,6 +113,11 @@ class ImguiUserInterface:
 
         self.track_labels_selected_square = (0, 0)
 
+        # BRAA line state
+        self.braa_active = False
+        self.braa_start_world = None
+        self.braa_start_screen = None
+
     # def on_event(self, event):
     #     return self.impl.process_event(event)
 
@@ -228,6 +233,9 @@ class ImguiUserInterface:
 
         dockspace_id = imgui.get_id("MainDockSpace")
         imgui.dock_space(dockspace_id, imgui.ImVec2(0.0, 0.0), dockspace_flags)
+
+        # Render polar coordinates overlay next to cursor when not over UI
+        self._render_bullseye_polar_coordinates()
 
         imgui.end()
 
@@ -905,3 +913,127 @@ class ImguiUserInterface:
         # Pop style colors if they were pushed
         if not mouse_dragging:
             imgui.pop_style_color(2)
+
+    def _render_bullseye_polar_coordinates(self):
+        """Render polar coordinates (bearing/range) relative to bullseye next to mouse cursor"""
+        # Check if mouse is over any UI element
+        io = imgui.get_io()
+        if io.want_capture_mouse:
+            return  # Don't show when mouse is over UI
+
+        # Get current mouse position
+        mouse_pos = imgui.get_mouse_pos()
+        mouse_world_pos = self.scene.screen_to_world((mouse_pos.x, mouse_pos.y))
+
+        # Handle BRAA line logic
+        left_mouse_pressed = imgui.is_mouse_clicked(imgui.MouseButton_.left.value)
+        left_mouse_down = imgui.is_mouse_down(imgui.MouseButton_.left.value)
+        left_mouse_released = imgui.is_mouse_released(imgui.MouseButton_.left.value)
+
+        # Start BRAA line on left mouse press
+        if left_mouse_pressed and not self.braa_active:
+            self.braa_active = True
+            self.braa_start_world = mouse_world_pos.to_tuple()
+            self.braa_start_screen = (mouse_pos.x, mouse_pos.y)
+
+        # End BRAA line on left mouse release
+        if left_mouse_released and self.braa_active:
+            self.braa_active = False
+            self.braa_start_world = None
+            self.braa_start_screen = None
+
+        # Determine coordinate reference point and colors
+        if self.braa_active and self.braa_start_world:
+            # BRAA mode: reference from start point
+            reference_pos = self.braa_start_world
+            coord_color = imgui.ImVec4(1.0, 0.5, 0.0, 1.0)  # Orange for BRAA
+            bg_color = imgui.ImVec4(0.2, 0.1, 0.0, 0.8)  # Dark orange background
+
+            # Draw BRAA line from start to current mouse position
+            self._draw_braa_line()
+        else:
+            # Normal bullseye mode
+            bullseye_pos = self.gamestate.get_bullseye_pos()
+            if bullseye_pos == (0, 0):
+                return  # No bullseye available
+            reference_pos = bullseye_pos
+            coord_color = imgui.ImVec4(1.0, 1.0, 1.0, 1.0)  # White for bullseye
+            bg_color = imgui.ImVec4(0.0, 0.0, 0.0, 0.7)  # Dark background
+
+        # Calculate polar coordinates relative to reference point
+        from util.bms_math import world_distance, world_bearing
+        distance_nm = world_distance(reference_pos, mouse_world_pos.to_tuple())
+        bearing_deg = world_bearing(reference_pos, mouse_world_pos.to_tuple())
+
+        # Format the coordinates (3-digit bearing, range in NM)
+        bearing_str = f"{bearing_deg:03.0f}°"
+        range_str = f"{distance_nm:.1f} NM"
+        coord_text = f"{bearing_str} / {range_str}"
+
+        # Create an invisible window positioned next to the cursor
+        offset_x, offset_y = 15, -10  # Offset from cursor to avoid blocking view
+        window_pos = imgui.ImVec2(float(mouse_pos.x + offset_x), float(mouse_pos.y + offset_y))
+
+        # Ensure the window stays within viewport bounds
+        viewport = imgui.get_main_viewport()
+        text_size = imgui.calc_text_size(coord_text)
+        max_x = viewport.work_pos.x + viewport.work_size.x - text_size.x - 10
+        max_y = viewport.work_pos.y + viewport.work_size.y - text_size.y - 10
+
+        window_pos.x = min(max(window_pos.x, viewport.work_pos.x + 10), max_x)
+        window_pos.y = min(max(window_pos.y, viewport.work_pos.y + 10), max_y)
+
+        imgui.set_next_window_pos(window_pos)
+        imgui.set_next_window_size(imgui.ImVec2(0, 0))  # Auto-size
+
+        # Window flags for overlay - no interaction, no decoration
+        window_flags = (imgui.WindowFlags_.no_title_bar.value | imgui.WindowFlags_.no_resize.value
+                        | imgui.WindowFlags_.no_move.value | imgui.WindowFlags_.no_scrollbar.value
+                        | imgui.WindowFlags_.no_scroll_with_mouse.value | imgui.WindowFlags_.always_auto_resize.value
+                        | imgui.WindowFlags_.no_background.value | imgui.WindowFlags_.no_focus_on_appearing.value
+                        | imgui.WindowFlags_.no_bring_to_front_on_focus.value | imgui.WindowFlags_.no_inputs.value)
+
+        # Semi-transparent background for better text readability
+        imgui.push_style_color(imgui.Col_.window_bg.value, bg_color)
+        imgui.push_style_color(imgui.Col_.text.value, coord_color)
+
+        if imgui.begin("Bullseye Coordinates", None, window_flags):
+            imgui.text(coord_text)
+        imgui.end()
+
+        imgui.pop_style_color(2)
+
+    def _draw_braa_line(self):
+        """Draw BRAA line from start point to current mouse position"""
+        if not self.braa_active or not self.braa_start_world:
+            return
+
+        # Get current mouse position in world coordinates
+        mouse_pos = imgui.get_mouse_pos()
+        mouse_world_pos = self.scene.screen_to_world((mouse_pos.x, mouse_pos.y))
+
+        # Convert world positions to screen coordinates for drawing
+        start_screen = self.scene.world_to_screen(self.braa_start_world)
+        end_screen = self.scene.world_to_screen(mouse_world_pos.to_tuple())
+
+        # Get the dockspace window's draw list to draw on the main viewport
+        viewport = imgui.get_main_viewport()
+        draw_list = imgui.get_foreground_draw_list()
+
+        # Line color (orange for BRAA)
+        line_color = imgui.get_color_u32(imgui.ImVec4(1.0, 0.5, 0.0, 0.8))
+
+        # Draw the line
+        draw_list.add_line(
+            imgui.ImVec2(float(start_screen[0]), float(start_screen[1])),
+            imgui.ImVec2(float(end_screen[0]), float(end_screen[1])),
+            line_color,
+            2.0  # Line thickness
+        )
+
+        # Draw start point marker (small circle)
+        start_marker_color = imgui.get_color_u32(imgui.ImVec4(1.0, 0.2, 0.0, 1.0))
+        draw_list.add_circle_filled(
+            imgui.ImVec2(float(start_screen[0]), float(start_screen[1])),
+            4.0,  # Radius
+            start_marker_color)
