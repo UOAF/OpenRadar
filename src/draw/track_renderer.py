@@ -149,25 +149,36 @@ class TrackRenderer:
         self.draw_line([track.position_m, end_pt], color)
 
     def draw_ground_unit(self, track: Track):
-        decleration = track.get_declaration()
+        declaration = track.get_declaration()
 
         color = glm.vec4(1, 0, 1, 1)
         shape = Shapes.CIRCLE
 
-        if decleration == Declaration.FRIENDLY:
+        if declaration == Declaration.FRIENDLY:
             color = glm.vec4(0, 0, 1, 1)
             shape = Shapes.CIRCLE
-        elif decleration == Declaration.HOSTILE:
+        elif declaration == Declaration.HOSTILE:
             color = glm.vec4(1, 0, 0, 1)
             shape = Shapes.DIAMOND
-        elif decleration == Declaration.UNKNOWN:
+        elif declaration == Declaration.UNKNOWN:
             color = glm.vec4(1, 1, 0, 1)
             shape = Shapes.SQUARE
 
         self.draw_shape(shape, track.position_m, color)
 
     def draw_sea_unit(self, track: Track):
-        pass
+        declaration = track.get_declaration()
+
+        color = glm.vec4(1, 0, 1, 1)
+        shape = Shapes.SHIP
+        if declaration == Declaration.FRIENDLY:
+            color = glm.vec4(0, 0, 1, 1)
+        elif declaration == Declaration.HOSTILE:
+            color = glm.vec4(1, 0, 0, 1)
+        elif declaration == Declaration.UNKNOWN:
+            color = glm.vec4(1, 1, 0, 1)
+
+        self.draw_shape(shape, track.position_m, color)
 
     def draw_missile(self, track: Track):
         pass

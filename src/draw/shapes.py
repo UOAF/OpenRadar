@@ -151,6 +151,22 @@ def get_top_box_points():
     return add_control_points_angle(points, before_angle_deg=270, after_angle_deg=270)
 
 
+def get_ship_points():
+    points = np.array([
+        [-1, 0, 0, 1],
+        [-0.5, 0, 0, 1],
+        [-0.5, 0.5, 0, 1],
+        [0.5, 0.5, 0, 1],
+        [0.5, 0, 0, 1],
+        [1, 0, 0, 1],
+        [0.5, -0.5, 0, 1],
+        [-0.5, -0.5, 0, 1],
+        [-1, 0, 0, 1],
+    ],
+                      dtype=np.float32)
+    return add_control_points_loop(points)
+
+
 @dataclass
 class Shape:
     idx: int
@@ -165,6 +181,7 @@ class Shapes(Enum):
     DIAMOND = Shape(4, "Diamond", get_diamond_points())
     HALF_DIAMOND = Shape(5, "Half Diamond", get_half_diamond_points())
     TOP_BOX = Shape(6, "Top Box", get_top_box_points())
+    SHIP = Shape(7, "Ship", get_ship_points())
 
 
 # import matplotlib.pyplot as plt
