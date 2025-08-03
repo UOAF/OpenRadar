@@ -71,8 +71,8 @@ class GPUTimer:
     def _read_timing_results(self, start_query, end_query):
         start_time_ns = ctypes.c_ulonglong()
         end_time_ns = ctypes.c_ulonglong()
-        gl.glGetQueryObjectui64v(start_query, gl.GL_QUERY_RESULT, ctypes.byref(start_time_ns))
-        gl.glGetQueryObjectui64v(end_query, gl.GL_QUERY_RESULT, ctypes.byref(end_time_ns))
+        gl.glGetQueryObjectui64v(start_query, gl.GL_QUERY_RESULT_NO_WAIT, ctypes.byref(start_time_ns))
+        gl.glGetQueryObjectui64v(end_query, gl.GL_QUERY_RESULT_NO_WAIT, ctypes.byref(end_time_ns))
 
         gpu_frame_time_ns = end_time_ns.value - start_time_ns.value
         self.last_gpu_time_us = gpu_frame_time_ns / 1000.0
