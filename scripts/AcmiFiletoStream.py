@@ -39,6 +39,8 @@ def create_server_socket(host="localhost", port=42674):
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.bind((host, port))
     serversocket.listen(5)
+    # Set timeout to make accept() interruptible
+    serversocket.settimeout(1.0)
     print(f"Server listening on {host}:{port}")
     return serversocket
 
@@ -98,7 +100,6 @@ def run_server(filename, timemultiplier=32, host="localhost", port=42674):
     try:
         while True:
             try:
-                print("Waiting for client connection...")
                 # accept connections from outside
                 (clientsocket, address) = serversocket.accept()
                 print(f"Client connected from {address}")
@@ -112,6 +113,9 @@ def run_server(filename, timemultiplier=32, host="localhost", port=42674):
                 print("Stream complete")
 
                 clientsocket.close()
+            except socket.timeout:
+                # Timeout allows Ctrl+C to be processed, continue waiting
+                continue
             except (ConnectionResetError, ConnectionAbortedError):
                 print("Connection reset by client")
             except KeyboardInterrupt:
@@ -148,6 +152,9 @@ def main():
     except FileNotFoundError:
         print(f"Error: File not found: {args.filename}")
         sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nServer interrupted by user")
+        sys.exit(0)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
