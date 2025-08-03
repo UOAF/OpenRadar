@@ -53,6 +53,11 @@ def TextCentered(text: str):
     imgui.text(text)
 
 
+def _in_bounds(mouse_pos, window_pos, window_size):
+    return (window_pos.x <= mouse_pos.x <= window_pos.x + window_size.x
+            and window_pos.y <= mouse_pos.y <= window_pos.y + window_size.y)
+
+
 class ImguiUserInterface:
 
     def __init__(self, size, window, scene: Scene, map_gl: MapGL, gamestate: GameState, tracks: SensorTracks,
@@ -107,6 +112,8 @@ class ImguiUserInterface:
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
         self.map_selection_dialog_open = False
+
+        self.scale_indicator_hovered = False
 
         self.server_password = ""
         self.server_connected = False
@@ -641,6 +648,11 @@ class ImguiUserInterface:
             imgui.text(
                 f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
 
+        update_interval = config.app_config.get_float("radar", "update_interval")
+        changed, update_interval = imgui.slider_float("Radar Update Interval", update_interval, 0.1, 10.0)
+        if changed:
+            config.app_config.set("radar", "update_interval", update_interval)
+
         imgui.end()
         if not open:
             self.debug_window_open = False
@@ -785,7 +797,7 @@ class ImguiUserInterface:
             return
 
         # Distance gradations in nautical miles
-        scale_gradations_nm = [1, 2, 5, 10, 20, 50, 100, 200]
+        scale_gradations_nm = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
 
         # Find the largest scale gradation that fits in a reasonable window size
         max_window_width = 300  # Maximum width for the scale indicator
@@ -799,7 +811,7 @@ class ImguiUserInterface:
         selected_scale_nm = 1
         for scale_nm in scale_gradations_nm:
             scale_width_pixels = scale_nm * pixels_per_nm
-            if scale_width_pixels <= max_window_width:
+            if scale_width_pixels <= max_window_width - 20:  # Leave some padding
                 selected_scale_nm = scale_nm
             else:
                 break
@@ -808,29 +820,29 @@ class ImguiUserInterface:
         scale_width_pixels = selected_scale_nm * pixels_per_nm
 
         # Set window size based on the scale width plus some padding
-        window_width = max(150, float(scale_width_pixels + 40))  # Add 40px padding
-        window_height = 80
+        # window_width = max(150, float(scale_width_pixels + 40))  # Add 40px padding
+        window_width = max_window_width
+        window_height = 50
 
         # Window flags for scale indicator - invisible unless being moved
         window_flags = (imgui.WindowFlags_.no_resize.value | imgui.WindowFlags_.no_title_bar.value
                         | imgui.WindowFlags_.no_scrollbar.value | imgui.WindowFlags_.no_scroll_with_mouse.value
                         | imgui.WindowFlags_.always_auto_resize.value)
 
-        # Check if the window is being dragged - if so, show frame and title
-        io = imgui.get_io()
-        mouse_dragging = imgui.is_mouse_dragging(imgui.MouseButton_.left.value)
-
         # Position in bottom-right corner by default
         if not hasattr(self, '_scale_indicator_pos_set'):
             viewport = imgui.get_main_viewport()
             # Calculate position ensuring it stays within viewport bounds
-            pos_x = max(20, float(viewport.work_pos.x + viewport.work_size.x - window_width - 20))
-            pos_y = max(50, float(viewport.work_pos.y + viewport.work_size.y - window_height - 100))  # Above bottom bar
+            pos_x = max(20, float(viewport.work_pos.x + viewport.work_size.x - max_window_width))
+            pos_y = max(50, float(viewport.work_pos.y + viewport.work_size.y - window_height - 60))  # Above bottom bar
             imgui.set_next_window_pos(imgui.ImVec2(pos_x, pos_y))
             self._scale_indicator_pos_set = True
 
         # If not being dragged, make window background transparent and remove decorations
-        if not mouse_dragging:
+        pushed_bg = False
+        if not self.scale_indicator_hovered:
+            pushed_bg = True
+
             imgui.push_style_color(imgui.Col_.window_bg.value, imgui.ImVec4(0.0, 0.0, 0.0, 0.0))
             imgui.push_style_color(imgui.Col_.border.value, imgui.ImVec4(0.0, 0.0, 0.0, 0.0))
             window_flags |= imgui.WindowFlags_.no_background.value
@@ -901,17 +913,15 @@ class ImguiUserInterface:
             imgui.set_cursor_pos(imgui.ImVec2(float(10 + scale_width_pixels - text_width), 5))
             imgui.text(f"{selected_scale_nm} nm")
 
-            # Add debug info if in debug mode
-            if hasattr(self, 'debug_window_open') and self.debug_window_open:
-                imgui.set_cursor_pos(imgui.ImVec2(10, 40))
-                imgui.text(f"Zoom: {self.scene.zoom_level:.2f}")
-                imgui.set_cursor_pos(imgui.ImVec2(10, 55))
-                imgui.text(f"px/nm: {pixels_per_nm:.1f}")
+        # Check if the window is being dragged - if so, show frame and title
+        self.scale_indicator_hovered = (_in_bounds(imgui.get_mouse_pos(), imgui.get_window_pos(),
+                                                   imgui.get_window_size())
+                                        and imgui.is_mouse_dragging(imgui.MouseButton_.left.value))
 
         imgui.end()
 
         # Pop style colors if they were pushed
-        if not mouse_dragging:
+        if pushed_bg:
             imgui.pop_style_color(2)
 
     def _render_bullseye_polar_coordinates(self):
