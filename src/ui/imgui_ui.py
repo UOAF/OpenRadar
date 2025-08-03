@@ -58,6 +58,46 @@ def _in_bounds(mouse_pos, window_pos, window_size):
             and window_pos.y <= mouse_pos.y <= window_pos.y + window_size.y)
 
 
+# UI Helper Functions for reducing code duplication
+def create_slider_float(label, value, min_val, max_val, config_section, config_key):
+    """Helper function to create a float slider and update configuration."""
+    changed, new_value = imgui.slider_float(label, value, min_val, max_val)
+    if changed:
+        config.app_config.set(config_section, config_key, new_value)
+    return new_value
+
+
+def create_slider_int(label, value, min_val, max_val, config_section, config_key):
+    """Helper function to create an int slider and update configuration."""
+    changed, new_value = imgui.slider_int(label, value, min_val, max_val)
+    if changed:
+        config.app_config.set(config_section, config_key, new_value)
+    return new_value
+
+
+def create_checkbox(label, value, config_section, config_key):
+    """Helper function to create a checkbox and update configuration."""
+    changed, new_value = imgui.checkbox(label, value)
+    if changed:
+        config.app_config.set(config_section, config_key, new_value)
+    return new_value
+
+
+def create_color_edit(label, color, config_section, config_key):
+    """Helper function to create a color picker and update configuration."""
+    changed, new_color = imgui.color_edit3(label, [*color])
+    if changed:
+        color_tuple = (new_color[0], new_color[1], new_color[2])
+        config.app_config.set_color_from_normalized(config_section, config_key, color_tuple)
+    return new_color
+
+
+def update_config_if_changed(changed, config_section, config_key, value):
+    """Helper function to update configuration only if value changed."""
+    if changed:
+        config.app_config.set(config_section, config_key, value)
+
+
 class ImguiUserInterface:
 
     def __init__(self, size, window, scene: Scene, map_gl: MapGL, gamestate: GameState, tracks: SensorTracks,
@@ -451,7 +491,7 @@ class ImguiUserInterface:
         map_alpha = config.app_config.get_int("map", "map_alpha")
         map_background_color = config.app_config.get_color_normalized("map", "background_color")
 
-        bg_color_picker = imgui.color_edit3("Background Color", [*map_background_color])
+        create_color_edit("Background Color", map_background_color, "map", "background_color")
         imgui.same_line()
         imgui.text_disabled("(?)")
         if imgui.is_item_hovered():
@@ -460,49 +500,26 @@ class ImguiUserInterface:
                                    "CTRL+click on individual component to input value.\n")
             imgui.end_tooltip()
 
-        alpha_slider = imgui.slider_int("Map Alpha", map_alpha, 0, 255)
+        create_slider_int("Map Alpha", map_alpha, 0, 255, "map", "map_alpha")
         imgui.text("Map Size")
 
-        if alpha_slider[0]:
-            config.app_config.set("map", "map_alpha", alpha_slider[1])
-        if bg_color_picker[0]:
-            color = tuple(bg_color_picker[1])
-            config.app_config.set_color_from_normalized("map", "background_color", color)  # type: ignore
-
     def settings_tab_annotations(self):
-
         ini_width = config.app_config.get_int("annotations", "ini_width")
         ini_color = config.app_config.get_color_normalized("annotations", "ini_color")
         ini_font_scale = config.app_config.get_float("annotations", "ini_font_scale")
 
-        ini_color_picker = imgui.color_edit3("Ini Color", [*ini_color])
-        ini_width_slider = imgui.slider_int("Ini Line Width", ini_width, 1, 40)
-        ini_font_scale_slider = imgui.slider_float("Ini Font Scale", ini_font_scale, 20, 100)
-
-        if ini_width_slider[0]:
-            config.app_config.set("annotations", "ini_width", ini_width_slider[1])
-        if ini_color_picker[0]:
-            color = tuple(ini_color_picker[1])
-            config.app_config.set_color_from_normalized("annotations", "ini_color", ini_color_picker[1])  # type: ignore
-        if ini_font_scale_slider[0]:
-            config.app_config.set("annotations", "ini_font_scale", ini_font_scale_slider[1])
+        create_color_edit("Ini Color", ini_color, "annotations", "ini_color")
+        create_slider_int("Ini Line Width", ini_width, 1, 40, "annotations", "ini_width")
+        create_slider_float("Ini Font Scale", ini_font_scale, 20, 100, "annotations", "ini_font_scale")
 
     def settings_tab_radar(self):
-
         stoke_width = config.app_config.get_float("radar", "contact_stroke")
         shape_size = config.app_config.get_float("radar", "contact_size")
         font_scale = config.app_config.get_int("radar", "contact_font_scale")
 
-        stoke_width_slider = imgui.slider_float("Contact Stroke Width", stoke_width, 1, 10.0)
-        shape_size_slider = imgui.slider_float("Contact Shape Size", shape_size, 1, 40.0)
-        font_scale_slider = imgui.slider_int("Contact Font Scale", font_scale, 10, 100)
-
-        if stoke_width_slider[0]:
-            config.app_config.set("radar", "contact_stroke", stoke_width_slider[1])
-        if shape_size_slider[0]:
-            config.app_config.set("radar", "contact_size", shape_size_slider[1])
-        if font_scale_slider[0]:
-            config.app_config.set("radar", "contact_font_scale", font_scale_slider[1])
+        create_slider_float("Contact Stroke Width", stoke_width, 1, 10.0, "radar", "contact_stroke")
+        create_slider_float("Contact Shape Size", shape_size, 1, 40.0, "radar", "contact_size")
+        create_slider_int("Contact Font Scale", font_scale, 10, 100, "radar", "contact_font_scale")
 
     def layers_window(self):
         if not self.layers_window_open:
@@ -518,27 +535,14 @@ class ImguiUserInterface:
         _, open = imgui.begin("Layers", True, imgui.WindowFlags_.always_auto_resize.value)
 
         imgui.text("Enabled Map Layers")
-        bullseye_changed, show_bullseye = imgui.checkbox("Bullseye", show_bullseye)
-        fixed_wing_changed, show_fixed_wing = imgui.checkbox("Fixed Wing", show_fixed_wing)
-        rotary_wing_changed, show_rotary_wing = imgui.checkbox("Rotary Wing", show_rotary_wing)
-        ground_changed, show_ground = imgui.checkbox("Ground", show_ground)
-        ships_changed, show_ships = imgui.checkbox("Ships", show_ships)
-        missiles_changed, show_missiles = imgui.checkbox("Missiles", show_missiles)
+        create_checkbox("Bullseye", show_bullseye, "layers", "show_bullseye")
+        create_checkbox("Fixed Wing", show_fixed_wing, "layers", "show_fixed_wing")
+        create_checkbox("Rotary Wing", show_rotary_wing, "layers", "show_rotary_wing")
+        create_checkbox("Ground", show_ground, "layers", "show_ground")
+        create_checkbox("Ships", show_ships, "layers", "show_ships")
+        create_checkbox("Missiles", show_missiles, "layers", "show_missiles")
 
         imgui.end()
-
-        if bullseye_changed:
-            config.app_config.set("layers", "show_bullseye", show_bullseye)
-        if fixed_wing_changed:
-            config.app_config.set("layers", "show_fixed_wing", show_fixed_wing)
-        if rotary_wing_changed:
-            config.app_config.set("layers", "show_rotary_wing", show_rotary_wing)
-        if ground_changed:
-            config.app_config.set("layers", "show_ground", show_ground)
-        if ships_changed:
-            config.app_config.set("layers", "show_ships", show_ships)
-        if missiles_changed:
-            config.app_config.set("layers", "show_missiles", show_missiles)
 
         if not open:
             self.layers_window_open = False
@@ -571,8 +575,8 @@ class ImguiUserInterface:
 
         retries_changed, retries = imgui.input_int("Retries", config.app_config.get_int("server", "retries"))
 
-        autoconnect_changed, autoconnect = imgui.checkbox("Autoconnect",
-                                                          config.app_config.get_bool("server", "autoconnect"))
+        autoconnect = create_checkbox("Autoconnect", config.app_config.get_bool("server", "autoconnect"), "server",
+                                      "autoconnect")
 
         if connected:
             imgui.end_disabled()
@@ -600,8 +604,6 @@ class ImguiUserInterface:
             self.server_password = password
         if retries_changed:
             config.app_config.set("server", "retries", retries)
-        if autoconnect_changed:
-            config.app_config.set("server", "autoconnect", autoconnect)
 
         if not open:
             self.server_window_open = False
@@ -649,9 +651,7 @@ class ImguiUserInterface:
                 f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
 
         update_interval = config.app_config.get_float("radar", "update_interval")
-        changed, update_interval = imgui.slider_float("Radar Update Interval", update_interval, 0.1, 10.0)
-        if changed:
-            config.app_config.set("radar", "update_interval", update_interval)
+        create_slider_float("Radar Update Interval", update_interval, 0.1, 10.0, "radar", "update_interval")
 
         imgui.end()
         if not open:
