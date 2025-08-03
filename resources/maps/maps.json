@@ -1,27 +1,94 @@
 {
-    "Balkans": {"theatre_size_km": 1024, "maps": [
-        {"style": "4k Airbases", "path": "balkans_4k_airbases.png"}
-    ]},
-    "Baltic": {"theatre_size_km": 1024, "maps": [
-        {"style": "Standard", "path": "BalticMap.jpg"},
-        {"style": "White", "path": "BalticWhite.png"}
-    ]},
-    "CoastalFront": {"theatre_size_km": 1024, "maps": [
-        {"style": "Standard", "path": "BalticMap.jpg"},
-        {"style": "White", "path": "BalticWhite.png"}
-    ]},
-    "Georgia": {"theatre_size_km": 1024, "maps": [
-        {"style": "Standard", "path": "GeorgiaMap.png"},
-        {"style": "White", "path": "GeorgiaWhite.png"}
-    ]},
-    "Israel": {"theatre_size_km": 1024, "maps": [
-        {"style": "Standard", "path": "Israel.jpg"}
-    ]},
-    "KTO": {"theatre_size_km": 1024, "maps": [
-        {"style": "Standard", "path": "Korea.jpg"},
-        {"style": "Blue 8k", "path": "Korea_Blue_AWACS_Map_8k.png"}
-    ]},
-    "MidEast": {"theatre_size_km": 1024, "maps": [
-        {"style": "Standard", "path": "MidEast128Map.png"}
-    ]}
+    "Balkans": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "4k Airbases",
+                "path": "balkans_4k_airbases.png"
+            }
+        ]
+    },
+    "Baltic": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "BalticMap.jpg"
+            },
+            {
+                "style": "White",
+                "path": "BalticWhite.png"
+            }
+        ]
+    },
+    "CoastalFront": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "BalticMap.jpg"
+            },
+            {
+                "style": "White",
+                "path": "BalticWhite.png"
+            }
+        ]
+    },
+    "Georgia": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "GeorgiaMap.png"
+            },
+            {
+                "style": "White",
+                "path": "GeorgiaWhite.png"
+            }
+        ]
+    },
+    "Israel": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "Israel.jpg"
+            }
+        ]
+    },
+    "KTO": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "Korea.jpg"
+            },
+            {
+                "style": "Blue 8k",
+                "path": "Korea_Blue_AWACS_Map_8k.png"
+            }
+        ]
+    },
+    "MidEast": {
+        "theatre_size_km": 1024,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "MidEast128Map.png"
+            }
+        ]
+    },
+    "Gibraltar": {
+        "theatre_size_km": 2048,
+        "maps": [
+            {
+                "style": "Standard",
+                "path": "Gibraltar.png"
+            },
+            {
+                "style": "White",
+                "path": "GibraltarWhite.png"
+            }
+        ]
+    },
 }
