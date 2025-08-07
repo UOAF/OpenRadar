@@ -122,6 +122,8 @@ class TrackRenderer:
 
         labels = get_labels_for_class_type(GameObjectClassType.FIXEDWING)
 
+        offset = config.app_config.get_int("radar", "contact_size")
+
         if labels is not None:
             for location, track_label in labels.labels.items():
                 text = evaluate_input_format(track_label.label_format, track)
@@ -130,7 +132,8 @@ class TrackRenderer:
                                                  pos_x,
                                                  pos_y,
                                                  scale=config.app_config.get_int("radar", "contact_font_scale"),
-                                                 location=location)
+                                                 location=location,
+                                                 screen_offset=(offset, offset))
         # self.text_renderer.draw_text(track.id, pos_x, pos_y,
         #                              scale=config.app_config.get_int("radar", "contact_font_scale"),
         #                                 )
