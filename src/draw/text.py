@@ -33,6 +33,30 @@ def orient_text_rect(location: TrackLabelLocation, object_size: tuple[float, flo
     return offsets.get(location, (0, 0))
 
 
+def apply_directional_screen_offset(location: TrackLabelLocation, screen_offset: tuple[float,
+                                                                                       float]) -> tuple[float, float]:
+    """Apply screen space offset relative to the anchor direction."""
+    offset_x, offset_y = screen_offset
+
+    # Get the directional multipliers based on anchor location
+    # For X: LEFT = -1 (move left), CENTER = 0 (no bias), RIGHT = 1 (move right)
+    # For Y: TOP = 1 (move up), CENTER = 0 (no bias), BOTTOM = -1 (move down)
+    direction_multipliers = {
+        TrackLabelLocation.TOP_LEFT: (-1, 1),
+        TrackLabelLocation.TOP_CENTER: (0, 1),
+        TrackLabelLocation.TOP_RIGHT: (1, 1),
+        TrackLabelLocation.LEFT: (-1, 0),
+        TrackLabelLocation.CENTER: (0, 0),
+        TrackLabelLocation.RIGHT: (1, 0),
+        TrackLabelLocation.BOTTOM_LEFT: (-1, -1),
+        TrackLabelLocation.BOTTOM_CENTER: (0, -1),
+        TrackLabelLocation.BOTTOM_RIGHT: (1, -1),
+    }
+
+    x_mult, y_mult = direction_multipliers.get(location, (0, 0))
+    return (offset_x * x_mult, offset_y * y_mult)
+
+
 def load_atlas(context: mgl.Context, atlas_name: str, atlas_path: str):
     atlas_image_path = os.path.join(atlas_path, f"{atlas_name}.png")
     atlas_json_path = os.path.join(atlas_path, f"{atlas_name}.json")
@@ -179,7 +203,8 @@ class TextRendererMsdf:
                   scale=60,
                   centered=False,
                   location: TrackLabelLocation = TrackLabelLocation.CENTER,
-                  location_offset: tuple[int, int] = (0, 0)):
+                  location_offset: tuple[int, int] = (0, 0),
+                  screen_offset: tuple[float, float] = (0.0, 0.0)):
 
         glyphs = self._metadata['glyphs']
         atlas_width = self._metadata['atlas']['width']
@@ -204,11 +229,14 @@ class TextRendererMsdf:
 
         cursor_positions = np.cumsum(np.concatenate([[0], final_advances[:-1]]))
 
-        instances = np.zeros(len(final_glyph_indices) * 14, dtype='f4')
+        instances = np.zeros(len(final_glyph_indices) * 16, dtype='f4')
 
         string_height = self._get_string_height()
         total_advance = float(np.sum(final_advances))
         string_offset_x, string_offset_y = orient_text_rect(location, (total_advance, string_height))
+
+        # Apply directional screen space offset
+        screen_offset_x, screen_offset_y = apply_directional_screen_offset(location, screen_offset)
 
         # Vectorized instance data generation using precomputed lookup tables
         num_chars = len(final_char_codes)
@@ -223,8 +251,10 @@ class TextRendererMsdf:
         world_y = np.full(num_chars, y_world, dtype=np.float32)
         offset_x = np.full(num_chars, string_offset_x, dtype=np.float32)
         offset_y = np.full(num_chars, string_offset_y, dtype=np.float32)
+        screen_off_x = np.full(num_chars, screen_offset_x, dtype=np.float32)
+        screen_off_y = np.full(num_chars, screen_offset_y, dtype=np.float32)
 
-        # Stack all data in the correct order: plane(4) + cursor(2) + world(2) + atlas(4) + offset(2) = 14
+        # Stack all data in the correct order: plane(4) + cursor(2) + world(2) + atlas(4) + offset(2) + screen_offset(2) = 16
         instances = np.column_stack([
             plane_bounds,  # 4 values: left, bottom, right, top
             cursor_positions,
@@ -233,7 +263,9 @@ class TextRendererMsdf:
             world_y,  # 2 values: world_x, world_y
             atlas_bounds,  # 4 values: left, bottom, right, top
             offset_x,
-            offset_y  # 2 values: offset_x, offset_y
+            offset_y,  # 2 values: offset_x, offset_y
+            screen_off_x,
+            screen_off_y  # 2 values: screen_offset_x, screen_offset_y
         ]).flatten().astype(np.float32)
 
         # print(f"Rendering text: '{text}' at ({x_world}, {y_world}) with {len(final_glyph_indices)} characters")
@@ -264,12 +296,16 @@ class TextRendererMsdf:
         atlas_height = self._metadata['atlas']['height']
         self._program['atlas_size'] = (atlas_width, atlas_height)
 
+        # Pass viewport resolution for screen coordinate calculations
+        self._program['u_resolution'] = self._scene.display_size
+
         self._ctx.blend_func = mgl.SRC_ALPHA, mgl.ONE_MINUS_SRC_ALPHA
         self._ctx.enable(mgl.BLEND)
 
         vao = self._ctx.vertex_array(self._program,
                                      [(self._quad_vbo, '2f', 'in_quad_pos'),
-                                      (instance_vbo, '4f 2f 2f 4f 2f/i', 'in_glyph_bounds', 'in_cursor_pos',
-                                       'in_world_pos', 'in_atlas_bounds', 'in_string_offset')], self._quad_ibo)
+                                      (instance_vbo, '4f 2f 2f 4f 2f 2f/i', 'in_glyph_bounds', 'in_cursor_pos',
+                                       'in_world_pos', 'in_atlas_bounds', 'in_string_offset', 'in_screen_offset')],
+                                     self._quad_ibo)
 
         vao.render(instances=self.instance_count)
