@@ -5,6 +5,7 @@ import math
 
 from game_object_types import GameObjectType, infer_object_type_from_tacview
 from game_object import GameObject
+from render_data_arrays import RenderDataArrays
 
 
 class GameState:
@@ -32,6 +33,9 @@ class GameState:
 
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
+
+        # Initialize render data arrays for GPU rendering
+        self.render_data = RenderDataArrays()
 
     def get_time(self) -> datetime.datetime:
         """Get current simulation time."""
@@ -126,6 +130,9 @@ class GameState:
         if object_id in self.all_objects:
             del self.all_objects[object_id]
 
+        # Remove from render data arrays
+        self.render_data.remove_object(object_id)
+
     def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
         """
         Update an existing object or create a new one.
@@ -140,6 +147,9 @@ class GameState:
             game_obj = self.all_objects[object_id]
             game_obj.update(updateObj)
             self._update_target_lock(game_obj)
+
+            # Update render data arrays
+            self.render_data.update_object(game_obj)
             return
 
         # Create new object
@@ -160,6 +170,9 @@ class GameState:
 
         # Set up target lock if applicable
         self._update_target_lock(game_obj)
+
+        # Add to render data arrays
+        self.render_data.add_object(game_obj)
 
     def _update_target_lock(self, game_obj: GameObject) -> None:
         """Update target lock references for an object."""
@@ -188,7 +201,6 @@ class GameState:
         """Clear the game state."""
         self.__init__(self.data_queue)
 
-
-# Backwards compatibility - export the types other modules expect
-# This allows gradual migration without breaking existing code
-GameObjectClassType = GameObjectType  # Temporary alias for migration
+    def get_render_data(self):
+        """Get the render data arrays for GPU rendering."""
+        return self.render_data.get_render_data()
