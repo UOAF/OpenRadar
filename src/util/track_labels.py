@@ -79,7 +79,12 @@ def deserialize_track_labels(classtype: str, data: str) -> TrackLabels | None:
                            })
     except (KeyError, ValueError, TypeError) as e:
         print(f"Invalid Track labels format in config file, using default labels: {e}")
-        return None
+        try:
+            config.app_config.set_default("labels", classtype)
+            return deserialize_track_labels(classtype, config.app_config.get_str("labels", classtype))
+
+        except Exception as e:
+            raise ValueError(f"Failed to set default labels for {classtype}: {e}")
 
 
 def get_labels_for_class_type(class_type: GameObjectClassType) -> TrackLabels | None:
