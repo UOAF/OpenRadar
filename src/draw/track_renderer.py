@@ -8,7 +8,7 @@ import math
 
 from draw.scene import Scene
 from draw.shapes import Shapes, add_control_points_angle
-from game_state import GameObjectClassType
+from game_object_types import GameObjectType
 from sensor_tracks import Track, Declaration
 from util.bms_math import NM_TO_METERS
 from util.track_labels import *
@@ -65,32 +65,32 @@ class TrackRenderer:
 
         self.text_renderer.init_buffers()
 
-    def build_buffers(self, tracks: dict[GameObjectClassType, dict[str, Track]]):
+    def build_buffers(self, tracks: dict[GameObjectType, dict[str, Track]]):
         self.clear()
         # print("Building buffers")
 
         if config.app_config.get_bool("layers", "show_fixed_wing"):
-            for track_dict in tracks[GameObjectClassType.FIXEDWING].values():
+            for track_dict in tracks[GameObjectType.FIXEDWING].values():
                 self.draw_fixedwing(track_dict)
 
         if config.app_config.get_bool("layers", "show_rotary_wing"):
-            for track_dict in tracks[GameObjectClassType.ROTARYWING].values():
+            for track_dict in tracks[GameObjectType.ROTARYWING].values():
                 self.draw_rotarywing(track_dict)
 
         if config.app_config.get_bool("layers", "show_ground"):
-            for track_dict in tracks[GameObjectClassType.GROUND].values():
+            for track_dict in tracks[GameObjectType.GROUND].values():
                 self.draw_ground_unit(track_dict)
 
         if config.app_config.get_bool("layers", "show_ships"):
-            for track_dict in tracks[GameObjectClassType.SEA].values():
+            for track_dict in tracks[GameObjectType.SEA].values():
                 self.draw_sea_unit(track_dict)
 
         if config.app_config.get_bool("layers", "show_missiles"):
-            for track_dict in tracks[GameObjectClassType.MISSILE].values():
+            for track_dict in tracks[GameObjectType.MISSILE].values():
                 self.draw_missile(track_dict)
 
         if config.app_config.get_bool("layers", "show_bullseye"):
-            for track_dict in tracks[GameObjectClassType.BULLSEYE].values():
+            for track_dict in tracks[GameObjectType.BULLSEYE].values():
                 self.draw_bullseye(track_dict)
 
         self.build_shape_arrays()
@@ -120,7 +120,7 @@ class TrackRenderer:
 
         pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
 
-        labels = get_labels_for_class_type(GameObjectClassType.FIXEDWING)
+        labels = get_labels_for_class_type(GameObjectType.FIXEDWING)
 
         offset = config.app_config.get_int("radar", "contact_size")
 

@@ -2,112 +2,83 @@ import acmi_parse
 import datetime
 import queue
 import math
-from dataclasses import dataclass
 
-from typing import Type
-from enum import Enum, auto
-
-from game_objects import *
-
-# This can cause an attempt to delete objects that are not in the game state
-# TODO: If perfomance becomes an issues consider reimplementing this list.
-# HIDDEN_OBJECT_CLASSES = ("Static", "Projectile", "Vehicle", "Flare", "Chaff", "Explosion", "Parachutist", "Bomb", "Rotorcraft")
-
-# CLASS_MAP = {
-#     "Navaid+Static+Bullseye": Bullseye,
-#     "FixedWing": fixedWing,
-#     "Rotorcraft": rotaryWing,
-#     "Missile": missile,
-#     "Ground+Vehicle": groundUnit,
-#     "Watercraft": surfaceVessel
-# }
-
-SUPPORTED_CLASSES = Bullseye | fixedWing | rotaryWing | missile | groundUnit | surfaceVessel
-
-
-@dataclass(frozen=True)
-class GameObjectClassDescription:
-    id: int
-    class_type: Type[SUPPORTED_CLASSES]
-    tacview_class: str
-    display_name: str
-
-
-class GameObjectClassType(Enum):
-    """
-    Enumeration of track types.
-    """
-    FIXEDWING = GameObjectClassDescription(auto(), fixedWing, "FixedWing", "Fixed Wing")
-    ROTARYWING = GameObjectClassDescription(auto(), rotaryWing, "Rotorcraft", "Helicopter")
-    MISSILE = GameObjectClassDescription(auto(), missile, "Missile", "Missile")
-    GROUND = GameObjectClassDescription(auto(), groundUnit, "Ground+Vehicle", "Ground")
-    SEA = GameObjectClassDescription(auto(), surfaceVessel, "Watercraft", "Sea")
-    BULLSEYE = GameObjectClassDescription(auto(), Bullseye, "Navaid+Static+Bullseye", "Bullseye")
+from game_object_types import GameObjectType, infer_object_type_from_tacview
+from game_object import GameObject
 
 
 class GameState:
     """
-    Represents the state of the game.
+    Represents the state of the game using the refactored GameObject system.
 
     Attributes:
-        objects (list[AcmiParse.ACMIObject]): List of ACMI objects in the game.
-        data_queue (queue.Queue): Queue to store incoming data from the Tacview client.
-        global_vars (dict): Dictionary to store global variables.
-        parser (AcmiParse.ACMIFileParser): ACMI parser to parse incoming data.
+        objects: Dictionary organized by GameObjectType containing all game objects
+        all_objects: Flat dictionary for quick object ID lookups  
+        data_queue: Queue to store incoming data from the Tacview client
+        global_vars: Dictionary to store global variables
+        parser: ACMI parser to parse incoming data
     """
 
     def __init__(self, data_queue: queue.Queue[str]):
         self.data_queue: queue.Queue[str] = data_queue
         self.global_vars = dict()
 
-        self.objects: dict[GameObjectClassType, dict["str", GameObject]] = {
-            class_type: dict()
-            for class_type in GameObjectClassType
+        # Organize objects by type for efficient access
+        self.objects: dict[GameObjectType, dict[str, GameObject]] = {
+            obj_type: dict()
+            for obj_type in GameObjectType if obj_type != GameObjectType.UNKNOWN
         }
-        self.all_objects: dict["str", GameObject] = dict()
+        self.all_objects: dict[str, GameObject] = dict()
+
         # Create the ACMI parser
         self.parser = acmi_parse.ACMIFileParser()
 
     def get_time(self) -> datetime.datetime:
+        """Get current simulation time."""
         return self.parser.get_time()
 
-    def get_bullseye_pos(self):
-        if '7fffffffffffffff' not in self.objects[GameObjectClassType.BULLSEYE]:
-            return (0, 0)
-        return self.objects[GameObjectClassType.BULLSEYE]['7fffffffffffffff'].get_pos()
+    def get_bullseye_pos(self) -> tuple[float, float]:
+        """Get bullseye position, returns (0,0) if no bullseye found."""
+        # Bullseye typically has a special object ID in Tacview
+        bullseye_objects = self.objects[GameObjectType.BULLSEYE]
+        if '7fffffffffffffff' in bullseye_objects:
+            return bullseye_objects['7fffffffffffffff'].get_pos()
+        # Fallback: return first bullseye found
+        if bullseye_objects:
+            return next(iter(bullseye_objects.values())).get_pos()
+        return (0.0, 0.0)
 
     def update_state(self):
         """
         Update the game state with the latest data from the Tacview client.
         """
-        # print(f"getting data from queue {self.data_queue._qsize()}")
         while not self.data_queue.empty():
-
             line = self.data_queue.get()
-            if line is None: break  # End of data
+            if line is None:
+                break  # End of data
 
-            acmiline = self.parser.parse_line(line)  # Parse the line into a dict
+            acmiline = self.parser.parse_line(line)
             if acmiline is None:
                 print(f"Failed to parse line: {line}")
-                continue  # Skip if line fails to parse
+                continue
 
-            if acmiline.action in acmi_parse.ACTION_REMOVE:
+            if acmiline.action == acmi_parse.ACTION_REMOVE:
                 # Remove object from battlefield
                 if acmiline.object_id is not None:
                     self._remove_object(acmiline.object_id)
                 else:
-                    print(f"tried to delete object {acmiline.object_id} with unitialized object_id")
-                # print(f"tried to delete object {acmiline.object_id} not in self.state")
+                    print(f"Tried to delete object with uninitialized object_id")
 
-            elif acmiline.action in acmi_parse.ACTION_TIME:
-                # if self.reference_time is not None and acmiline.delta_time is not None: #TODO remove this. it was moved to the parser
-                #     self.current_time = self.reference_time + datetime.timedelta(seconds=acmiline.delta_time)
+            elif acmiline.action == acmi_parse.ACTION_TIME:
+                # Time updates are handled by the parser
                 pass
 
-            elif acmiline.action in acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
+            elif acmiline.action == acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
+                # Update global variables
                 self.global_vars = self.global_vars | acmiline.properties
 
-            elif acmiline.action in acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
+            elif acmiline.action == acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
+                # Update or create object
                 self._update_object(acmiline)
 
             else:
@@ -116,20 +87,20 @@ class GameState:
     def get_nearest_object(self, world_pos: tuple[float, float],
                            hover_dist_world: float = float('inf')) -> GameObject | None:
         """
-        Gets the object ID of the object that is being hovered over.
+        Gets the object that is nearest to the specified world position.
         
         Args:
-            world_pos (tuple[int, int]): The position in world units to consider an object hovered over.
-            hover_dist_world (float): The distance in world units to consider an object hovered over.
+            world_pos: The position in world units to search near
+            hover_dist_world: Maximum distance to consider an object "near"
             
         Returns:
-            str: The object ID of the object being hovered over.
+            The nearest GameObject, or None if none found within distance
         """
         closest = None
         closest_dist = float('inf')
-        for id in self.all_objects:
-            obj = self.all_objects[id]
-            dist = math.dist(world_pos, (obj.data.T.U, obj.data.T.V))
+
+        for obj in self.all_objects.values():
+            dist = math.dist(world_pos, obj.get_pos())
             if dist < closest_dist:
                 closest = obj
                 closest_dist = dist
@@ -143,47 +114,81 @@ class GameState:
         Remove an object from the game state.
 
         Args:
-            object_id (str): The ID of the object to remove.
+            object_id: The ID of the object to remove
         """
-        for subdict in self.objects.values():
-            if object_id in subdict:
-                del subdict[object_id]
-                del self.all_objects[object_id]
-                return
+        # Find and remove from type-specific dictionary
+        for type_dict in self.objects.values():
+            if object_id in type_dict:
+                del type_dict[object_id]
+                break
 
-        # print(f"tried to delete object {object_id} not in self.objects")  #TODO handle objects not in CLASS_MAP
+        # Remove from flat lookup dictionary
+        if object_id in self.all_objects:
+            del self.all_objects[object_id]
 
     def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
         """
-        Update an object in the game state.
+        Update an existing object or create a new one.
 
         Args:
-            updateObj (AcmiParse.ACMIObject): The Object with the new data to update.
+            updateObj: The ACMIObject with new data to apply
         """
-        if updateObj.object_id in self.all_objects:
-            self.all_objects[updateObj.object_id].update(updateObj)
-            self._update_target_lock(self.all_objects[updateObj.object_id])
-        else:
-            for classenum in GameObjectClassType:
-                if classenum.value.tacview_class in updateObj.Type:
-                    subdict = self.objects[classenum]
-                    subdict[updateObj.object_id] = classenum.value.class_type(updateObj)
-                    self.all_objects[updateObj.object_id] = subdict[updateObj.object_id]
-                    break
+        object_id = updateObj.object_id
 
-    def _update_target_lock(self, updateObj: GameObject) -> None:
-        if updateObj.data.LockedTarget not in [None, "", "0"]:
-            if updateObj.data.LockedTarget in self.all_objects:
-                updateObj.locked_target = self.all_objects[updateObj.data.LockedTarget]
+        # Update existing object
+        if object_id in self.all_objects:
+            game_obj = self.all_objects[object_id]
+            game_obj.update(updateObj)
+            self._update_target_lock(game_obj)
+            return
+
+        # Create new object
+        obj_type = infer_object_type_from_tacview(updateObj.Type)
+        if obj_type == GameObjectType.UNKNOWN:
+            # Skip unknown object types for now
+            return
+
+        # Determine color based on object type and coalition
+        color = self._get_default_color(obj_type, updateObj.Coalition)
+
+        # Create new GameObject
+        game_obj = GameObject(object_id, obj_type, updateObj, color)
+
+        # Add to dictionaries
+        self.objects[obj_type][object_id] = game_obj
+        self.all_objects[object_id] = game_obj
+
+        # Set up target lock if applicable
+        self._update_target_lock(game_obj)
+
+    def _update_target_lock(self, game_obj: GameObject) -> None:
+        """Update target lock references for an object."""
+        if game_obj.LockedTarget not in [None, "", "0"]:
+            if game_obj.LockedTarget in self.all_objects:
+                game_obj.locked_target_obj = self.all_objects[game_obj.LockedTarget]
             else:
-                print(f"Target {updateObj.data.LockedTarget} not found")
+                # Target not found - might not be loaded yet
+                game_obj.locked_target_obj = None
         else:
-            updateObj.locked_target = None
+            game_obj.locked_target_obj = None
 
-        #TODO handle objects not in CLASS_MAP
+    def _get_default_color(self, obj_type: GameObjectType, coalition: str) -> tuple[float, float, float, float]:
+        """Get default color for an object based on its type and coalition."""
+        # Simple default coloring - can be made more sophisticated
+        if obj_type == GameObjectType.BULLSEYE:
+            return (128, 128, 128, 255)  # Gray
+        elif "Blue" in coalition or "US" in coalition:
+            return (0, 0, 255, 255)  # Blue for friendly
+        elif "Red" in coalition or "OPFOR" in coalition:
+            return (255, 0, 0, 255)  # Red for hostile
+        else:
+            return (255, 255, 0, 255)  # Yellow for unknown
 
     def clear_state(self) -> None:
-        """
-        Clear the game state.
-        """
+        """Clear the game state."""
         self.__init__(self.data_queue)
+
+
+# Backwards compatibility - export the types other modules expect
+# This allows gradual migration without breaking existing code
+GameObjectClassType = GameObjectType  # Temporary alias for migration
