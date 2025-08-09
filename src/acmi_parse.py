@@ -27,6 +27,8 @@ ACMIObject:
         Mach (float): The Mach number.
         Name (str): The name of the object.
         Pilot (str): The name of the pilot.
+        CallSign (str): The call sign of the object.
+        Group (str): The group the object belongs to.
         T (dict): The position information of the object.
         Type (str): The type of the object.
         VerticalGForce (float): Vertical G-Force.
@@ -121,6 +123,8 @@ class ACMIObject(ACMIEntry):
         Mach (float): The Mach number of the object.
         Name (str): The name of the object.
         Pilot (str): The name of the pilot of the object.
+        CallSign (str): The call sign of the object.
+        Group (str): The group the object belongs to.
         T (dict): The position and velocity vectors of the object.
         Type (str): The type of the object.
         VerticalGForce (float): The vertical G-force experienced by the object.
@@ -144,6 +148,8 @@ class ACMIObject(ACMIEntry):
     Name: str = ""
     Pilot: str = ""
     Type: str = ""
+    CallSign: str = ""
+    Group: str = ""
     VerticalGForce: float = 0.0
 
     def __init__(self, action, object_id: str, properties: dict, timestamp: datetime.datetime):
