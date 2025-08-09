@@ -1,5 +1,4 @@
-from pyparsing import C
-from game_state import GameObjectClassType
+from game_object_types import GameObjectType
 from dataclasses import dataclass, field, fields
 from enum import Enum
 import json
@@ -51,7 +50,7 @@ class TrackLabel:
 
 @dataclass
 class TrackLabels:
-    type: GameObjectClassType
+    type: GameObjectType
     labels: dict[TrackLabelLocation, TrackLabel] = field(default_factory=dict)
 
 
@@ -72,7 +71,7 @@ def serialize_track_labels(track_labels: TrackLabels) -> tuple[str, str]:
 def deserialize_track_labels(classtype: str, data: str) -> TrackLabels | None:
     try:
         data_dict = json.loads(data)
-        return TrackLabels(type=GameObjectClassType[classtype],
+        return TrackLabels(type=GameObjectType[classtype],
                            labels={
                                TrackLabelLocation[location]: TrackLabel(**track_label)
                                for location, track_label in data_dict.items()
@@ -87,7 +86,7 @@ def deserialize_track_labels(classtype: str, data: str) -> TrackLabels | None:
             raise ValueError(f"Failed to set default labels for {classtype}: {e}")
 
 
-def get_labels_for_class_type(class_type: GameObjectClassType) -> TrackLabels | None:
+def get_labels_for_class_type(class_type: GameObjectType) -> TrackLabels | None:
 
     labels = deserialize_track_labels(class_type.name, config.app_config.get_str(
         "labels", class_type.name))  # TODO: this may be slow, consider caching

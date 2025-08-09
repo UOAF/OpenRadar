@@ -5,7 +5,8 @@ from dataclasses import dataclass, field, fields
 from enum import Enum
 
 import config
-from game_state import GameState, GameObjectClassType
+from game_state import GameState
+from game_object_types import GameObjectType
 from util.bms_math import M_PER_SEC_TO_KNOTS
 
 
@@ -58,7 +59,7 @@ class Track:
     heading_deg: float
     altitude_m: float
     last_seen: datetime.datetime
-    class_type: GameObjectClassType
+    class_type: GameObjectType
     coalition: Coalition
     history: list[tuple[tuple[float, float], datetime.datetime]] = field(default_factory=list)
     confidence: float = 0.0
@@ -118,10 +119,7 @@ class SensorTracks:
 
     def __init__(self, gamestate: GameState):
         self.gamestate = gamestate
-        self.tracks: dict[GameObjectClassType, dict[str, Track]] = {
-            class_type: {}
-            for class_type in GameObjectClassType
-        }
+        self.tracks: dict[GameObjectType, dict[str, Track]] = {class_type: {} for class_type in GameObjectType}
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 10
 
@@ -159,12 +157,12 @@ class SensorTracks:
 
                 if not object_id in self.tracks:
                     # Create a new track
-                    if (classenum == GameObjectClassType.FIXEDWING and
+                    if (classenum == GameObjectType.FIXEDWING and
                         (self.cur_time - object.data.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
                         # Skip if the object has no timestamp or is too old
                         # will need to rethink this for ground/sea contacts
                         continue
-                    side = get_coalition(object.data.Coalition, object.color)
+                    side = get_coalition(object.data.Coalition, object.color_rgba)
                     self.tracks[classenum][object_id] = Track(object_id, object.data.Type,
                                                               (object.data.T.U, object.data.T.V), object.data.CAS,
                                                               object.data.T.Heading, object.data.T.Altitude,
@@ -182,7 +180,7 @@ class SensorTracks:
             to_delete = []
             for id, track in track_dict.items():
                 # if track.last_seen is not None:
-                if (classenum in [GameObjectClassType.FIXEDWING, GameObjectClassType.ROTARYWING]
+                if (classenum in [GameObjectType.FIXEDWING, GameObjectType.ROTARYWING]
                         and (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec):
                     to_delete.append(id)
                     # print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")

@@ -9,7 +9,8 @@ from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
 from trtt_client import TRTTClientThread, ThreadState
-from game_state import GameState, GameObjectClassType
+from game_state import GameState
+from game_object_types import GameObjectType
 from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 import config
@@ -32,7 +33,7 @@ from util.other_utils import get_all_attributes
 # return ipv4_pattern.match(ip) is not None or ipv6_pattern.match(ip) is not None
 
 example_track = Track("69420", "Jester11", (100, 100), 200, 90, 10000, datetime.datetime.now(),
-                      GameObjectClassType.FIXEDWING, Coalition("U.S.", (0, 0, 1, 1), [], []))
+                      GameObjectType.FIXEDWING, Coalition("U.S.", (0, 0, 1, 1), [], []))
 
 
 def help_marker(description: str):
@@ -665,8 +666,8 @@ class ImguiUserInterface:
         _, open = imgui.begin("Track Labels", True)
 
         imgui.begin_tab_bar("Track Types")
-        for track_type in GameObjectClassType:
-            if imgui.begin_tab_item(track_type.value.display_name)[0]:
+        for track_type in GameObjectType:
+            if imgui.begin_tab_item(track_type.display_name)[0]:
 
                 labels = deserialize_track_labels(track_type.name, config.app_config.get_str(
                     "labels", track_type.name))  # TODO: this may be slow, consider caching
