@@ -332,8 +332,3 @@ class GameObject:
         """Detailed representation for debugging."""
         return (f"GameObject(id={self.object_id}, type={self.object_type.name}, "
                 f"pos=({self.U:.1f}, {self.V:.1f}), name={self.get_display_name()!r})")
-
-
-# Backwards compatibility - to be removed after migration
-# Alias the new type to the old name for gradual migration
-GameObjectClassType = GameObjectType  # Temporary alias
