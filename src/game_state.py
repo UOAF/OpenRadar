@@ -5,7 +5,8 @@ import math
 
 from game_object_types import GameObjectType, infer_object_type_from_tacview
 from game_object import GameObject
-from render_data_arrays import RenderDataArrays
+from render_data_arrays import IconRenderData
+from draw.shapes import Shapes
 
 
 class GameState:
@@ -35,7 +36,9 @@ class GameState:
         self.parser = acmi_parse.ACMIFileParser()
 
         # Initialize render data arrays for GPU rendering
-        self.render_data = RenderDataArrays()
+        self.icon_data = dict()
+        for shape in Shapes:
+            self.icon_data[shape] = IconRenderData(1024 * 8)
 
     def get_time(self) -> datetime.datetime:
         """Get current simulation time."""
@@ -120,6 +123,13 @@ class GameState:
         Args:
             object_id: The ID of the object to remove
         """
+        # Remove from render data arrays
+        if object_id in self.all_objects:
+            shape_id = self.all_objects[object_id].icon
+            shape = Shapes.from_idx(shape_id) if shape_id is not None else None
+            if shape is not None:
+                self.icon_data[shape].remove_object(object_id)
+
         # Find and remove from type-specific dictionary
         for type_dict in self.objects.values():
             if object_id in type_dict:
@@ -129,9 +139,6 @@ class GameState:
         # Remove from flat lookup dictionary
         if object_id in self.all_objects:
             del self.all_objects[object_id]
-
-        # Remove from render data arrays
-        self.render_data.remove_object(object_id)
 
     def _update_object(self, updateObj: acmi_parse.ACMIObject) -> None:
         """
@@ -149,7 +156,9 @@ class GameState:
             self._update_target_lock(game_obj)
 
             # Update render data arrays
-            self.render_data.update_object(game_obj)
+            shape_id = game_obj.icon
+            shape = Shapes.from_idx(shape_id)
+            self.icon_data[shape].update_object(game_obj)
             return
 
         # Create new object
@@ -172,7 +181,10 @@ class GameState:
         self._update_target_lock(game_obj)
 
         # Add to render data arrays
-        self.render_data.add_object(game_obj)
+        shape_id = self.all_objects[object_id].icon
+        shape = Shapes.from_idx(shape_id) if shape_id is not None else None
+        if shape is not None:
+            self.icon_data[shape].add_object(game_obj)
 
     def _update_target_lock(self, game_obj: GameObject) -> None:
         """Update target lock references for an object."""
@@ -203,4 +215,5 @@ class GameState:
 
     def get_render_data(self):
         """Get the render data arrays for GPU rendering."""
-        return self.render_data.get_render_data()
+        out = {shape: icon_data.get_render_data() for shape, icon_data in self.icon_data.items()}
+        return out
