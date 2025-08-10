@@ -85,7 +85,7 @@ class App:
         glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
 
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 6)  # Fixed: was setting MAJOR twice
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 6)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
 
