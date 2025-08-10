@@ -84,6 +84,17 @@ class App:
         # Set window hints for initial position (Hide the window initially before setting position)
         glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
 
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 6)  # Fixed: was setting MAJOR twice
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
+
+        # 8x MSAA. Must be done before creating the window
+        msaa_enable = config.app_config.get_bool("display", "msaa_enabled")
+        msaa_samples = config.app_config.get_int("display", "msaa_samples")
+        if (msaa_enable):
+            glfw.window_hint(glfw.SAMPLES, msaa_samples)
+
         config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int, int])  # type: ignore
         h, w = config_size
         self.window = glfw.create_window(h, w, 'OpenRadar', None, None)
@@ -96,10 +107,6 @@ class App:
         glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_NORMAL)
 
         glfw.set_window_icon(self.window, 1, window_icon)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, glfw.TRUE)
         glfw.make_context_current(self.window)
 
         glfw.swap_interval(int(VSYNC_ENABLE))
@@ -123,6 +130,10 @@ class App:
         self._running = True
 
         self.mgl_ctx = mgl.create_context()
+
+        if msaa_enable:
+            gl.glEnable(gl.GL_MULTISAMPLE)
+
         self.size = self.width, self.height = config_size
         self.scene = Scene(self.size, self.mgl_ctx)
         self._map_gl = MapGL(self.size, self.scene, self.mgl_ctx)

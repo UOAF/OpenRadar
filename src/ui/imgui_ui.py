@@ -480,6 +480,9 @@ class ImguiUserInterface:
             if imgui.begin_tab_item("Radar")[0]:
                 self.settings_tab_radar()
                 imgui.end_tab_item()
+            if imgui.begin_tab_item("Display")[0]:
+                self.settings_tab_display()
+                imgui.end_tab_item()
             imgui.end_tab_bar()
         imgui.end()
 
@@ -521,6 +524,29 @@ class ImguiUserInterface:
         create_slider_float("Contact Stroke Width", stoke_width, 1, 10.0, "radar", "contact_stroke")
         create_slider_float("Contact Shape Size", shape_size, 1, 40.0, "radar", "contact_size")
         create_slider_int("Contact Font Scale", font_scale, 10, 100, "radar", "contact_font_scale")
+
+    def settings_tab_display(self):
+        # Make sure MSAA samples are one of the valid predefined values
+        if (config.app_config.get_int("display", "msaa_samples") not in (4, 8, 16)):
+            config.app_config.set("display", "msaa_samples", 4)
+
+        imgui.text("MSAA (requires restart)")
+        create_checkbox("Enable MSAA", config.app_config.get_bool("display", "msaa_enabled"), "display", "msaa_enabled")
+        imgui.same_line()
+        imgui.text_disabled("(?)")
+        imgui.same_line()
+        if imgui.radio_button("MSAA 4x", config.app_config.get_int("display", "msaa_samples") == 4):
+            config.app_config.set("display", "msaa_samples", 4)
+        imgui.same_line()
+        if imgui.radio_button("MSAA 8x", config.app_config.get_int("display", "msaa_samples") == 8):
+            config.app_config.set("display", "msaa_samples", 8)
+        imgui.same_line()
+        if imgui.radio_button("MSAA 16x", config.app_config.get_int("display", "msaa_samples") == 16):
+            config.app_config.set("display", "msaa_samples", 16)
+        if imgui.is_item_hovered():
+            imgui.begin_tooltip()
+            imgui.text_unformatted("Enable Multi-Sample Anti-Aliasing (MSAA) for smoother edges.")
+            imgui.end_tooltip()
 
     def layers_window(self):
         if not self.layers_window_open:
