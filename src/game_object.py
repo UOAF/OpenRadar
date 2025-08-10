@@ -35,8 +35,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import datetime
 
-from acmi_parse import ACMIObject, Orientation
-from game_object_types import GameObjectType, infer_object_type_from_tacview
+from acmi_parse import ACMIObject
+from game_object_types import GameObjectType, infer_object_type_from_tacview, get_icon_style
+
+from draw.shapes import Shape  # Import shapes for icon rendering
 
 
 def _coerce_number(value: Any, default: float = 0.0) -> float:
@@ -138,6 +140,7 @@ class GameObject:
     Yaw: float
 
     # UI / runtime metadata
+    icon: int | None
     color_rgba: tuple[float, float, float, float]
     visible: bool
     override_name: Optional[str]
@@ -188,6 +191,11 @@ class GameObject:
         # Apply initial data if provided
         if initial is not None:
             self.apply_delta(initial)
+
+        # Initialize icon based on type
+        self.icon, icon_color = get_icon_style(self)
+        if icon_color is not None:
+            self.override_color = icon_color
 
     # Public update API
     def update(self, delta: ACMIObject):

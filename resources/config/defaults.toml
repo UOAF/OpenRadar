@@ -23,6 +23,9 @@ contact_size = 14 # Size of the track in pixels
 contact_stroke = 2 # Stroke width of the track in pixels
 contact_font_scale = 40 # Font size of the track labels
 
+[display]
+icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)
+
 [layers]
 show_fixed_wing = true # Show fixed wing aircraft on the map
 show_rotary_wing = true # Show rotary wing aircraft on the map

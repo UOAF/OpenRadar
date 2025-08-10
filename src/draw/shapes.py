@@ -183,6 +183,10 @@ class Shapes(Enum):
     TOP_BOX = Shape(6, "Top Box", get_top_box_points())
     SHIP = Shape(7, "Ship", get_ship_points())
 
+    @classmethod
+    def from_idx(cls, idx):
+        return next(s for s in cls if s.value.idx == idx)
+
 
 # import matplotlib.pyplot as plt
 # plt.scatter(SEMICIRCLE[:, 0], SEMICIRCLE[:, 1])

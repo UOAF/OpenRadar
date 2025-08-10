@@ -4,7 +4,8 @@ This module defines the types of game objects that can exist in the radar system
 Separated from other modules to avoid circular imports.
 """
 from enum import Enum, auto
-from typing import Dict
+
+import config
 
 
 class GameObjectType(Enum):
@@ -29,7 +30,7 @@ class GameObjectType(Enum):
 
 
 # Display name mappings
-_TYPE_DISPLAY_NAMES: Dict[GameObjectType, str] = {
+_TYPE_DISPLAY_NAMES: dict[GameObjectType, str] = {
     GameObjectType.FIXEDWING: "Fixed Wing",
     GameObjectType.ROTARYWING: "Helicopter",
     GameObjectType.MISSILE: "Missile",
@@ -40,7 +41,7 @@ _TYPE_DISPLAY_NAMES: Dict[GameObjectType, str] = {
 }
 
 # Tacview type string mappings (for parsing)
-_TYPE_TACVIEW_MAP: Dict[GameObjectType, str] = {
+_TYPE_TACVIEW_MAP: dict[GameObjectType, str] = {
     GameObjectType.FIXEDWING: "FixedWing",
     GameObjectType.ROTARYWING: "Rotorcraft",
     GameObjectType.MISSILE: "Missile",
@@ -50,7 +51,7 @@ _TYPE_TACVIEW_MAP: Dict[GameObjectType, str] = {
 }
 
 # Reverse mapping for efficient lookup during parsing
-_TACVIEW_TO_TYPE: Dict[str, GameObjectType] = {
+_TACVIEW_TO_TYPE: dict[str, GameObjectType] = {
     tacview_class: obj_type
     for obj_type, tacview_class in _TYPE_TACVIEW_MAP.items()
 }
@@ -76,3 +77,37 @@ def infer_object_type_from_tacview(type_field: str) -> GameObjectType:
 def get_all_object_types() -> list[GameObjectType]:
     """Get list of all defined object types except UNKNOWN."""
     return [t for t in GameObjectType if t != GameObjectType.UNKNOWN]
+
+
+def get_icon_style(game_object) -> tuple[int | None, tuple[int, int, int, int] | None]:
+    """
+    Get the icon shape ID and optional color override for a game object.
+    
+    Args:
+        game_object: The game object to get icon for (must have object_type, Coalition attributes)
+        config: Configuration object to get icon set preference from
+        
+    Returns:
+        Tuple of (shape_id, color_override)
+        shape_id: Integer ID corresponding to Shapes enum value
+        color_override: (R, G, B, A) values 0-255, or None for default color
+    """
+    # Import here to avoid circular imports
+    from icons import get_icon_set, DEFAULT_ICON_SET
+    from draw.shapes import Shapes
+
+    # Get icon set preference from config or use default
+    icon_set_name = config.app_config.get_str('display', 'icon_set')
+    # Get the icon set class
+    icon_set_class = get_icon_set(icon_set_name)
+
+    # Get the shape and color from the icon set
+    shape, color_override = icon_set_class.get_icon_style(game_object, game_object.Coalition, game_object.object_type)
+
+    # Convert Shapes enum to integer ID (shapes use .value.idx for the ID)
+    if shape is None:
+        shape_id = None
+    else:
+        shape_id = shape.value.idx
+
+    return shape_id, color_override
