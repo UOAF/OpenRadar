@@ -80,6 +80,9 @@ class IconInstancedRenderer:
 
         for shape, icon_data in icon_arrays.items():
             ssbo = self.ctx.buffer(icon_data.tobytes())
+            if isinstance(ssbo, mgl.InvalidObject):
+                print(f"Failed to create buffer for shape {shape}")
+                continue
             self.instance_buffers[shape] = ssbo
 
     def render(self):
@@ -108,8 +111,12 @@ class IconInstancedRenderer:
 
     def _render_shape_instances(self, shape: Shapes):
         """Render all instances of a specific shape."""
+
+        if not self.instance_buffers or shape not in self.instance_buffers:
+            return  # When destroying the class sometimes the buffers get deleted before the loop stops running
+
         # Update instance buffer with new data
-        instance_count = int(self.instance_buffers[shape].size / 28)
+        instance_count = int(self.instance_buffers[shape].size / (8 * 4))
 
         # Bind buffers to shader storage buffer objects (SSBOs)
         # Binding 0: vertex buffer (shape geometry)
@@ -142,9 +149,6 @@ class IconInstancedRenderer:
 
         for buffer in self.instance_buffers.values():
             buffer.release()
-
-        for vao in self.shape_vaos.values():
-            vao.release()
 
         if self.program:
             self.program.release()
