@@ -168,10 +168,10 @@ class GameState:
             return
 
         # Determine color based on object type and coalition
-        color = self._get_default_color(obj_type, updateObj.Coalition)
+        # color = self._get_default_color(obj_type, updateObj.Coalition)
 
         # Create new GameObject
-        game_obj = GameObject(object_id, obj_type, updateObj, color)
+        game_obj = GameObject(object_id, obj_type, updateObj)
 
         # Add to dictionaries
         self.objects[obj_type][object_id] = game_obj
