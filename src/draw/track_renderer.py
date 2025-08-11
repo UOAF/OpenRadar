@@ -217,6 +217,7 @@ class TrackRenderer:
         color = glm.vec4(1, 0, 0, 1)
 
     def draw_shape(self, shape_type: Shapes, position: tuple[float, float], color: glm.vec4, scale: float = -1):
+        return
         if scale == -1:
             scale = config.app_config.get_float("radar", "contact_size")
         self.shape_lists[shape_type].append((position, color, scale))
