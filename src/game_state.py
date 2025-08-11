@@ -36,7 +36,7 @@ class GameState:
         self.parser = acmi_parse.ACMIFileParser()
 
         # Initialize render data arrays for GPU rendering
-        self.icon_data = dict()
+        self.icon_data: dict[Shapes, IconRenderData] = dict()
         for shape in Shapes:
             self.icon_data[shape] = IconRenderData(1024 * 8)
 
