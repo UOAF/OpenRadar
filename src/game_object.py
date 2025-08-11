@@ -160,11 +160,7 @@ class GameObject:
     # ----------------------------------------------------------------------------------
     # Creation / Update
     # ----------------------------------------------------------------------------------
-    def __init__(self,
-                 object_id: str,
-                 object_type: GameObjectType,
-                 initial: ACMIObject | None = None,
-                 color: tuple[float, float, float, float] = (255, 0, 255, 255)):
+    def __init__(self, object_id: str, object_type: GameObjectType, initial: ACMIObject | None = None):
         # Initialize core identity
         self.object_id = object_id
         self.object_type = object_type
@@ -179,11 +175,10 @@ class GameObject:
             setattr(self, field, "")
 
         # Special case: Color defaults to "black" not empty
-        self.Color = "black"
+        self.Color = "White"
 
         # UI / runtime initialization
-        self.color_rgba = color
-        self.visible = True
+        self.color_rgba = (1.0, 1.0, 1.0, 1.0)
         self.override_name = None
         self.override_color = None
         self.locked_target_obj = None
@@ -243,6 +238,8 @@ class GameObject:
                     setattr(self, field_name, str(value))
             # Note: Unknown fields are ignored (not an error in delta updates)
 
+        self.color_rgba = self.rgba_from_str(self.Color)
+
     # ----------------------------------------------------------------------------------
     # API methods (mirroring old implementation)
     # ----------------------------------------------------------------------------------
@@ -266,6 +263,32 @@ class GameObject:
 
     def get_color(self) -> tuple[float, float, float, float]:
         return self.override_color if self.override_color is not None else self.color_rgba
+
+    def rgba_from_str(self, str: str) -> tuple[float, float, float, float]:
+
+        # 0=white
+        # 1= green
+        # 2=blue
+        # 3=brown
+        # 4=orange
+        # 5=yellow
+        # 6=red
+        # 7=black
+        # 8=white
+
+        color_map = {
+            "White": (1.0, 1.0, 1.0, 1.0),  # white
+            "Green": (0.0, 1.0, 0.0, 1.0),  # green
+            "Blue": (0.0, 0.0, 1.0, 1.0),  # blue
+            "Brown": (0.5, 0.25, 0.0, 1.0),  # brown
+            "Orange": (1.0, 0.5, 0.0, 1.0),  # orange
+            "Yellow": (1.0, 1.0, 0.0, 1.0),  # yellow
+            "Red": (1.0, 0.0, 0.0, 1.0),  # red
+            "Black": (0.0, 0.0, 0.0, 1.0),  # black
+            "White": (1.0, 1.0, 1.0, 1.0),  # white
+        }
+
+        return color_map.get(str, (1.0, 1.0, 1.0, 1.0))  # default to white
 
     def hide(self):
         self.visible = False

@@ -117,8 +117,9 @@ class IconRenderData(BaseRenderData):
         """Get the numpy dtype for icon structured array."""
         return np.dtype([
             ('position', np.float32, (2, )),  # x, y world coords
-            ('color', np.float32, (4, )),  # RGBA normalized 0.0-1.0
             ('scale', np.float32),  # Scale factor per icon
+            ('_buffer', np.float32),  # Padding for alignment
+            ('color', np.float32, (4, )),  # RGBA normalized 0.0-1.0
         ])
 
     def _initialize_array(self, capacity: int):
