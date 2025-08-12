@@ -22,6 +22,7 @@ update_interval = 1 # Update interval in seconds
 contact_size = 14 # Size of the track in pixels
 contact_stroke = 2 # Stroke width of the track in pixels
 contact_font_scale = 40 # Font size of the track labels
+center_point_size = 3.0 # Size of the center point quad in pixels
 
 [display]
 icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)
