@@ -71,25 +71,54 @@ def perform_handshake(clientsocket):
     return True
 
 
-def stream_acmi_data(clientsocket, acmidata, timemultiplier):
+def find_first_timestamp(acmidata):
+    """Find the first timestamp in the ACMI data."""
+    for line in acmidata:
+        if line.startswith("#"):
+            return float(line[1:])
+    return 0
+
+
+def stream_acmi_data(clientsocket, acmidata, timemultiplier, start_time=0):
     """Stream ACMI data to the connected client."""
     buffer = ""
     lastbuffer = ""
     lastbuffer_time = 0
 
+    # Find the first timestamp in the file to use as baseline
+    first_timestamp = find_first_timestamp(acmidata)
+    target_start_time = first_timestamp + start_time
+    seeking = start_time > 0
+    first_frame_after_seek = True
+
+    if seeking:
+        print(f"File starts at {first_timestamp:.2f}s, seeking to {target_start_time:.2f}s (offset +{start_time:.2f}s)")
+
     for line in acmidata:
         buffer += line
         if line.startswith("#"):
             cur_time = float(line[1:])
-            if lastbuffer_time > 0:
-                time.sleep((cur_time - lastbuffer_time) / timemultiplier)
+
+            # Check if we've reached our target start time
+            if seeking and cur_time >= target_start_time:
+                seeking = False
+                first_frame_after_seek = True
+                print(f"Started streaming from time {cur_time:.2f}s")
+
+            # Always send the data (needed for delta encoding)
             clientsocket.sendall(lastbuffer.encode('utf-8'))
+
+            # Only sleep if we're not seeking and not the first frame after seek
+            if lastbuffer_time > 0 and not first_frame_after_seek and not seeking:
+                time.sleep((cur_time - lastbuffer_time) / timemultiplier)
+
             lastbuffer = buffer
             lastbuffer_time = cur_time
             buffer = ""
+            first_frame_after_seek = False
 
 
-def run_server(filename, timemultiplier=32, host="localhost", port=42674):
+def run_server(filename, timemultiplier=32, host="localhost", port=42674, start_time=0):
     """Main server loop that accepts connections and streams ACMI data."""
     acmidata = read_acmi_file(filename)
     if acmidata is None:
@@ -109,7 +138,7 @@ def run_server(filename, timemultiplier=32, host="localhost", port=42674):
                     continue
 
                 print("Streaming ACMI data...")
-                stream_acmi_data(clientsocket, acmidata, timemultiplier)
+                stream_acmi_data(clientsocket, acmidata, timemultiplier, start_time)
                 print("Stream complete")
 
                 clientsocket.close()
@@ -140,13 +169,18 @@ def main():
                         type=float,
                         default=32,
                         help='Time multiplier for playback speed (default: 32)')
+    parser.add_argument('--start-time',
+                        '-s',
+                        type=float,
+                        default=0,
+                        help='Start time offset in seconds from the beginning of the file (default: 0)')
     parser.add_argument('--host', default='localhost', help='Host to bind to (default: localhost)')
     parser.add_argument('--port', '-p', type=int, default=42674, help='Port to bind to (default: 42674)')
 
     args = parser.parse_args()
 
     try:
-        success = run_server(args.filename, args.timemultiplier, args.host, args.port)
+        success = run_server(args.filename, args.timemultiplier, args.host, args.port, args.start_time)
         if not success:
             sys.exit(1)
     except FileNotFoundError:
