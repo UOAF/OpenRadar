@@ -8,14 +8,27 @@ in float o_line_progress;
 out vec4 fragColor;
 
 uniform float u_time;
+// uniform mat4 u_mvp; // We'll extract zoom from this
 
 void main()
 {
+    // Extract zoom/scale from MVP matrix
+    // float zoom = length(vec2(u_mvp[0][0], u_mvp[1][0]));
 
-    // float final_alpha = fragColor.a * sin(2 * PI * o_line_progress + u_time);
+    float wave_frequency = 0.005; // Scale frequency by zoom level
+    float phase = wave_frequency * o_line_progress - u_time / 2;
+    float wave_input = fract(phase); // Get fractional part to create repeating pattern [0,1]
+    
 
-    // // float wave_intensity = smoothstep(wave_width, 0.0, wave_distance);
+    float wave;
+    if (wave_input < 0.5) {
+        wave = 0.8 * smoothstep(0.0, 0.3, wave_input);
+    } else {
+        wave = 0.8 * smoothstep(1.0, 0.7, wave_input);
+    }
+    
+    float final_alpha = o_color.a * wave;
 
-    // fragColor = vec4(fragColor.rgb, clamp(final_alpha, 0.0, 1.0));
-    o_color = fragColor;
+    fragColor = vec4(o_color.rgb, clamp(final_alpha, 0.2, 0.8));
+    // fragColor = o_color;
 }
