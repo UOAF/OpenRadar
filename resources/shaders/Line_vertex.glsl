@@ -1,15 +1,15 @@
 #version 460
 
 // Instance data as a struct - matches LockLineRenderData structure
-struct LockInstance {
+struct LineInstance {
     vec2 start_position;  // x, y world coords
     vec2 end_position;    // x, y world coords  
     vec4 color;          // RGBA normalized 0.0-1.0
 };
 
-layout(std430, binding = 0) buffer LockInstanceData
+layout(std430, binding = 0) buffer LineInstanceData
 {
-    LockInstance instances[];
+    LineInstance instances[];
 };
 
 uniform mat4  u_mvp;
@@ -26,7 +26,7 @@ void main()
     int vertex_id = gl_VertexID;
     
     // Get instance data
-    LockInstance inst = instances[instance_id];
+    LineInstance inst = instances[instance_id];
     
     // Transform start and end positions to screen space
     vec4 start_screen = u_mvp * vec4(inst.start_position, 0.0, 1.0);

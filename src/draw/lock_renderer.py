@@ -44,7 +44,7 @@ class LockRenderer:
         shader_dir = Path("resources/shaders")
 
         # Load vertex shader
-        vertex_path = shader_dir / "lock_vertex.glsl"
+        vertex_path = shader_dir / "line_vertex.glsl"
         with open(vertex_path, 'r') as f:
             vertex_source = f.read()
 
