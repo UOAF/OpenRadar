@@ -125,7 +125,6 @@ class SensorTracks:
         self.tracks: dict[GameObjectType, dict[str, Track]] = {class_type: {} for class_type in GameObjectType}
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 10
-        self.icon_arrays: dict[Shapes, NDArray] = {}
 
         self.update_bullseye()
 
@@ -155,12 +154,7 @@ class SensorTracks:
         self.cur_time = self.gamestate.get_time(
         )  # Only updates the current time when tracks are updated, this may be undeseirable
 
-        for icon_type, icon_array in self.gamestate.icon_data.items():
-            array = icon_array.get_render_data()
-            if array is not None:
-                self.icon_arrays[icon_type] = array.copy()
-            elif icon_type in self.icon_arrays:
-                del self.icon_arrays[icon_type]
+        self.render_arrays = self.gamestate.render_arrays.get_render_data()
 
         for classenum, object_class_dict in self.gamestate.objects.items():
 
