@@ -142,7 +142,7 @@ class TRTTClientThread(threading.Thread):
             except OSError:
                 pass
         try:
-            self.clientsocket.close()
+            self.clientsocket.close()  # type: ignore
         except AttributeError:
             pass
         self.clientsocket = None

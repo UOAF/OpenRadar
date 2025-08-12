@@ -59,8 +59,8 @@ _NUMERIC_FIELDS = {
     "AOA", "AOS", "CAS", "FuelWeight", "Health", "IAS", "LateralGForce", "LongitudinalGForce", "Mach", "VerticalGForce"
 } | _ORIENTATION_FIELDS
 _LOCKED_TARGET_FIELDS = {
-    "LockedTarget1", "LockedTarget2", "LockedTarget3", "LockedTarget4", "LockedTarget5", "LockedTarget6",
-    "LockedTarget7", "LockedTarget8", "LockedTarget9"
+    "LockedTarget", "LockedTarget1", "LockedTarget2", "LockedTarget3", "LockedTarget4", "LockedTarget5",
+    "LockedTarget6", "LockedTarget7", "LockedTarget8", "LockedTarget9"
 }
 _STRING_FIELDS = {"Coalition", "Color", "Name", "Pilot", "Type", "CallSign", "Group"} | _LOCKED_TARGET_FIELDS
 _ALL_ACMI_FIELDS = _NUMERIC_FIELDS | _STRING_FIELDS
@@ -323,6 +323,13 @@ class GameObject:
     def resolve_locked_targets(self, resolver: Dict[str, "GameObject"]):
         """Resolve LockedTarget string ID to actual GameObject reference."""
         self.locked_target_objs = []
+
+        # Check the base LockedTarget field first
+        locked_target = getattr(self, "LockedTarget", None)
+        if locked_target not in (None, "", "0") and locked_target in resolver:
+            self.locked_target_objs.append(resolver[locked_target])
+
+        # Then check LockedTarget1 through LockedTarget9
         for i in range(1, 10):
             locked_target = getattr(self, f"LockedTarget{i}", None)
             if locked_target not in (None, "", "0") and locked_target in resolver:
