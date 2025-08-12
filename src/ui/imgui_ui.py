@@ -769,7 +769,7 @@ class ImguiUserInterface:
                 f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
 
         update_interval = config.app_config.get_float("radar", "update_interval")
-        create_slider_float("Radar Update Interval", update_interval, 0.1, 10.0, "radar", "update_interval")
+        create_slider_float("Radar Update Interval", update_interval, 0.0, 5.0, "radar", "update_interval")
 
         imgui.end()
         if not open:

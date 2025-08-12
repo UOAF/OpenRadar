@@ -5,7 +5,7 @@ import math
 
 from game_object_types import GameObjectType, infer_object_type_from_tacview
 from game_object import GameObject
-from render_data_arrays import IconRenderData
+from render_data_arrays import RenderDataArrays
 from draw.shapes import Shapes
 
 
@@ -36,9 +36,7 @@ class GameState:
         self.parser = acmi_parse.ACMIFileParser()
 
         # Initialize render data arrays for GPU rendering
-        self.icon_data: dict[Shapes, IconRenderData] = dict()
-        for shape in Shapes:
-            self.icon_data[shape] = IconRenderData(1024 * 8)
+        self.render_arrays = RenderDataArrays()
 
     def get_time(self) -> datetime.datetime:
         """Get current simulation time."""
@@ -124,11 +122,9 @@ class GameState:
             object_id: The ID of the object to remove
         """
         # Remove from render data arrays
-        if object_id in self.all_objects:
-            shape_id = self.all_objects[object_id].icon
-            shape = Shapes.from_idx(shape_id) if shape_id is not None else None
-            if shape is not None:
-                self.icon_data[shape].remove_object(object_id)
+        object_to_remove = self.all_objects.get(object_id)
+        if object_to_remove is not None:
+            self.render_arrays.remove_object(object_to_remove)
 
         # Find and remove from type-specific dictionary
         for type_dict in self.objects.values():
@@ -156,9 +152,7 @@ class GameState:
             self._update_target_lock(game_obj)
 
             # Update render data arrays
-            shape_id = game_obj.icon
-            shape = Shapes.from_idx(shape_id)
-            self.icon_data[shape].update_object(game_obj)
+            self.render_arrays.update_object(game_obj)
             return
 
         # Create new object
@@ -177,25 +171,18 @@ class GameState:
         self.objects[obj_type][object_id] = game_obj
         self.all_objects[object_id] = game_obj
 
-        # Set up target lock if applicable
-        self._update_target_lock(game_obj)
-
         # Add to render data arrays
-        shape_id = self.all_objects[object_id].icon
-        shape = Shapes.from_idx(shape_id) if shape_id is not None else None
-        if shape is not None:
-            self.icon_data[shape].add_object(game_obj)
+        self.render_arrays.add_object(game_obj)
 
     def _update_target_lock(self, game_obj: GameObject) -> None:
         """Update target lock references for an object."""
-        if game_obj.LockedTarget not in [None, "", "0"]:
-            if game_obj.LockedTarget in self.all_objects:
-                game_obj.locked_target_obj = self.all_objects[game_obj.LockedTarget]
-            else:
-                # Target not found - might not be loaded yet
-                game_obj.locked_target_obj = None
-        else:
-            game_obj.locked_target_obj = None
+        game_obj.resolve_locked_targets(self.all_objects)
+
+        # If the object has locked targets, update their render data
+        # for target in game_obj.locked_target_objs:
+        #     if target.icon is not None:
+        #         shape = Shapes.from_idx(target.icon)
+        #         self.icon_data[shape].update_object(target)
 
     def _get_default_color(self, obj_type: GameObjectType, coalition: str) -> tuple[float, float, float, float]:
         """Get default color for an object based on its type and coalition."""
