@@ -26,6 +26,8 @@ center_point_size = 3.0 # Size of the center point quad in pixels
 
 [display]
 icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)
+msaa_enabled = true # Enable MSAA (true/false)
+msaa_samples = 4 # Number of MSAA samples (4, 8, 16)
 
 [layers]
 show_fixed_wing = true # Show fixed wing aircraft on the map
