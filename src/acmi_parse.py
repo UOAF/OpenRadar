@@ -22,7 +22,8 @@ ACMIObject:
         Health (float): The health of the object.
         IAS (float): Indicated Airspeed.
         LateralGForce (float): Lateral G-Force.
-        LockedTarget (int): The ID of the locked target.
+        LockedTarget (str): The ID of the primary locked target.
+        LockedTarget1-9 (str): The IDs of additional locked targets.
         LongitudinalGForce (float): Longitudinal G-Force.
         Mach (float): The Mach number.
         Name (str): The name of the object.
@@ -118,7 +119,16 @@ class ACMIObject(ACMIEntry):
         Health (float): The health of the object.
         IAS (float): The indicated airspeed of the object.
         LateralGForce (float): The lateral G-force experienced by the object.
-        LockedTarget (int): The ID of the locked target.
+        LockedTarget (str): The ID of the primary locked target.
+        LockedTarget1 (str): The ID of locked target 1.
+        LockedTarget2 (str): The ID of locked target 2.
+        LockedTarget3 (str): The ID of locked target 3.
+        LockedTarget4 (str): The ID of locked target 4.
+        LockedTarget5 (str): The ID of locked target 5.
+        LockedTarget6 (str): The ID of locked target 6.
+        LockedTarget7 (str): The ID of locked target 7.
+        LockedTarget8 (str): The ID of locked target 8.
+        LockedTarget9 (str): The ID of locked target 9.
         LongitudinalGForce (float): The longitudinal G-force experienced by the object.
         Mach (float): The Mach number of the object.
         Name (str): The name of the object.
@@ -143,6 +153,15 @@ class ACMIObject(ACMIEntry):
     IAS: float = 0.0
     LateralGForce: float = 0.0
     LockedTarget: str = ""
+    LockedTarget1: str = ""
+    LockedTarget2: str = ""
+    LockedTarget3: str = ""
+    LockedTarget4: str = ""
+    LockedTarget5: str = ""
+    LockedTarget6: str = ""
+    LockedTarget7: str = ""
+    LockedTarget8: str = ""
+    LockedTarget9: str = ""
     LongitudinalGForce: float = 0.0
     Mach: float = 0.0
     Name: str = ""

@@ -199,8 +199,3 @@ class GameState:
     def clear_state(self) -> None:
         """Clear the game state."""
         self.__init__(self.data_queue)
-
-    def get_render_data(self):
-        """Get the render data arrays for GPU rendering."""
-        out = {shape: icon_data.get_render_data() for shape, icon_data in self.icon_data.items()}
-        return out
