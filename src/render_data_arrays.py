@@ -259,43 +259,55 @@ class LockLineRenderData(BaseRenderData):
 
     def update_all_locks(self, game_obj: GameObject):
         """Update all lock lines for a given source object."""
-        if game_obj.object_id not in self.id_to_locks:
-            return
+        # Get current locked targets
+        current_targets = {target.object_id for target in game_obj.locked_target_objs if target is not None}
 
-        # Update all lock lines where this object is the source
-        for target_id, index in self.id_to_locks[game_obj.object_id].items():
-            if index < self.count and self.data is not None:
-                # Get the target object from the lock pair ID
-                lock_pair = self.index_to_id[index]
-                target_obj = None  # TODO: Need to get target object from game state
-                if target_obj is not None:
-                    self._update_lock_line_data(index, game_obj, target_obj)
+        # Get existing lock lines for this source object
+        existing_targets = set()
+        if game_obj.object_id in self.id_to_locks:
+            existing_targets = set(self.id_to_locks[game_obj.object_id].keys())
+
+        # Remove lock lines that no longer exist
+        targets_to_remove = existing_targets - current_targets
+        for target_id in targets_to_remove:
+            self.remove_lock_line(game_obj.object_id, target_id)
+
+        # Add new lock lines
+        targets_to_add = current_targets - existing_targets
+        for target_obj in game_obj.locked_target_objs:
+            if target_obj is not None and target_obj.object_id in targets_to_add:
+                self.add_lock_line(game_obj, target_obj)
+
+        # Update existing lock lines (positions may have changed)
+        if game_obj.object_id in self.id_to_locks:
+            for target_obj in game_obj.locked_target_objs:
+                if target_obj is not None and target_obj.object_id in self.id_to_locks[game_obj.object_id]:
+                    index = self.id_to_locks[game_obj.object_id][target_obj.object_id]
+                    if index < self.count and self.data is not None:
+                        self._update_lock_line_data(index, game_obj, target_obj)
 
     def remove_object_locks(self, object_id: str):
         """Remove all lock lines associated with a given object."""
         if self.data is None:
             return
 
-        # Collect all lock lines to remove (both as source and target)
-        lock_lines_to_remove = []
+        # Instead of collecting indices (which can become stale), collect lock pairs
+        lock_pairs_to_remove = []
 
         # Find lock lines where this object is the source
         if object_id in self.id_to_locks:
-            for target_id, index in list(self.id_to_locks[object_id].items()):
-                lock_lines_to_remove.append(index)
+            for target_id in list(self.id_to_locks[object_id].keys()):
+                lock_pairs_to_remove.append((object_id, target_id))
 
         # Find lock lines where this object is the target
         for source_id, targets in list(self.id_to_locks.items()):
             if object_id in targets:
-                lock_lines_to_remove.append(targets[object_id])
+                lock_pairs_to_remove.append((source_id, object_id))
 
-        # Remove duplicates and sort in reverse order for safe removal
-        lock_lines_to_remove = sorted(set(lock_lines_to_remove), reverse=True)
-
-        # Remove the lock lines
-        for index in lock_lines_to_remove:
-            if index < self.count:  # Make sure index is still valid
-                self._remove_lock_line(index)
+        # Remove the lock lines using the lock pair identifiers
+        # This way we don't depend on indices which can change during removal
+        for source_id, target_id in lock_pairs_to_remove:
+            self.remove_lock_line(source_id, target_id)
 
     def remove_object(self, object_id: str):
         """Remove all lock lines for an object (alias for remove_object_locks)."""
@@ -305,6 +317,14 @@ class LockLineRenderData(BaseRenderData):
         """Update all lock lines for a given object."""
         self.update_all_locks(game_obj)
 
+    def remove_lock_line(self, source_id: str, target_id: str):
+        """Remove a specific lock line between two objects."""
+        if source_id not in self.id_to_locks or target_id not in self.id_to_locks[source_id]:
+            return
+
+        index = self.id_to_locks[source_id][target_id]
+        self._remove_lock_line(index)
+
     def _remove_lock_line(self, index: int):
         """Remove a lock line at the given index."""
         if index >= self.count or self.data is None:
@@ -313,6 +333,18 @@ class LockLineRenderData(BaseRenderData):
         # Get the lock pair ID to remove from mappings
         lock_pair = self.index_to_id[index]
         source_id, target_id = lock_pair.split(":")
+
+        # If we're not removing the last element, we need to update the id_to_locks
+        # mapping for the element that will be moved to this index
+        if index < self.count - 1:
+            # Get the lock pair that will be moved from the last position to this index
+            last_index = self.count - 1
+            moved_lock_pair = self.index_to_id[last_index]
+            moved_source_id, moved_target_id = moved_lock_pair.split(":")
+
+            # Update the id_to_locks mapping for the moved element
+            if moved_source_id in self.id_to_locks and moved_target_id in self.id_to_locks[moved_source_id]:
+                self.id_to_locks[moved_source_id][moved_target_id] = index
 
         # Remove from the id_to_locks mapping
         if source_id in self.id_to_locks and target_id in self.id_to_locks[source_id]:
@@ -415,11 +447,7 @@ class RenderDataArrays:
             self.velocity_vectors.remove_object(game_obj.object_id)
 
         # Update or add/remove lock lines based on target locks
-        self.lock_lines.remove_object_locks(game_obj.object_id)  # Remove existing locks
-        if len(game_obj.locked_target_objs) > 0:
-            for target_obj in game_obj.locked_target_objs:
-                if target_obj is not None:
-                    self.lock_lines.add_lock_line(game_obj, target_obj)
+        self.lock_lines.update_all_locks(game_obj)
 
     def get_render_data(self) -> Optional[dict]:
         """Get all render data arrays for GPU rendering."""
