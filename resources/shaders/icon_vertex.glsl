@@ -8,8 +8,10 @@ layout(std430, binding = 0) buffer TVertex
 // Instance data as a struct - matches IconRenderData structure
 struct IconInstance {
     vec2 position;    // x, y world coords
-    vec4 color;       // RGBA normalized 0.0-1.0
     float scale;      // Scale factor per icon
+    float _buffer;    // Padding for alignment
+    vec4 color;       // RGBA normalized 0.0-1.0
+    
 };
 
 layout(std430, binding = 1) buffer IconInstanceData

@@ -15,6 +15,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Optional
 from game_object import GameObject
+from draw.shapes import Shapes
 
 
 class BaseRenderData(ABC):
@@ -38,15 +39,52 @@ class BaseRenderData(ABC):
         # Initialize the structured array
         self._initialize_array(initial_capacity)
 
-    @abstractmethod
     def _initialize_array(self, capacity: int):
-        """Initialize the structured numpy array for this render data type."""
-        pass
+        """Initialize the velocity vector structured array."""
+        self.capacity = capacity
+        self.data = np.zeros(capacity, dtype=self._get_dtype())
 
     @abstractmethod
     def _get_dtype(self):
         """Get the numpy dtype for the structured array."""
         pass
+
+    @abstractmethod
+    def _update_object_data(self, index: int, game_obj: GameObject):
+        """Update the structured array with data from the game object."""
+        pass
+
+    def add_object(self, game_obj: GameObject) -> int:
+        """Add a game object to the array."""
+        index = self._get_free_index()
+
+        # Store the mapping
+        self.id_to_index[game_obj.object_id] = index
+        self.index_to_id[index] = game_obj.object_id
+
+        # Update the data
+        self._update_object_data(index, game_obj)
+        self.count += 1
+
+        return index
+
+    def remove_object(self, object_id: str):
+        """Remove an object from the array using swap-with-last."""
+        if object_id not in self.id_to_index:
+            return
+
+        index = self.id_to_index[object_id]
+        self._remove_by_swap(index, object_id)
+
+    def update_object(self, game_obj: GameObject):
+        """Update an existing object in the array."""
+        if game_obj.object_id not in self.id_to_index:
+            self.add_object(game_obj)
+            return
+
+        index = self.id_to_index[game_obj.object_id]
+        self.index_to_id[index] = game_obj.object_id
+        self._update_object_data(index, game_obj)
 
     def resize(self, new_capacity: int):
         """Resize array to accommodate more objects."""
@@ -106,6 +144,9 @@ class BaseRenderData(ABC):
             return None
         return self.data[:self.count]
 
+    def get_render_data(self) -> Optional[np.ndarray]:
+        return self.get_active_data()
+
 
 class IconRenderData(BaseRenderData):
     """
@@ -122,45 +163,10 @@ class IconRenderData(BaseRenderData):
             ('color', np.float32, (4, )),  # RGBA normalized 0.0-1.0
         ])
 
-    def _initialize_array(self, capacity: int):
-        """Initialize the icon structured array."""
-        self.capacity = capacity
-        self.data = np.zeros(capacity, dtype=self._get_dtype())
-
-    def _get_object_id_from_element(self, element) -> str:
-        """Extract object_id from an icon element."""
-        return str(element['object_id'])
-
-    def add_object(self, game_obj: GameObject) -> int:
-        """Add a game object to the icon array."""
-        index = self._get_free_index()
-
-        # Store the mapping
-        self.id_to_index[game_obj.object_id] = index
-        self.index_to_id[index] = game_obj.object_id
-
-        # Update the data
-        self._update_object_data(index, game_obj)
-        self.count += 1
-
-        return index
-
-    def remove_object(self, object_id: str):
-        """Remove an object from the icon array using swap-with-last."""
-        if object_id not in self.id_to_index:
-            return
-
-        index = self.id_to_index[object_id]
-        self._remove_by_swap(index, object_id)
-
-    def update_object(self, game_obj: GameObject):
-        """Update an existing object in the icon array."""
-        if game_obj.object_id not in self.id_to_index:
-            self.add_object(game_obj)
-            return
-
-        index = self.id_to_index[game_obj.object_id]
-        self._update_object_data(index, game_obj)
+    def set_all_scale(self, scale: float):
+        """Set the scale for all icons."""
+        if self.data is not None:
+            self.data['scale'] = scale
 
     def _update_object_data(self, index: int, game_obj: GameObject):
         """Update the array data for an icon at the given index."""
@@ -179,287 +185,258 @@ class IconRenderData(BaseRenderData):
         # Scale (could be configurable per object type)
         element['scale'] = 10.0
 
-    def get_render_data(self) -> Optional[np.ndarray]:
 
-        return self.get_active_data()
+class VelocityVectorRenderData(BaseRenderData):
+    """
+    Array of Structs for velocity vector rendering.
+    Each element contains: object_id, start_position, color, heading, velocity
+    End positions are calculated in the fragment shader using heading and velocity with a fixed scale.
+    """
+
+    def _get_dtype(self):
+        """Get the numpy dtype for velocity vector structured array."""
+        return np.dtype([
+            ('start_position', np.float32, (2, )),  # Start point (x, y)
+            ('heading', np.float32),  # Heading in degrees
+            ('velocity', np.float32),  # Velocity magnitude (CAS)
+            ('color', np.float32, (4, )),  # RGBA normalized 0.0-1.0
+        ])
+
+    def _update_object_data(self, index: int, game_obj: GameObject):
+        """Update the array data for a velocity vector at the given index."""
+        if self.data is None:
+            return
+
+        element = self.data[index]
+
+        # Start position (object position)
+        element['start_position'] = [game_obj.U, game_obj.V]
+
+        # Color (use same as icon)
+        color = game_obj.override_color if game_obj.override_color else game_obj.color_rgba
+        element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
+
+        # Store raw values for shader use
+        element['heading'] = game_obj.Heading
+        element['velocity'] = game_obj.CAS
 
 
-# class VelocityVectorRenderData(BaseRenderData):
-#     """
-#     Array of Structs for velocity vector rendering.
-#     Each element contains: object_id, start_position, color, heading, velocity
-#     End positions are calculated in the fragment shader using heading and velocity with a fixed scale.
-#     """
+class LockLineRenderData(BaseRenderData):
+    """
+    Array of Structs for target lock line rendering.
+    Each element contains: lock_pair, start_position, end_position, color
+    """
 
-#     def _get_dtype(self):
-#         """Get the numpy dtype for velocity vector structured array."""
-#         return np.dtype([
-#             ('object_id', 'U50'),  # String ID (Unicode 50 chars)
-#             ('start_position', np.float32, (2, )),  # Start point (x, y)
-#             ('color', np.float32, (4, )),  # RGBA normalized 0.0-1.0
-#             ('heading', np.float32),  # Heading in degrees
-#             ('velocity', np.float32)  # Velocity magnitude (CAS)
-#         ])
+    def __init__(self, initial_capacity: int):
+        super().__init__(initial_capacity)
+        self.id_to_locks: dict[str, dict[str, int]] = {}  # Map object ID to lock line index
 
-#     def _initialize_array(self, capacity: int):
-#         """Initialize the velocity vector structured array."""
-#         self.capacity = capacity
-#         self.data = np.zeros(capacity, dtype=self._get_dtype())
+    def _get_dtype(self):
+        """Get the numpy dtype for lock line structured array."""
+        return np.dtype([
+            ('start_position', np.float32, (2, )),  # Start point (x, y)
+            ('end_position', np.float32, (2, )),  # End point (x, y)
+            ('color', np.float32, (4, ))  # RGBA normalized 0.0-1.0
+        ])
 
-#     def _get_object_id_from_element(self, element) -> str:
-#         """Extract object_id from a velocity vector element."""
-#         return str(element['object_id'])
+    def add_lock_line(self, source_obj: GameObject, target_obj: GameObject) -> int:
+        """Add a lock line between two objects."""
+        index = self._get_free_index()
+        lock_pair = f"{source_obj.object_id}:{target_obj.object_id}"
 
-#     def add_object(self, game_obj: GameObject) -> int:
-#         """Add a game object's velocity vector to the array."""
-#         index = self._get_free_index()
+        # Store the mapping
+        if not source_obj.object_id in self.id_to_locks:
+            self.id_to_locks[source_obj.object_id] = {}
+        self.id_to_locks[source_obj.object_id][target_obj.object_id] = index
+        self.id_to_index[lock_pair] = index
+        self.index_to_id[index] = lock_pair
 
-#         # Store the mapping
-#         self.id_to_index[game_obj.object_id] = index
+        # Update the data
+        self._update_lock_line_data(index, source_obj, target_obj)
+        self.count += 1
 
-#         # Update the data
-#         self._update_object_data(index, game_obj)
-#         self.count += 1
+        return index
 
-#         return index
+    def update_all_locks(self, game_obj: GameObject):
+        """Update all lock lines for a given source object."""
+        if game_obj.object_id not in self.id_to_locks:
+            return
 
-#     def remove_object(self, object_id: str):
-#         """Remove an object's velocity vector using swap-with-last."""
-#         if object_id not in self.id_to_index:
-#             return
+        # Update all lock lines where this object is the source
+        for target_id, index in self.id_to_locks[game_obj.object_id].items():
+            if index < self.count and self.data is not None:
+                # Get the target object from the lock pair ID
+                lock_pair = self.index_to_id[index]
+                target_obj = None  # TODO: Need to get target object from game state
+                if target_obj is not None:
+                    self._update_lock_line_data(index, game_obj, target_obj)
 
-#         index = self.id_to_index[object_id]
-#         self._remove_by_swap(index, object_id)
+    def remove_object_locks(self, object_id: str):
+        """Remove all lock lines associated with a given object."""
+        if self.data is None:
+            return
 
-#     def update_object(self, game_obj: GameObject):
-#         """Update an existing object's velocity vector in the array."""
-#         if game_obj.object_id not in self.id_to_index:
-#             self.add_object(game_obj)
-#             return
+        # Collect all lock lines to remove (both as source and target)
+        lock_lines_to_remove = []
 
-#         index = self.id_to_index[game_obj.object_id]
-#         self._update_object_data(index, game_obj)
+        # Find lock lines where this object is the source
+        if object_id in self.id_to_locks:
+            for target_id, index in list(self.id_to_locks[object_id].items()):
+                lock_lines_to_remove.append(index)
 
-#     def _update_object_data(self, index: int, game_obj: GameObject):
-#         """Update the array data for a velocity vector at the given index."""
-#         if self.data is None:
-#             return
+        # Find lock lines where this object is the target
+        for source_id, targets in list(self.id_to_locks.items()):
+            if object_id in targets:
+                lock_lines_to_remove.append(targets[object_id])
 
-#         element = self.data[index]
+        # Remove duplicates and sort in reverse order for safe removal
+        lock_lines_to_remove = sorted(set(lock_lines_to_remove), reverse=True)
 
-#         # Store object ID
-#         element['object_id'] = game_obj.object_id
+        # Remove the lock lines
+        for index in lock_lines_to_remove:
+            if index < self.count:  # Make sure index is still valid
+                self._remove_lock_line(index)
 
-#         # Start position (object position)
-#         element['start_position'] = [game_obj.U, game_obj.V]
+    def remove_object(self, object_id: str):
+        """Remove all lock lines for an object (alias for remove_object_locks)."""
+        self.remove_object_locks(object_id)
 
-#         # Color (use same as icon)
-#         color = game_obj.override_color if game_obj.override_color else game_obj.color_rgba
-#         element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
+    def update_object(self, game_obj: GameObject):
+        """Update all lock lines for a given object."""
+        self.update_all_locks(game_obj)
 
-#         # Store raw values for shader use
-#         element['heading'] = game_obj.Heading
-#         element['velocity'] = game_obj.CAS
+    def _remove_lock_line(self, index: int):
+        """Remove a lock line at the given index."""
+        if index >= self.count or self.data is None:
+            return
 
-#     def get_render_data(self) -> Optional[np.ndarray]:
-#         """Get render data in a format compatible with the SoA interface."""
-#         return self.get_active_data()
+        # Get the lock pair ID to remove from mappings
+        lock_pair = self.index_to_id[index]
+        source_id, target_id = lock_pair.split(":")
 
-# class LockLineRenderData(BaseRenderData):
-#     """
-#     Array of Structs for target lock line rendering.
-#     Each element contains: lock_pair, start_position, end_position, color
-#     """
+        # Remove from the id_to_locks mapping
+        if source_id in self.id_to_locks and target_id in self.id_to_locks[source_id]:
+            del self.id_to_locks[source_id][target_id]
+            # Clean up empty source entries
+            if not self.id_to_locks[source_id]:
+                del self.id_to_locks[source_id]
 
-#     def _get_dtype(self):
-#         """Get the numpy dtype for lock line structured array."""
-#         return np.dtype([
-#             ('lock_pair', 'U101'),  # "source_id:target_id" (Unicode 101 chars)
-#             ('start_position', np.float32, (2, )),  # Start point (x, y)
-#             ('end_position', np.float32, (2, )),  # End point (x, y)
-#             ('color', np.float32, (4, ))  # RGBA normalized 0.0-1.0
-#         ])
+        # Use base class swap-with-last removal
+        self._remove_by_swap(index, lock_pair)
 
-#     def _initialize_array(self, capacity: int):
-#         """Initialize the lock line structured array."""
-#         self.capacity = capacity
-#         self.data = np.zeros(capacity, dtype=self._get_dtype())
+    def _update_object_data(self, index: int, game_obj: GameObject):
+        """Update lock line data when one of the objects in the pair has changed."""
+        # This method is not directly used since lock lines are updated via update_all_locks
+        # which handles the source-target relationship properly
+        pass
 
-#     def _get_object_id_from_element(self, element) -> str:
-#         """Extract lock_pair from a lock line element."""
-#         return str(element['lock_pair'])
+    def _update_lock_line_data(self, index: int, source_obj: GameObject, target_obj: GameObject):
+        """Update the array data for a lock line at the given index."""
+        if self.data is None:
+            return
 
-#     def add_lock_line(self, source_obj: GameObject, target_obj: GameObject) -> int:
-#         """Add a lock line between two objects."""
-#         index = self._get_free_index()
-#         lock_pair = f"{source_obj.object_id}:{target_obj.object_id}"
+        element = self.data[index]
 
-#         # Store the mapping
-#         self.id_to_index[lock_pair] = index
+        # Start position (source object)
+        element['start_position'] = [source_obj.U, source_obj.V]
 
-#         # Update the data
-#         self._update_lock_line_data(index, source_obj, target_obj, lock_pair)
-#         self.count += 1
+        # End position (target object)
+        element['end_position'] = [target_obj.U, target_obj.V]
 
-#         return index
+        # Color (use source object color but make it slightly different for lock lines)
+        source_color = source_obj.override_color if source_obj.override_color else source_obj.color_rgba
+        # Make lock lines slightly brighter/more saturated
+        lock_color = [min(1.0, c / 255.0 * 1.2) if c > 1.0 else min(1.0, c * 1.2) for c in source_color]
+        element['color'] = lock_color
 
-#     def remove_object_locks(self, object_id: str):
-#         """Remove all lock lines involving the given object (as source or target)."""
-#         to_remove = []
 
-#         # Find all lock pairs involving this object
-#         for lock_pair in self.id_to_index.keys():
-#             source_id, target_id = lock_pair.split(":")
-#             if source_id == object_id or target_id == object_id:
-#                 to_remove.append(lock_pair)
+class RenderDataArrays:
+    """
+    Master container for all Array of Structs render data arrays.
+    Contains separate arrays for icons, velocity vectors, and lock lines.
+    All data is stored contiguously for optimal GPU performance.
+    """
 
-#         # Remove them using swap-with-last
-#         for lock_pair in to_remove:
-#             self._remove_lock_line(lock_pair)
+    def __init__(self, initial_capacity: int = 1024 * 8):
+        """Initialize all render data arrays."""
+        # Separate rendering arrays
+        self.icon_data: dict[Shapes, IconRenderData] = dict()
+        for shape in Shapes:
+            self.icon_data[shape] = IconRenderData(initial_capacity)
+        self.velocity_vectors = VelocityVectorRenderData(initial_capacity // 2)
+        self.lock_lines = LockLineRenderData(initial_capacity // 2)
 
-#     def _remove_lock_line(self, lock_pair: str):
-#         """Remove a specific lock line using swap-with-last."""
-#         if lock_pair not in self.id_to_index:
-#             return
+    def add_object(self, game_obj: GameObject):
+        """Add a game object to all relevant render arrays."""
 
-#         index = self.id_to_index[lock_pair]
-#         self._remove_by_swap(index, lock_pair)
+        # Add to icon array (Most objects have icons)
+        shape_id = game_obj.icon
+        shape = Shapes.from_idx(shape_id) if shape_id is not None else None
+        if shape is not None:
+            self.icon_data[shape].add_object(game_obj)
 
-#     def _update_lock_line_data(self, index: int, source_obj: GameObject, target_obj: GameObject, lock_pair: str):
-#         """Update the array data for a lock line at the given index."""
-#         if self.data is None:
-#             return
+        # Add velocity vector if it's an aircraft
+        if game_obj.is_air_unit() and game_obj.CAS > 0:
+            self.velocity_vectors.add_object(game_obj)
 
-#         element = self.data[index]
+        # Add lock line if this object has a target lock
+        if len(game_obj.locked_target_objs) > 0:
+            for target in game_obj.locked_target_objs:
+                if target is not None:
+                    self.lock_lines.add_lock_line(game_obj, target)
 
-#         # Store lock pair ID
-#         element['lock_pair'] = lock_pair
+    def remove_object(self, game_obj: GameObject):
+        """Remove an object from all render arrays."""
 
-#         # Start position (source object)
-#         element['start_position'] = [source_obj.U, source_obj.V]
+        object_id = game_obj.object_id
+        shape_id = game_obj.icon
 
-#         # End position (target object)
-#         element['end_position'] = [target_obj.U, target_obj.V]
+        shape = Shapes.from_idx(shape_id) if shape_id is not None else None
+        if shape is not None:
+            self.icon_data[shape].remove_object(object_id)
 
-#         # Color (use source object color but make it slightly different for lock lines)
-#         source_color = source_obj.override_color if source_obj.override_color else source_obj.color_rgba
-#         # Make lock lines slightly brighter/more saturated
-#         lock_color = [min(1.0, c / 255.0 * 1.2) if c > 1.0 else min(1.0, c * 1.2) for c in source_color]
-#         element['color'] = lock_color
+        self.velocity_vectors.remove_object(object_id)
+        self.lock_lines.remove_object_locks(object_id)
 
-#     def get_render_data(self) -> Optional[np.ndarray]:
-#         """Get render data in a format compatible with the SoA interface."""
-#         return self.get_active_data()
+    def update_object(self, game_obj: GameObject):
+        """Update an object in all relevant render arrays."""
+        # Update icon data (all objects have icons)
+        shape_id = game_obj.icon
+        shape = Shapes.from_idx(shape_id)
+        self.icon_data[shape].update_object(game_obj)
 
-# class RenderDataArrays:
-#     """
-#     Master container for all Array of Structs render data arrays.
-#     Contains separate arrays for icons, velocity vectors, and lock lines.
-#     All data is stored contiguously for optimal GPU performance.
-#     """
+        # Update or add/remove velocity vector based on movement
+        if game_obj.is_air_unit() and game_obj.CAS > 0:
+            if game_obj.object_id in self.velocity_vectors.id_to_index:
+                self.velocity_vectors.update_object(game_obj)
+            else:
+                self.velocity_vectors.add_object(game_obj)
+        else:
+            self.velocity_vectors.remove_object(game_obj.object_id)
 
-#     def __init__(self, initial_capacity: int = 1000):
-#         """Initialize all render data arrays."""
-#         # Separate rendering arrays
-#         self.icons = IconRenderData(initial_capacity)
-#         self.velocity_vectors = VelocityVectorRenderData(initial_capacity)
-#         self.lock_lines = LockLineRenderData(initial_capacity // 2)  # Fewer lock lines typically
+        # Update or add/remove lock lines based on target locks
+        self.lock_lines.remove_object_locks(game_obj.object_id)  # Remove existing locks
+        if len(game_obj.locked_target_objs) > 0:
+            for target_obj in game_obj.locked_target_objs:
+                if target_obj is not None:
+                    self.lock_lines.add_lock_line(game_obj, target_obj)
 
-#     def resize_arrays(self, new_capacity: int):
-#         """Resize all render data arrays to accommodate more objects."""
-#         self.icons.resize(new_capacity)
-#         self.velocity_vectors.resize(new_capacity)
-#         self.lock_lines.resize(new_capacity // 2)
+    def get_render_data(self) -> Optional[dict]:
+        """Get all render data arrays for GPU rendering."""
 
-#     def add_object(self, game_obj: GameObject) -> int:
-#         """Add a game object to all relevant render arrays."""
-#         # Add to icon array (all objects have icons)
+        # Icon Arrays
+        icon_arrays = {}
+        for shape, icon_data in self.icon_data.items():
+            active_array_slice = icon_data.get_render_data()
+            if active_array_slice is not None:
+                icon_arrays[shape] = active_array_slice.copy()
 
-#         if game_obj.icon is not None:
-#             icon_index = self.icons.add_object(game_obj)
+        # Velocity Vectors
+        active_array_slice = self.velocity_vectors.get_render_data()
+        velocity_vectors = active_array_slice.copy() if active_array_slice is not None else None
 
-#         # Add velocity vector if it's a moving object
-#         if game_obj.is_air_unit() and game_obj.CAS > 0:
-#             self.velocity_vectors.add_object(game_obj)
+        # Lock Lines
+        active_array_slice = self.lock_lines.get_render_data()
+        lock_lines = active_array_slice.copy() if active_array_slice is not None else None
 
-#         # Add lock line if this object has a target lock
-#         if game_obj.locked_target_obj is not None:
-#             self.lock_lines.add_lock_line(game_obj, game_obj.locked_target_obj)
-
-#         return icon_index
-
-#     def remove_object(self, object_id: str):
-#         """Remove an object from all render arrays."""
-#         self.icons.remove_object(object_id)
-#         self.velocity_vectors.remove_object(object_id)
-#         self.lock_lines.remove_object_locks(object_id)
-
-#     def update_object(self, game_obj: GameObject):
-#         """Update an object in all relevant render arrays."""
-#         # Update icon data (all objects have icons)
-#         self.icons.update_object(game_obj)
-
-#         # Update or add/remove velocity vector based on movement
-#         if game_obj.is_air_unit() and game_obj.CAS > 0:
-#             if game_obj.object_id in self.velocity_vectors.id_to_index:
-#                 self.velocity_vectors.update_object(game_obj)
-#             else:
-#                 self.velocity_vectors.add_object(game_obj)
-#         else:
-#             self.velocity_vectors.remove_object(game_obj.object_id)
-
-#         # Update or add/remove lock lines based on target locks
-#         self.lock_lines.remove_object_locks(game_obj.object_id)  # Remove existing locks
-#         if game_obj.locked_target_obj is not None:
-#             self.lock_lines.add_lock_line(game_obj, game_obj.locked_target_obj)
-
-#     def get_render_data(self) -> Optional[dict]:
-#         """Get all render data arrays for GPU rendering."""
-#         return {
-#             'icons': self.icons.get_render_data(),
-#             'velocity_vectors': self.velocity_vectors.get_render_data(),
-#             'lock_lines': self.lock_lines.get_render_data()
-#         }
-
-#     def get_contiguous_render_data(self) -> dict[str, Optional[np.ndarray]]:
-#         """
-#         Get all render data arrays as contiguous numpy arrays optimized for GPU buffer uploads.
-#         Since AoS data is already contiguous, this returns the raw structured arrays.
-#         """
-#         return {
-#             'icons': self.icons.get_contiguous_data(),
-#             'velocity_vectors': self.velocity_vectors.get_contiguous_data(),
-#             'lock_lines': self.lock_lines.get_contiguous_data()
-#         }
-
-#     def get_memory_info(self) -> dict:
-#         """Get memory usage information for all arrays."""
-#         return {
-#             'icons': {
-#                 'capacity': self.icons.capacity,
-#                 'count': self.icons.count,
-#                 'utilization': self.icons.count / self.icons.capacity if self.icons.capacity > 0 else 0,
-#                 'memory_bytes': self.icons.data.nbytes if self.icons.data is not None else 0,
-#                 'element_size': self.icons.data.itemsize if self.icons.data is not None else 0
-#             },
-#             'velocity_vectors': {
-#                 'capacity':
-#                 self.velocity_vectors.capacity,
-#                 'count':
-#                 self.velocity_vectors.count,
-#                 'utilization':
-#                 self.velocity_vectors.count /
-#                 self.velocity_vectors.capacity if self.velocity_vectors.capacity > 0 else 0,
-#                 'memory_bytes':
-#                 self.velocity_vectors.data.nbytes if self.velocity_vectors.data is not None else 0,
-#                 'element_size':
-#                 self.velocity_vectors.data.itemsize if self.velocity_vectors.data is not None else 0
-#             },
-#             'lock_lines': {
-#                 'capacity': self.lock_lines.capacity,
-#                 'count': self.lock_lines.count,
-#                 'utilization': self.lock_lines.count / self.lock_lines.capacity if self.lock_lines.capacity > 0 else 0,
-#                 'memory_bytes': self.lock_lines.data.nbytes if self.lock_lines.data is not None else 0,
-#                 'element_size': self.lock_lines.data.itemsize if self.lock_lines.data is not None else 0
-#             }
-#         }
+        return {'icons': icon_arrays, 'velocity_vectors': velocity_vectors, 'lock_lines': lock_lines}

@@ -74,9 +74,11 @@ class IconInstancedRenderer:
 
     def load_render_arrays(self, icon_arrays: Dict[Shapes, np.ndarray]):
 
-        for shape in self.instance_buffers.keys():
+        keys = list(icon_arrays.keys())
+        for shape in keys:
             if shape in self.instance_buffers:
                 self.instance_buffers[shape].release()
+                del self.instance_buffers[shape]
 
         for shape, icon_data in icon_arrays.items():
             ssbo = self.ctx.buffer(icon_data.tobytes())
@@ -102,18 +104,11 @@ class IconInstancedRenderer:
 
         self.program['u_width'] = track_width
 
-        # # Enable blending for proper color rendering
-        # self.ctx.enable(moderngl.BLEND)
-        # self.ctx.blend_func = moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA
-
         for shape in self.instance_buffers.keys():
             self._render_shape_instances(shape)
 
     def _render_shape_instances(self, shape: Shapes):
         """Render all instances of a specific shape."""
-
-        if not self.instance_buffers or shape not in self.instance_buffers:
-            return  # When destroying the class sometimes the buffers get deleted before the loop stops running
 
         # Update instance buffer with new data
         instance_count = int(self.instance_buffers[shape].size / (8 * 4))
@@ -138,17 +133,8 @@ class IconInstancedRenderer:
         vao.render(instances=instance_count, vertices=vertices_per_instance)
 
     def clear(self):
-        """Clear any cached data."""
-        # Instance buffers will be updated each frame, so no clearing needed
-        pass
-
-    def cleanup(self):
         """Clean up GPU resources."""
-        for buffer in self.shape_buffers.values():
-            buffer.release()
-
         for buffer in self.instance_buffers.values():
             buffer.release()
 
-        if self.program:
-            self.program.release()
+        self.instance_buffers.clear()

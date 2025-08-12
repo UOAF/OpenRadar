@@ -58,7 +58,11 @@ _ORIENTATION_FIELDS = {"Altitude", "Heading", "Latitude", "Longitude", "Pitch", 
 _NUMERIC_FIELDS = {
     "AOA", "AOS", "CAS", "FuelWeight", "Health", "IAS", "LateralGForce", "LongitudinalGForce", "Mach", "VerticalGForce"
 } | _ORIENTATION_FIELDS
-_STRING_FIELDS = {"Coalition", "Color", "LockedTarget", "Name", "Pilot", "Type", "CallSign", "Group"}
+_LOCKED_TARGET_FIELDS = {
+    "LockedTarget1", "LockedTarget2", "LockedTarget3", "LockedTarget4", "LockedTarget5", "LockedTarget6",
+    "LockedTarget7", "LockedTarget8", "LockedTarget9"
+}
+_STRING_FIELDS = {"Coalition", "Color", "Name", "Pilot", "Type", "CallSign", "Group"} | _LOCKED_TARGET_FIELDS
 _ALL_ACMI_FIELDS = _NUMERIC_FIELDS | _STRING_FIELDS
 
 
@@ -122,6 +126,15 @@ class GameObject:
     Coalition: str
     Color: str
     LockedTarget: str
+    LockedTarget1: str
+    LockedTarget2: str
+    LockedTarget3: str
+    LockedTarget4: str
+    LockedTarget5: str
+    LockedTarget6: str
+    LockedTarget7: str
+    LockedTarget8: str
+    LockedTarget9: str
     Name: str
     Pilot: str
     Type: str
@@ -145,7 +158,7 @@ class GameObject:
     visible: bool
     override_name: Optional[str]
     override_color: Optional[tuple[float, float, float, float]]
-    locked_target_obj: Optional["GameObject"]  # resolved reference
+    locked_target_objs: list[Optional["GameObject"]]  # resolved reference
 
     # Backwards compatibility property (simulate old obj.data usage)
     @property
@@ -174,14 +187,14 @@ class GameObject:
         for field in _STRING_FIELDS:
             setattr(self, field, "")
 
-        # Special case: Color defaults to "black" not empty
+        # Special case: Color defaults to "White"
         self.Color = "White"
 
         # UI / runtime initialization
         self.color_rgba = (1.0, 1.0, 1.0, 1.0)
         self.override_name = None
         self.override_color = None
-        self.locked_target_obj = None
+        self.locked_target_objs = []
 
         # Apply initial data if provided
         if initial is not None:
@@ -215,11 +228,11 @@ class GameObject:
         # Handle orientation (T=) data first
         t_delta = props.get("T")
         if isinstance(t_delta, dict):
-            for k, v in t_delta.items():
-                if v in (None, ""):
+            for key, value in t_delta.items():
+                if value in (None, ""):
                     continue  # Skip empty delta values
-                if k in _ORIENTATION_FIELDS and hasattr(self, k):
-                    setattr(self, k, _coerce_number(v, getattr(self, k, 0.0)))
+                if key in _ORIENTATION_FIELDS and hasattr(self, key):
+                    setattr(self, key, _coerce_number(value, getattr(self, key, 0.0)))
 
         # Handle all other ACMI fields systematically
         for field_name, value in props.items():
@@ -227,16 +240,20 @@ class GameObject:
                 continue  # Already handled above
 
             if field_name in _ALL_ACMI_FIELDS and hasattr(self, field_name):
-                if value in (None, ""):
-                    continue  # Skip empty delta values - preserve existing data
+                # if value in (None, ""):
+                #     continue  # Skip empty delta values - preserve existing data
 
                 # Apply value based on field type
                 if field_name in _NUMERIC_FIELDS:
+                    if value in (None, ""):
+                        continue
                     current_val = getattr(self, field_name, 0.0)
                     setattr(self, field_name, _coerce_number(value, current_val))
                 elif field_name in _STRING_FIELDS:
                     setattr(self, field_name, str(value))
-            # Note: Unknown fields are ignored (not an error in delta updates)
+
+        # if any(key.startswith("LockedTarget") for key in props.keys()):
+        #     self.resolve_locked_targets()
 
         self.color_rgba = self.rgba_from_str(self.Color)
 
@@ -302,13 +319,14 @@ class GameObject:
     def change_color(self, color: tuple[float, float, float, float]):
         self.override_color = color
 
-    # Target lock handling (external resolver should set locked_target_obj)
-    def resolve_locked_target(self, resolver: Dict[str, "GameObject"]):
+    # Target lock handling (external resolver should set locked_target_objs)
+    def resolve_locked_targets(self, resolver: Dict[str, "GameObject"]):
         """Resolve LockedTarget string ID to actual GameObject reference."""
-        if self.LockedTarget not in (None, "", "0") and self.LockedTarget in resolver:
-            self.locked_target_obj = resolver[self.LockedTarget]
-        else:
-            self.locked_target_obj = None
+        self.locked_target_objs = []
+        for i in range(1, 10):
+            locked_target = getattr(self, f"LockedTarget{i}", None)
+            if locked_target not in (None, "", "0") and locked_target in resolver:
+                self.locked_target_objs.append(resolver[locked_target])
 
     def get_context_items(self) -> list[tuple[str, Any]]:
         """Get context menu items for this object (for UI integration)."""
@@ -316,7 +334,7 @@ class GameObject:
 
     def is_air_unit(self) -> bool:
         """Check if this is an air unit (fixed wing, rotary wing, or missile)."""
-        return self.object_type in (GameObjectType.FIXEDWING, GameObjectType.ROTARYWING, GameObjectType.MISSILE)
+        return self.object_type in (GameObjectType.FIXEDWING, GameObjectType.ROTARYWING)
 
     def is_ground_unit(self) -> bool:
         """Check if this is a ground unit."""
