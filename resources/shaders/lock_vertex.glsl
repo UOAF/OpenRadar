@@ -39,7 +39,9 @@ void main()
     // Convert to pixel coordinates
     start_screen.xy = (start_screen.xy + 1.0) * 0.5 * u_resolution;
     end_screen.xy = (end_screen.xy + 1.0) * 0.5 * u_resolution;
-    
+
+    float pixel_len = length(end_screen.xy - start_screen.xy);
+
     // Calculate line direction and normal
     vec2 line_dir = normalize(end_screen.xy - start_screen.xy);
     vec2 line_normal = vec2(-line_dir.y, line_dir.x);
@@ -81,5 +83,5 @@ void main()
     
     gl_Position = pos;
     o_color = inst.color;
-    o_line_progress = line_progress;
+    o_line_progress = line_progress * pixel_len;
 }
