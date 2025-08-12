@@ -25,6 +25,7 @@ class IconInstancedRenderer:
     - Loads all shape geometries into GPU buffers at startup
     - Uses structured instance data matching IconRenderData
     - Single draw call per icon type (shape)
+    - Renders icon shapes with center point markers
     - Minimal CPU-GPU data transfers
     """
 
@@ -103,6 +104,7 @@ class IconInstancedRenderer:
         track_width = config.app_config.get_float("radar", "contact_stroke")
 
         self.program['u_width'] = track_width
+        self.program['u_point_size'] = config.app_config.get_float("radar", "center_point_size")
 
         for shape in self.instance_buffers.keys():
             self._render_shape_instances(shape)
@@ -125,9 +127,10 @@ class IconInstancedRenderer:
 
         # Calculate number of vertices per instance
         # Each line segment becomes 2 triangles = 6 vertices
+        # Plus 1 center point quad = 6 vertices
         shape_points = shape.value.points
         num_line_segments = len(shape_points) - 1  # Assuming points form a line strip
-        vertices_per_instance = num_line_segments * 6
+        vertices_per_instance = num_line_segments * 6 + 6  # +6 for center point quad
 
         # Render instances
         vao.render(instances=instance_count, vertices=vertices_per_instance)

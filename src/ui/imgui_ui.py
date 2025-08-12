@@ -611,10 +611,15 @@ class ImguiUserInterface:
         stoke_width = config.app_config.get_float("radar", "contact_stroke")
         shape_size = config.app_config.get_float("radar", "contact_size")
         font_scale = config.app_config.get_int("radar", "contact_font_scale")
+        center_point_size = config.app_config.get_float("radar", "center_point_size")
+        update_interval = config.app_config.get_float("radar", "update_interval")
 
         create_slider_float("Contact Stroke Width", stoke_width, 1, 10.0, "radar", "contact_stroke")
         create_slider_float("Contact Shape Size", shape_size, 1, 40.0, "radar", "contact_size")
         create_slider_int("Contact Font Scale", font_scale, 10, 100, "radar", "contact_font_scale")
+        create_slider_float("Center Point Size", center_point_size, 0, 6.0, "radar", "center_point_size")
+        imgui.separator()
+        create_slider_float("Radar Update Interval", update_interval, 0.0, 5.0, "radar", "update_interval")
 
     def settings_tab_display(self):
         # Make sure MSAA samples are one of the valid predefined values
@@ -767,9 +772,6 @@ class ImguiUserInterface:
             imgui.text(f"Position (World): {nearest_object.data.T.U, nearest_object.data.T.V}")
             imgui.text(
                 f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
-
-        update_interval = config.app_config.get_float("radar", "update_interval")
-        create_slider_float("Radar Update Interval", update_interval, 0.0, 5.0, "radar", "update_interval")
 
         imgui.end()
         if not open:
