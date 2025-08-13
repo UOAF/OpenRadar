@@ -4,7 +4,9 @@ from draw.track_renderer import TrackRenderer
 from draw.icon_renderer import IconInstancedRenderer
 from draw.vector_renderer import VectorRenderer
 from draw.lock_renderer import LockRenderer
+from draw.bullseye_renderer import BullseyeRenderer
 from draw.scene import Scene
+import config
 
 
 class DisplayData:
@@ -21,6 +23,7 @@ class DisplayData:
         self.icon_renderer: IconInstancedRenderer = IconInstancedRenderer(self.scene)
         self.vector_renderer: VectorRenderer = VectorRenderer(self.scene)
         self.lock_renderer: LockRenderer = LockRenderer(self.scene)
+        self.bullseye_renderer: BullseyeRenderer = BullseyeRenderer(self.scene)
 
     def generate_render_arrays(self):
         """
@@ -40,6 +43,12 @@ class DisplayData:
             lock_lines = render_arrays.get('lock_lines')
             self.lock_renderer.load_render_arrays(lock_lines)
 
+        # Update bullseye if enabled and position available
+        if config.app_config.get_bool("layers", "show_bullseye"):
+            bullseye_pos = self.gamestate.get_bullseye_pos()
+            if bullseye_pos != (0, 0):  # Valid bullseye position
+                self.bullseye_renderer.set_bullseye(bullseye_pos[0], bullseye_pos[1])
+
     def render(self):
         """
         Render the display data.
@@ -55,6 +64,10 @@ class DisplayData:
         # Render lock lines using the new lock renderer
         self.lock_renderer.render()
 
+        # Render bullseye if enabled
+        if config.app_config.get_bool("layers", "show_bullseye"):
+            self.bullseye_renderer.render()
+
     def clear(self):
         """
         Clear the display data.
@@ -63,4 +76,5 @@ class DisplayData:
         self.icon_renderer.clear()
         self.vector_renderer.clear()
         self.lock_renderer.clear()
+        self.bullseye_renderer.clear()
         # self.annotations.clear()

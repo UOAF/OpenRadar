@@ -5,13 +5,21 @@ layout(std430, binding = 0) buffer TVertex
    vec4 vertex[]; 
 };
 
-in vec2 i_offset; // This varies per instance 
-in vec2 i_scale; // This varies per instance
-in float i_width; // This varies per instance
-in vec4 i_color; // This varies per instance
+struct PolygonInstance {
+    vec2 offset;  // x, y world coords
+    float scale;  // uniform scale factor
+    float width;  // line width
+    vec4 color;   // RGBA normalized 0.0-1.0
+};
+
+layout(std430, binding = 1) buffer TPolygonInstance
+{
+    PolygonInstance instances[];
+};
 
 uniform mat4  u_mvp;
 uniform vec2  u_resolution;
+uniform float u_width;
 
 out vec4 o_color;
 
@@ -20,11 +28,24 @@ void main()
     int line_i = gl_VertexID / 6;
     int tri_i  = gl_VertexID % 6;
 
+    PolygonInstance instance = instances[gl_InstanceID];
+
+    vec2 i_offset = instance.offset;
+    float i_scale = instance.scale;
+    float i_width = instance.width;
+    vec4 i_color = instance.color;
+
+
+    float width = i_width;
+    if (u_width > 0.0) {
+        width = u_width;
+    }
+
     vec4 va[4];
     for (int i=0; i<4; ++i)
     {
         vec4 offset = vec4(i_offset, 0, 0);
-        vec4 scale = vec4(i_scale, 1, 1);
+        vec4 scale = vec4(i_scale, i_scale, 1, 1);
         va[i] = u_mvp * ((scale * vertex[line_i+i]) + offset);
         va[i].xyz /= va[i].w;
         va[i].xy = (va[i].xy + 1.0) * 0.5 * u_resolution;
@@ -42,7 +63,7 @@ void main()
         vec2 v_miter = normalize(nv_line + vec2(-v_pred.y, v_pred.x)); // normal from 1 to 2 plus normal from 0 to 1
 
         pos = va[1];
-        pos.xy += v_miter * i_width * (tri_i == 1 ? -0.5 : 0.5) / dot(v_miter, nv_line);
+        pos.xy += v_miter * width * (tri_i == 1 ? -0.5 : 0.5) / dot(v_miter, nv_line);
     }
     else // 2, 4, 5 are the second triangle bordering the right edge
     {
@@ -50,7 +71,7 @@ void main()
         vec2 v_miter = normalize(nv_line + vec2(-v_succ.y, v_succ.x));
 
         pos = va[2];
-        pos.xy += v_miter * i_width * (tri_i == 5 ? 0.5 : -0.5) / dot(v_miter, nv_line);
+        pos.xy += v_miter * width * (tri_i == 5 ? 0.5 : -0.5) / dot(v_miter, nv_line);
     }
 
     pos.xy = pos.xy / u_resolution * 2.0 - 1.0;
