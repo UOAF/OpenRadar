@@ -102,14 +102,14 @@ def update_config_if_changed(changed, config_section, config_key, value):
 class ImguiUserInterface:
 
     def __init__(self, size, window, scene: Scene, map_gl: MapGL, gamestate: GameState, tracks: SensorTracks,
-                 display_data: DisplayData, annotations: MapAnnotations, data_client: TRTTClientThread):
+                 display_data: DisplayData, data_client: TRTTClientThread):
         self.size = size
         self.scene = scene
         self.map_gl: MapGL = map_gl
         self.gamestate = gamestate
         self.tracks = tracks
         self.display_data = display_data
-        self.annotations = annotations
+        self.annotations = display_data.annotations
         self.data_client = data_client
 
         imgui.create_context()
