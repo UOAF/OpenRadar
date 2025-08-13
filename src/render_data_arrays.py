@@ -13,7 +13,7 @@ Data is stored contiguously and removal uses swap-with-last for O(1) deletion.
 
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, Union, List, Tuple
 from game_object import GameObject
 from draw.shapes import Shapes
 
@@ -623,45 +623,6 @@ class TrackRenderDataArrays:
         return {'icons': icon_arrays, 'velocity_vectors': velocity_vectors, 'lock_lines': lock_lines}
 
 
-# Example usage of the generic structured array for custom data structures:
-
-class CustomPointData(GenericStructuredArray):
-    """
-    Example custom structured array for arbitrary point data.
-    Demonstrates direct parameter usage without GameObject dependency.
-    """
-
-    def _get_dtype(self):
-        return np.dtype([
-            ('position', np.float32, (3,)),  # x, y, z
-            ('intensity', np.float32),
-            ('timestamp', np.float64),
-        ])
-
-    def _update_element_data(self, index: int, element_id: str, **kwargs):
-        if self.data is None:
-            return
-
-        element = self.data[index]
-        
-        if 'position' in kwargs:
-            element['position'] = kwargs['position']
-        elif 'x' in kwargs and 'y' in kwargs:
-            z = kwargs.get('z', 0.0)
-            element['position'] = [kwargs['x'], kwargs['y'], z]
-            
-        if 'intensity' in kwargs:
-            element['intensity'] = kwargs['intensity']
-            
-        if 'timestamp' in kwargs:
-            element['timestamp'] = kwargs['timestamp']
-
-# Usage example:
-# points = CustomPointData(1000)
-# points.add_element("point_1", x=10.0, y=20.0, z=5.0, intensity=0.8, timestamp=1234567890.0)
-# points.update_element("point_1", intensity=0.9)
-# data_array = points.get_active_data()  # Returns numpy structured array
-
 
 class PolygonRenderData(GenericStructuredArray):
     """
@@ -717,3 +678,305 @@ class PolygonRenderData(GenericStructuredArray):
 # polygons.add_element("polygon_2", offset=(50.0, 75.0), scale=1.0, width=1.0, color=(0.0, 1.0, 0.0, 1.0))
 # polygons.update_element("polygon_1", scale=2.0, color=(0.5, 0.5, 1.0, 0.8))
 # data_array = polygons.get_active_data()  # Returns numpy structured array for GPU rendering
+
+
+class LineRenderData:
+    """
+    Flexible line rendering system with separate points array and metadata array.
+    
+    This system allows lines with variable numbers of points by using:
+    - A single points array containing all line vertices
+    - A metadata array with per-line information including start/end indices
+    
+    This is much more memory-efficient and flexible than fixed-length line segments.
+    """
+    
+    def __init__(self, initial_capacity: int = 1000, initial_points_capacity: int = 10000):
+        """
+        Initialize the line render data system.
+        
+        Args:
+            initial_capacity: Initial capacity for line metadata array
+            initial_points_capacity: Initial capacity for points array
+        """
+        # Line metadata storage
+        self.line_capacity = initial_capacity
+        self.line_count = 0
+        self.line_metadata = np.zeros(initial_capacity, dtype=self._get_metadata_dtype())
+        
+        # Points storage  
+        self.points_capacity = initial_points_capacity
+        self.points_count = 0
+        self.points_array = np.zeros(initial_points_capacity, dtype=self._get_points_dtype())
+        
+        # Line ID to index mapping
+        self.id_to_index: dict[str, int] = {}
+        self.index_to_id: dict[int, str] = {}
+        
+    def _get_metadata_dtype(self):
+        """Get the numpy dtype for line metadata array."""
+        return np.dtype([
+            ('start_index', np.uint32),     # Start index in points array
+            ('end_index', np.uint32),       # End index in points array (exclusive)
+            ('width', np.float32),          # Line width
+            ('_padding', np.uint32),        # Padding for alignment
+            ('color', np.float32, (4,)),    # RGBA normalized 0.0-1.0
+        ])
+    
+    def _get_points_dtype(self):
+        """Get the numpy dtype for points array."""
+        return np.dtype([
+            ('position', np.float32, (2,)), # x, y world coordinates
+        ])
+    
+    def add_line(self, line_id: str, points: list, width: float = 1.0, 
+                 color: tuple = (1.0, 1.0, 1.0, 1.0)) -> int:
+        """
+        Add a new line with variable number of points.
+        
+        Args:
+            line_id: Unique identifier for this line
+            points: List of (x, y) coordinate tuples
+            width: Line width
+            color: RGBA color tuple (0.0-1.0 or 0-255 range)
+            
+        Returns:
+            Index of the added line metadata
+            
+        Raises:
+            ValueError: If line_id already exists or points list is empty
+        """
+        if line_id in self.id_to_index:
+            raise ValueError(f"Line with ID '{line_id}' already exists. Use update_line() to modify existing lines.")
+        
+        if not points or len(points) == 0:
+            raise ValueError("Points list cannot be empty")
+        
+        # Ensure we have enough capacity
+        if self.line_count >= self.line_capacity:
+            self._resize_metadata_array(self.line_capacity * 2)
+        
+        # Add points to points array
+        points_start_index = self.points_count
+        points_needed = len(points)
+        
+        if self.points_count + points_needed > self.points_capacity:
+            new_capacity = max(self.points_capacity * 2, self.points_count + points_needed)
+            self._resize_points_array(new_capacity)
+        
+        # Copy points into points array
+        for i, point in enumerate(points):
+            self.points_array[self.points_count + i]['position'] = [float(point[0]), float(point[1])]
+        
+        points_end_index = self.points_count + points_needed
+        self.points_count = points_end_index
+        
+        # Add metadata entry
+        line_index = self.line_count
+        metadata = self.line_metadata[line_index]
+        
+        metadata['start_index'] = points_start_index
+        metadata['end_index'] = points_end_index
+        metadata['width'] = float(width)
+        
+        # Normalize color to 0.0-1.0 range
+        if isinstance(color, (list, tuple)) and len(color) >= 4:
+            normalized_color = [c / 255.0 if c > 1.0 else c for c in color[:4]]
+            metadata['color'] = normalized_color
+        else:
+            metadata['color'] = color
+        
+        # Update mappings
+        self.id_to_index[line_id] = line_index
+        self.index_to_id[line_index] = line_id
+        self.line_count += 1
+        
+        return line_index
+    
+    def update_line(self, line_id: str, points: Optional[List] = None, width: Optional[float] = None, 
+                   color: Optional[Tuple] = None) -> int:
+        """
+        Update an existing line.
+        
+        Args:
+            line_id: Identifier of the line to update
+            points: New points list (if None, keeps existing points)
+            width: New width (if None, keeps existing width)
+            color: New color (if None, keeps existing color)
+            
+        Returns:
+            Index of the updated line metadata
+            
+        Raises:
+            ValueError: If line_id does not exist
+        """
+        if line_id not in self.id_to_index:
+            raise ValueError(f"Line with ID '{line_id}' not found. Use add_line() to create new lines.")
+        
+        line_index = self.id_to_index[line_id]
+        metadata = self.line_metadata[line_index]
+        
+        # Update points if provided
+        if points is not None:
+            # For now, we'll use a simple approach: remove old points and add new ones
+            # A more sophisticated implementation could reuse space for similar-sized lines
+            old_start = metadata['start_index']
+            old_end = metadata['end_index']
+            old_count = old_end - old_start
+            new_count = len(points)
+            
+            if new_count <= old_count:
+                # New line fits in old space, reuse it
+                for i, point in enumerate(points):
+                    self.points_array[old_start + i]['position'] = [float(point[0]), float(point[1])]
+                metadata['end_index'] = old_start + new_count
+            else:
+                # Need more space, add to end of points array
+                points_start_index = self.points_count
+                points_needed = len(points)
+                
+                if self.points_count + points_needed > self.points_capacity:
+                    new_capacity = max(self.points_capacity * 2, self.points_count + points_needed)
+                    self._resize_points_array(new_capacity)
+                
+                # Copy new points
+                for i, point in enumerate(points):
+                    self.points_array[self.points_count + i]['position'] = [float(point[0]), float(point[1])]
+                
+                # Update metadata
+                metadata['start_index'] = points_start_index
+                metadata['end_index'] = self.points_count + points_needed
+                self.points_count += points_needed
+        
+        # Update width if provided
+        if width is not None:
+            metadata['width'] = float(width)
+        
+        # Update color if provided
+        if color is not None:
+            if isinstance(color, (list, tuple)) and len(color) >= 4:
+                normalized_color = [c / 255.0 if c > 1.0 else c for c in color[:4]]
+                metadata['color'] = normalized_color
+            else:
+                metadata['color'] = color
+        
+        return line_index
+    
+    def remove_line(self, line_id: str):
+        """
+        Remove a line from the arrays.
+        
+        Args:
+            line_id: Identifier of the line to remove
+            
+        Raises:
+            ValueError: If line_id does not exist
+        """
+        if line_id not in self.id_to_index:
+            raise ValueError(f"Line with ID '{line_id}' not found")
+        
+        line_index = self.id_to_index[line_id]
+        
+        # Remove using swap-with-last for O(1) removal
+        if line_index < self.line_count - 1:
+            last_index = self.line_count - 1
+            last_line_id = self.index_to_id[last_index]
+            
+            # Swap metadata
+            self.line_metadata[line_index] = self.line_metadata[last_index]
+            
+            # Update mappings for swapped element
+            self.id_to_index[last_line_id] = line_index
+            self.index_to_id[line_index] = last_line_id
+        
+        # Remove from mappings
+        del self.id_to_index[line_id]
+        del self.index_to_id[self.line_count - 1]
+        
+        self.line_count -= 1
+        
+        # Note: We don't compact the points array for performance reasons
+        # This could be added as a separate defragmentation method if needed
+    
+    def get_line_metadata(self) -> Optional[np.ndarray]:
+        """Get the active portion of the line metadata array."""
+        if self.line_count == 0:
+            return None
+        return self.line_metadata[:self.line_count].copy()
+    
+    def get_points_array(self) -> Optional[np.ndarray]:
+        """Get the active portion of the points array."""
+        if self.points_count == 0:
+            return None
+        return self.points_array[:self.points_count].copy()
+    
+    def get_render_data(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        """
+        Get both metadata and points arrays for rendering.
+        
+        Returns:
+            Tuple of (metadata_array, points_array) or (None, None) if empty
+        """
+        metadata = self.get_line_metadata()
+        points = self.get_points_array()
+        return (metadata, points)
+    
+    def clear(self):
+        """Clear all lines and reset arrays."""
+        self.line_count = 0
+        self.points_count = 0
+        self.id_to_index.clear()
+        self.index_to_id.clear()
+    
+    def get_line_count(self) -> int:
+        """Get the number of lines."""
+        return self.line_count
+    
+    def get_points_count(self) -> int:
+        """Get the total number of points."""
+        return self.points_count
+    
+    def _resize_metadata_array(self, new_capacity: int):
+        """Resize the metadata array."""
+        if new_capacity <= self.line_capacity:
+            return
+        
+        old_array = self.line_metadata
+        self.line_metadata = np.zeros(new_capacity, dtype=self._get_metadata_dtype())
+        
+        if self.line_count > 0:
+            self.line_metadata[:self.line_count] = old_array[:self.line_count]
+        
+        self.line_capacity = new_capacity
+    
+    def _resize_points_array(self, new_capacity: int):
+        """Resize the points array."""
+        if new_capacity <= self.points_capacity:
+            return
+        
+        old_array = self.points_array
+        self.points_array = np.zeros(new_capacity, dtype=self._get_points_dtype())
+        
+        if self.points_count > 0:
+            self.points_array[:self.points_count] = old_array[:self.points_count]
+        
+        self.points_capacity = new_capacity
+
+# Usage example:
+# lines = LineRenderData(initial_capacity=100, initial_points_capacity=1000)
+# 
+# # Add lines with different numbers of points
+# line1_points = [(0, 0), (100, 0), (100, 100), (0, 100), (0, 0)]  # 5 points
+# lines.add_line("rectangle", line1_points, width=2.0, color=(255, 0, 0, 255))
+# 
+# line2_points = [(50, 50), (150, 75), (200, 150)]  # 3 points  
+# lines.add_line("triangle", line2_points, width=1.5, color=(0, 255, 0, 255))
+#
+# # Update a line with different number of points
+# new_points = [(10, 10), (20, 10), (30, 20), (40, 30), (50, 40), (60, 50)]  # 6 points
+# lines.update_line("rectangle", new_points)
+#
+# # Get render data
+# metadata, points = lines.get_render_data()
+# # metadata contains start_index, end_index, width, color for each line
+# # points contains all the actual point coordinates

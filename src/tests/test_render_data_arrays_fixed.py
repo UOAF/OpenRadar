@@ -12,9 +12,10 @@ from typing import Optional
 
 # Import the modules under test
 import sys
+import os
 
-sys.path.append("src")
-from render_data_arrays import BaseRenderData, IconRenderData, VelocityVectorRenderData, LockLineRenderData, RenderDataArrays
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from render_data_arrays import BaseRenderData, IconRenderData, VelocityVectorRenderData, LockLineRenderData, LineRenderData, PolygonRenderData, TrackRenderDataArrays
 from game_object import GameObject
 from game_object_types import GameObjectType
 from draw.shapes import Shapes
@@ -1021,6 +1022,690 @@ def test_mock_render_data_integration():
     if mock_data.data is not None:
         assert mock_data.data[0]['test_field'] == 2.5
         assert mock_data.data[0]['another_field'] == 20
+
+
+class TestLineRenderData:
+    """Test suite for flexible LineRenderData class."""
+
+    def test_initialization_default(self):
+        """Test LineRenderData initialization with default parameters."""
+        line_data = LineRenderData()
+        
+        assert line_data.line_capacity == 1000
+        assert line_data.points_capacity == 10000
+        assert line_data.get_line_count() == 0
+        assert line_data.get_points_count() == 0
+        assert isinstance(line_data.id_to_index, dict)
+        assert isinstance(line_data.line_metadata, np.ndarray)
+        assert isinstance(line_data.points_array, np.ndarray)
+        assert len(line_data.id_to_index) == 0
+
+    def test_initialization_custom_capacity(self):
+        """Test LineRenderData initialization with custom capacities."""
+        line_data = LineRenderData(initial_capacity=100, initial_points_capacity=1000)
+        
+        assert line_data.line_capacity == 100
+        assert line_data.points_capacity == 1000
+        assert line_data.get_line_count() == 0
+        assert line_data.get_points_count() == 0
+
+    def test_add_line_simple(self):
+        """Test adding a simple 2-point line."""
+        line_data = LineRenderData()
+        points = [(0.0, 0.0), (100.0, 100.0)]
+        
+        line_data.add_line("line1", points, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        
+        assert line_data.get_line_count() == 1
+        assert line_data.get_points_count() == 2
+        assert "line1" in line_data.id_to_index
+        assert line_data.id_to_index["line1"] == 0
+
+    def test_add_line_complex(self):
+        """Test adding a complex multi-point line."""
+        line_data = LineRenderData()
+        points_list = [(0, 0), (50, 50), (100, 0), (150, 100), (200, 50)]
+        
+        line_data.add_line("complex_line", points_list, width=2.5, color=(0.0, 1.0, 0.0, 1.0))
+        
+        assert line_data.get_line_count() == 1
+        assert line_data.get_points_count() == 5
+        
+        # Check that points were stored correctly
+        metadata, points = line_data.get_render_data()
+        assert points is not None
+        for i, (x, y) in enumerate(points_list):
+            assert points[i]['position'][0] == float(x)
+            assert points[i]['position'][1] == float(y)
+
+    def test_add_multiple_lines(self):
+        """Test adding multiple lines with different point counts."""
+        line_data = LineRenderData()
+        
+        # Add first line (2 points)
+        line_data.add_line("line1", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        
+        # Add second line (3 points)
+        line_data.add_line("line2", [(20, 20), (30, 30), (40, 40)], width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        # Add third line (4 points)
+        line_data.add_line("line3", [(50, 50), (60, 60), (70, 70), (80, 80)], 
+                          width=3.0, color=(0.0, 0.0, 1.0, 1.0))
+        
+        assert line_data.get_line_count() == 3
+        assert line_data.get_points_count() == 9  # 2 + 3 + 4 = 9
+        
+        # Check all IDs are mapped
+        assert "line1" in line_data.id_to_index
+        assert "line2" in line_data.id_to_index
+        assert "line3" in line_data.id_to_index
+        
+        # Check indices are sequential
+        assert line_data.id_to_index["line1"] == 0
+        assert line_data.id_to_index["line2"] == 1
+        assert line_data.id_to_index["line3"] == 2
+
+    def test_add_line_duplicate_id_raises_error(self):
+        """Test that adding a line with duplicate ID raises ValueError."""
+        line_data = LineRenderData()
+        
+        line_data.add_line("duplicate", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        
+        with pytest.raises(ValueError, match="Line with ID 'duplicate' already exists"):
+            line_data.add_line("duplicate", [(20, 20), (30, 30)], width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+
+    def test_add_line_empty_points_raises_error(self):
+        """Test that adding a line with no points raises ValueError."""
+        line_data = LineRenderData()
+        
+        with pytest.raises(ValueError, match="Points list cannot be empty"):
+            line_data.add_line("empty", [], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+
+    def test_update_line_existing(self):
+        """Test updating an existing line with new points."""
+        line_data = LineRenderData()
+        
+        # Add initial line
+        line_data.add_line("updatable", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        assert line_data.get_points_count() == 2
+        
+        # Update with more points
+        new_points = [(5, 5), (15, 15), (25, 25), (35, 35)]
+        line_data.update_line("updatable", new_points, width=2.5, color=(0.0, 0.0, 1.0, 1.0))
+        
+        assert line_data.get_line_count() == 1  # Still one line
+        # Points count might be higher due to points array management
+        assert line_data.get_points_count() >= 4  # At least the new points
+        
+        # Verify the line metadata was updated
+        metadata, points = line_data.get_render_data()
+        assert metadata is not None
+        assert metadata[0]['width'] == 2.5
+        assert np.array_equal(metadata[0]['color'], [0.0, 0.0, 1.0, 1.0])
+
+    def test_update_line_partial_parameters(self):
+        """Test updating a line with only some parameters changed."""
+        line_data = LineRenderData()
+        
+        # Add initial line
+        original_color = (1.0, 0.0, 0.0, 1.0)
+        line_data.add_line("partial", [(0, 0), (10, 10)], width=1.0, color=original_color)
+        
+        # Update only width, keeping original color
+        new_points = [(0, 0), (20, 20)]
+        line_data.update_line("partial", new_points, width=3.0)
+        
+        metadata, points = line_data.get_render_data()
+        assert metadata is not None
+        assert metadata[0]['width'] == 3.0
+        assert np.array_equal(metadata[0]['color'], original_color)  # Should remain unchanged
+
+    def test_update_line_nonexistent_raises_error(self):
+        """Test that updating a non-existent line raises ValueError."""
+        line_data = LineRenderData()
+        
+        with pytest.raises(ValueError, match="Line with ID 'nonexistent' not found"):
+            line_data.update_line("nonexistent", [(0, 0), (10, 10)], width=1.0)
+
+    def test_remove_line_existing(self):
+        """Test removing an existing line."""
+        line_data = LineRenderData()
+        
+        # Add multiple lines
+        line_data.add_line("line1", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        line_data.add_line("line2", [(20, 20), (30, 30), (40, 40)], width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        line_data.add_line("line3", [(50, 50), (60, 60)], width=3.0, color=(0.0, 0.0, 1.0, 1.0))
+        
+        assert line_data.get_line_count() == 3
+        assert line_data.get_points_count() == 7  # 2 + 3 + 2 = 7
+        
+        # Remove middle line
+        line_data.remove_line("line2")
+        
+        assert line_data.get_line_count() == 2
+        # Points are not cleaned up, so count remains the same
+        assert line_data.get_points_count() == 7  # Points array not compacted
+        assert "line2" not in line_data.id_to_index
+        assert "line1" in line_data.id_to_index
+        assert "line3" in line_data.id_to_index
+
+    def test_remove_line_nonexistent_raises_error(self):
+        """Test that removing a non-existent line raises ValueError."""
+        line_data = LineRenderData()
+        
+        with pytest.raises(ValueError, match="Line with ID 'nonexistent' not found"):
+            line_data.remove_line("nonexistent")
+
+    def test_get_render_data_empty(self):
+        """Test getting render data when no lines exist."""
+        line_data = LineRenderData()
+        
+        metadata, points = line_data.get_render_data()
+        
+        assert metadata is None
+        assert points is None
+
+    def test_get_render_data_with_lines(self):
+        """Test getting render data with multiple lines."""
+        line_data = LineRenderData()
+        
+        # Add lines with different characteristics
+        line_data.add_line("red_line", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        line_data.add_line("green_triangle", [(20, 20), (30, 30), (40, 20), (20, 20)], 
+                          width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        line_data.add_line("blue_path", [(50, 50), (60, 40), (70, 50)], 
+                          width=1.5, color=(0.0, 0.0, 1.0, 1.0))
+        
+        metadata, points = line_data.get_render_data()
+        
+        assert metadata is not None
+        assert points is not None
+        assert len(metadata) == 3  # Three lines
+        assert len(points) == 9   # 2 + 4 + 3 = 9 points total
+        
+        # Check metadata structure
+        assert metadata.dtype.names == ('start_index', 'end_index', 'width', 'color')
+        
+        # Check first line metadata
+        assert metadata[0]['start_index'] == 0
+        assert metadata[0]['end_index'] == 2
+        assert metadata[0]['width'] == 1.0
+        assert np.array_equal(metadata[0]['color'], [1.0, 0.0, 0.0, 1.0])
+        
+        # Check second line metadata
+        assert metadata[1]['start_index'] == 2
+        assert metadata[1]['end_index'] == 6
+        assert metadata[1]['width'] == 2.0
+        assert np.array_equal(metadata[1]['color'], [0.0, 1.0, 0.0, 1.0])
+        
+        # Check third line metadata
+        assert metadata[2]['start_index'] == 6
+        assert metadata[2]['end_index'] == 9
+        assert metadata[2]['width'] == 1.5
+        assert np.array_equal(metadata[2]['color'], [0.0, 0.0, 1.0, 1.0])
+        
+        # Check points structure
+        assert points.dtype.names == ('position',)
+        
+        # Check some point values
+        assert np.array_equal(points[0]['position'], [0.0, 0.0])
+        assert np.array_equal(points[1]['position'], [10.0, 10.0])
+        assert np.array_equal(points[2]['position'], [20.0, 20.0])  # Start of second line
+
+    def test_points_array_not_defragmented(self):
+        """Test that points array is not defragmented after removing lines."""
+        line_data = LineRenderData()
+        
+        # Add three lines
+        line_data.add_line("line1", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        line_data.add_line("line2", [(20, 20), (30, 30), (40, 40)], width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        line_data.add_line("line3", [(50, 50), (60, 60)], width=3.0, color=(0.0, 0.0, 1.0, 1.0))
+        
+        # Remove middle line (creates fragmentation)
+        line_data.remove_line("line2")
+        
+        # Points array is not defragmented, so all points remain
+        metadata, points = line_data.get_render_data()
+        
+        assert metadata is not None
+        assert points is not None
+        assert len(metadata) == 2  # Only 2 lines remaining
+        assert len(points) == 7   # But all 7 points still in array (not compacted)
+        
+        # The remaining lines' metadata should still be valid
+        # Even though the points array contains fragmented data
+
+    def test_clear_all_lines(self):
+        """Test clearing all lines."""
+        line_data = LineRenderData()
+        
+        # Add some lines
+        line_data.add_line("line1", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        line_data.add_line("line2", [(20, 20), (30, 30)], width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        assert line_data.get_line_count() == 2
+        assert line_data.get_points_count() == 4
+        
+        # Clear all
+        line_data.clear()
+        
+        assert line_data.get_line_count() == 0
+        assert line_data.get_points_count() == 0
+        assert len(line_data.id_to_index) == 0
+
+    def test_color_format_conversion(self):
+        """Test automatic color format conversion (0-255 to 0-1 range)."""
+        line_data = LineRenderData()
+        
+        # Add line with 0-255 color format
+        line_data.add_line("colored", [(0, 0), (10, 10)], width=1.0, color=(255, 128, 64, 255))
+        
+        metadata, points = line_data.get_render_data()
+        assert metadata is not None
+        
+        # Should be converted to 0-1 range
+        expected_color = [255/255, 128/255, 64/255, 255/255]
+        assert np.allclose(metadata[0]['color'], expected_color)
+
+    def test_edge_case_single_point_line(self):
+        """Test handling of single-point 'line' (should still work but be degenerate)."""
+        line_data = LineRenderData()
+        
+        # Add single point (degenerate line)
+        line_data.add_line("point", [(50, 50)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        
+        assert line_data.get_line_count() == 1
+        assert line_data.get_points_count() == 1
+        
+        metadata, points = line_data.get_render_data()
+        assert metadata is not None
+        assert points is not None
+        assert len(points) == 1
+        assert np.array_equal(points[0]['position'], [50.0, 50.0])
+
+    def test_performance_large_number_of_lines(self):
+        """Test performance and correctness with a large number of lines."""
+        line_data = LineRenderData(initial_capacity=1000, initial_points_capacity=10000)
+        
+        # Add many lines
+        num_lines = 100
+        points_per_line = 10
+        
+        for i in range(num_lines):
+            points = [(j*10 + i, j*5 + i*2) for j in range(points_per_line)]
+            line_data.add_line(f"line_{i}", points, width=float(i % 5 + 1), 
+                             color=(i/num_lines, 0.5, 1.0 - i/num_lines, 1.0))
+        
+        assert line_data.get_line_count() == num_lines
+        assert line_data.get_points_count() == num_lines * points_per_line
+        
+        # Test getting render data
+        metadata, points = line_data.get_render_data()
+        assert metadata is not None
+        assert points is not None
+        assert len(metadata) == num_lines
+        assert len(points) == num_lines * points_per_line
+        
+        # Test removing some lines
+        for i in range(0, num_lines, 10):  # Remove every 10th line
+            line_data.remove_line(f"line_{i}")
+        
+        expected_remaining = num_lines - len(range(0, num_lines, 10))
+        assert line_data.get_line_count() == expected_remaining
+
+    def test_memory_efficiency_vs_fixed_array(self):
+        """Test that flexible array is more memory efficient than fixed arrays for varied line lengths."""
+        line_data = LineRenderData()
+        
+        # Add lines with very different point counts to demonstrate efficiency
+        line_data.add_line("short", [(0, 0), (10, 10)], width=1.0, color=(1.0, 0.0, 0.0, 1.0))  # 2 points
+        line_data.add_line("medium", [(20, 20), (30, 30), (40, 40), (50, 50)], 
+                          width=2.0, color=(0.0, 1.0, 0.0, 1.0))  # 4 points
+        line_data.add_line("long", [(i*5, i*3) for i in range(20)], 
+                          width=3.0, color=(0.0, 0.0, 1.0, 1.0))  # 20 points
+        
+        total_points = 2 + 4 + 20  # 26 points
+        assert line_data.get_points_count() == total_points
+        
+        # Get render data and verify structure
+        metadata, points = line_data.get_render_data()
+        assert metadata is not None
+        assert points is not None
+        assert len(points) == total_points
+        
+        # Verify no padding - each line uses exactly the points it needs
+        assert metadata[0]['end_index'] - metadata[0]['start_index'] == 2
+        assert metadata[1]['end_index'] - metadata[1]['start_index'] == 4
+        assert metadata[2]['end_index'] - metadata[2]['start_index'] == 20
+
+
+class TestPolygonRenderData:
+    """Test suite for PolygonRenderData class."""
+
+    def test_initialization_default(self):
+        """Test PolygonRenderData initialization with default capacity."""
+        polygon_data = PolygonRenderData(100)
+        
+        assert polygon_data.capacity == 100
+        assert polygon_data.count == 0
+        assert isinstance(polygon_data.id_to_index, dict)
+        assert isinstance(polygon_data.index_to_id, dict)
+        assert len(polygon_data.id_to_index) == 0
+        assert polygon_data.data is not None
+        assert len(polygon_data.data) == 100
+
+    def test_dtype_structure(self):
+        """Test that PolygonRenderData has the correct numpy dtype structure."""
+        polygon_data = PolygonRenderData(10)
+        
+        expected_fields = ['offset', 'scale', 'width', 'color']
+        actual_fields = list(polygon_data.data.dtype.names) if polygon_data.data is not None and polygon_data.data.dtype.names is not None else []
+        
+        assert actual_fields == expected_fields
+        
+        if polygon_data.data is not None:
+            # Test field types and shapes
+            assert polygon_data.data.dtype['offset'].shape == (2,)  # vec2
+            assert polygon_data.data.dtype['scale'].shape == ()     # float
+            assert polygon_data.data.dtype['width'].shape == ()     # float
+            assert polygon_data.data.dtype['color'].shape == (4,)   # vec4
+
+    def test_add_element_with_xy_coordinates(self):
+        """Test adding a polygon element using x, y coordinates."""
+        polygon_data = PolygonRenderData(10)
+        
+        polygon_data.add_element("poly1", x=100.0, y=200.0, scale=1.5, width=2.0, color=(255, 0, 0, 255))
+        
+        assert polygon_data.count == 1
+        assert "poly1" in polygon_data.id_to_index
+        assert polygon_data.id_to_index["poly1"] == 0
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            assert np.array_equal(element['offset'], [100.0, 200.0])
+            assert element['scale'] == 1.5
+            assert element['width'] == 2.0
+            # Color should be normalized from 255 to 1.0 range
+            assert np.allclose(element['color'], [1.0, 0.0, 0.0, 1.0])
+
+    def test_add_element_with_offset_tuple(self):
+        """Test adding a polygon element using offset tuple."""
+        polygon_data = PolygonRenderData(10)
+        
+        polygon_data.add_element("poly2", offset=(50.0, 75.0), scale=1.0, width=1.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        assert polygon_data.count == 1
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            assert np.array_equal(element['offset'], [50.0, 75.0])
+            assert element['scale'] == 1.0
+            assert element['width'] == 1.0
+            assert np.array_equal(element['color'], [0.0, 1.0, 0.0, 1.0])
+
+    def test_add_multiple_elements(self):
+        """Test adding multiple polygon elements."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add three different polygons
+        polygon_data.add_element("poly1", x=0.0, y=0.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        polygon_data.add_element("poly2", offset=(50.0, 50.0), scale=2.0, width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        polygon_data.add_element("poly3", x=100.0, y=100.0, scale=0.5, width=3.0, color=(0.0, 0.0, 1.0, 1.0))
+        
+        assert polygon_data.count == 3
+        assert len(polygon_data.id_to_index) == 3
+        
+        # Check all IDs are mapped correctly
+        assert polygon_data.id_to_index["poly1"] == 0
+        assert polygon_data.id_to_index["poly2"] == 1
+        assert polygon_data.id_to_index["poly3"] == 2
+
+    def test_update_element_existing(self):
+        """Test updating an existing polygon element."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add initial element
+        polygon_data.add_element("updatable", x=0.0, y=0.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        
+        # Update the element
+        polygon_data.update_element("updatable", x=50.0, y=50.0, scale=2.0, width=3.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        assert polygon_data.count == 1  # Still one element
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            assert np.array_equal(element['offset'], [50.0, 50.0])
+            assert element['scale'] == 2.0
+            assert element['width'] == 3.0
+            assert np.array_equal(element['color'], [0.0, 1.0, 0.0, 1.0])
+
+    def test_update_element_partial_parameters(self):
+        """Test updating only some parameters of an element."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add initial element
+        original_color = (1.0, 0.0, 0.0, 1.0)
+        polygon_data.add_element("partial", x=0.0, y=0.0, scale=1.0, width=1.0, color=original_color)
+        
+        # Update only scale and width, keeping position and color
+        polygon_data.update_element("partial", scale=3.0, width=5.0)
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            assert np.array_equal(element['offset'], [0.0, 0.0])  # Should remain unchanged
+            assert element['scale'] == 3.0  # Should be updated
+            assert element['width'] == 5.0  # Should be updated
+            assert np.array_equal(element['color'], original_color)  # Should remain unchanged
+
+    def test_color_normalization_255_range(self):
+        """Test automatic color normalization from 0-255 to 0.0-1.0 range."""
+        polygon_data = PolygonRenderData(10)
+        
+        polygon_data.add_element("colored", x=0.0, y=0.0, scale=1.0, width=1.0, color=(255, 128, 64, 255))
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            expected_color = [255/255, 128/255, 64/255, 255/255]
+            assert np.allclose(element['color'], expected_color)
+
+    def test_color_already_normalized(self):
+        """Test that already normalized colors (0.0-1.0) are preserved."""
+        polygon_data = PolygonRenderData(10)
+        
+        normalized_color = (0.5, 0.75, 0.25, 0.8)
+        polygon_data.add_element("normalized", x=0.0, y=0.0, scale=1.0, width=1.0, color=normalized_color)
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            assert np.allclose(element['color'], normalized_color)
+
+    def test_remove_element_existing(self):
+        """Test removing an existing polygon element."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add multiple elements
+        polygon_data.add_element("poly1", x=0.0, y=0.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        polygon_data.add_element("poly2", x=50.0, y=50.0, scale=2.0, width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        polygon_data.add_element("poly3", x=100.0, y=100.0, scale=3.0, width=3.0, color=(0.0, 0.0, 1.0, 1.0))
+        
+        assert polygon_data.count == 3
+        
+        # Remove middle element
+        polygon_data.remove_element("poly2")
+        
+        assert polygon_data.count == 2
+        assert "poly2" not in polygon_data.id_to_index
+        assert "poly1" in polygon_data.id_to_index
+        assert "poly3" in polygon_data.id_to_index
+        
+        # poly3 should have been swapped to index 1 (where poly2 was)
+        assert polygon_data.id_to_index["poly3"] == 1
+
+    def test_remove_element_nonexistent_safe(self):
+        """Test that removing a non-existent element is safe."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Should not raise an error
+        polygon_data.remove_element("nonexistent")
+        assert polygon_data.count == 0
+
+    def test_get_active_data_empty(self):
+        """Test getting active data when no elements exist."""
+        polygon_data = PolygonRenderData(10)
+        
+        active_data = polygon_data.get_active_data()
+        
+        # Should return None when no elements exist
+        assert active_data is None
+
+    def test_get_active_data_with_elements(self):
+        """Test getting active data with polygon elements."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add some elements
+        polygon_data.add_element("poly1", x=10.0, y=20.0, scale=1.5, width=2.0, color=(1.0, 0.0, 0.0, 1.0))
+        polygon_data.add_element("poly2", offset=(30.0, 40.0), scale=2.5, width=3.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        active_data = polygon_data.get_active_data()
+        
+        assert active_data is not None
+        assert len(active_data) == 2
+        
+        # Verify data structure
+        assert active_data.dtype.names == ('offset', 'scale', 'width', 'color')
+        
+        # Check first element
+        assert np.array_equal(active_data[0]['offset'], [10.0, 20.0])
+        assert active_data[0]['scale'] == 1.5
+        assert active_data[0]['width'] == 2.0
+        assert np.array_equal(active_data[0]['color'], [1.0, 0.0, 0.0, 1.0])
+        
+        # Check second element
+        assert np.array_equal(active_data[1]['offset'], [30.0, 40.0])
+        assert active_data[1]['scale'] == 2.5
+        assert active_data[1]['width'] == 3.0
+        assert np.array_equal(active_data[1]['color'], [0.0, 1.0, 0.0, 1.0])
+
+    def test_array_auto_resize(self):
+        """Test that the array automatically resizes when capacity is exceeded."""
+        polygon_data = PolygonRenderData(2)  # Small initial capacity
+        
+        # Add elements beyond initial capacity
+        polygon_data.add_element("poly1", x=0.0, y=0.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        polygon_data.add_element("poly2", x=10.0, y=10.0, scale=2.0, width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        polygon_data.add_element("poly3", x=20.0, y=20.0, scale=3.0, width=3.0, color=(0.0, 0.0, 1.0, 1.0))  # Should trigger resize
+        
+        assert polygon_data.count == 3
+        assert polygon_data.capacity == 4  # Should have doubled from 2 to 4
+        
+        # Verify all elements are still accessible
+        active_data = polygon_data.get_active_data()
+        assert active_data is not None
+        assert len(active_data) == 3
+
+    def test_swap_with_last_removal_behavior(self):
+        """Test the swap-with-last removal behavior in detail."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add elements in specific order
+        polygon_data.add_element("first", x=1.0, y=1.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        polygon_data.add_element("middle", x=2.0, y=2.0, scale=2.0, width=2.0, color=(0.0, 1.0, 0.0, 1.0))
+        polygon_data.add_element("last", x=3.0, y=3.0, scale=3.0, width=3.0, color=(0.0, 0.0, 1.0, 1.0))
+        
+        # Verify initial indices
+        assert polygon_data.id_to_index["first"] == 0
+        assert polygon_data.id_to_index["middle"] == 1
+        assert polygon_data.id_to_index["last"] == 2
+        
+        # Remove middle element
+        polygon_data.remove_element("middle")
+        
+        # Last element should now be at index 1 (swapped with middle)
+        assert polygon_data.id_to_index["first"] == 0  # Unchanged
+        assert polygon_data.id_to_index["last"] == 1   # Moved from index 2 to 1
+        assert "middle" not in polygon_data.id_to_index
+        
+        # Verify data integrity
+        if polygon_data.data is not None:
+            # First element unchanged
+            assert np.array_equal(polygon_data.data[0]['offset'], [1.0, 1.0])
+            assert polygon_data.data[0]['scale'] == 1.0
+            
+            # Last element moved to index 1
+            assert np.array_equal(polygon_data.data[1]['offset'], [3.0, 3.0])
+            assert polygon_data.data[1]['scale'] == 3.0
+
+    def test_gpu_data_compatibility(self):
+        """Test that generated data is compatible with GPU rendering expectations."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add a polygon with typical rendering parameters
+        polygon_data.add_element("gpu_test", x=100.0, y=200.0, scale=1.5, width=2.0, color=(128, 64, 192, 255))
+        
+        active_data = polygon_data.get_active_data()
+        
+        assert active_data is not None
+        assert len(active_data) == 1
+        
+        # Verify data types match GPU expectations
+        # For arrays with shape, we check the base type
+        if active_data.dtype['offset'].subdtype is not None:
+            assert active_data.dtype['offset'].subdtype[0] == np.float32  # vec2 of float32
+        else:
+            assert active_data.dtype['offset'].type == np.float32
+            
+        assert active_data.dtype['scale'] == np.float32              # float32  
+        assert active_data.dtype['width'] == np.float32              # float32
+        
+        if active_data.dtype['color'].subdtype is not None:
+            assert active_data.dtype['color'].subdtype[0] == np.float32  # vec4 of float32
+        else:
+            assert active_data.dtype['color'].type == np.float32
+        
+        # Verify color normalization for GPU (0.0-1.0 range)
+        color = active_data[0]['color']
+        assert all(0.0 <= c <= 1.0 for c in color)
+        assert np.allclose(color, [128/255, 64/255, 192/255, 1.0])
+
+    def test_element_id_collision_handling(self):
+        """Test behavior when adding element with existing ID."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add initial element
+        polygon_data.add_element("collision", x=0.0, y=0.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        assert polygon_data.count == 1
+        
+        # Add element with same ID - GenericStructuredArray always adds new elements
+        # This will create a second element with same ID (one overwrites mapping)
+        polygon_data.add_element("collision", x=50.0, y=50.0, scale=2.0, width=3.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        # Should have 2 elements, but mapping points to the latest one
+        assert polygon_data.count == 2
+        assert "collision" in polygon_data.id_to_index
+        
+        # The mapping should point to the second element (index 1)
+        assert polygon_data.id_to_index["collision"] == 1
+
+    def test_update_element_collision_handling(self):
+        """Test update_element behavior which properly handles existing IDs."""
+        polygon_data = PolygonRenderData(10)
+        
+        # Add initial element
+        polygon_data.add_element("updatable", x=0.0, y=0.0, scale=1.0, width=1.0, color=(1.0, 0.0, 0.0, 1.0))
+        assert polygon_data.count == 1
+        
+        # Update element with same ID - should update existing
+        polygon_data.update_element("updatable", x=50.0, y=50.0, scale=2.0, width=3.0, color=(0.0, 1.0, 0.0, 1.0))
+        
+        # Should still have only 1 element, but with updated values
+        assert polygon_data.count == 1
+        
+        if polygon_data.data is not None:
+            element = polygon_data.data[0]
+            assert np.array_equal(element['offset'], [50.0, 50.0])
+            assert element['scale'] == 2.0
+            assert element['width'] == 3.0
+            assert np.array_equal(element['color'], [0.0, 1.0, 0.0, 1.0])
 
 
 if __name__ == "__main__":
