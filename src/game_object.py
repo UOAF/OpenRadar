@@ -284,7 +284,7 @@ class GameObject:
     def rgba_from_str(self, str: str) -> tuple[float, float, float, float]:
 
         # 0=white
-        # 1= green
+        # 1=green
         # 2=blue
         # 3=brown
         # 4=orange
