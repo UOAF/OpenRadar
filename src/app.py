@@ -144,7 +144,7 @@ class App:
         self._display_data = DisplayData(self.scene, self.gamestate, self._tracks)
 
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate,
-                                           self._tracks, self._display_data, self._display_data.annotations, self.data_client)
+                                           self._tracks, self._display_data, self.data_client)
 
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
