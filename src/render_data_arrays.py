@@ -13,19 +13,23 @@ Data is stored contiguously and removal uses swap-with-last for O(1) deletion.
 
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any, Dict
 from game_object import GameObject
 from draw.shapes import Shapes
 
 
-class BaseRenderData(ABC):
+class GenericStructuredArray(ABC):
     """
-    Abstract base class for Array of Structs render data.
-    Provides common functionality for contiguous array management with swap-with-last removal.
+    Generic Array of Structs data structure for efficient contiguous memory layout.
+    This class provides numpy structured array management with swap-with-last removal,
+    without depending on any specific data types like GameObject.
+    
+    Values are passed directly as parameters to update methods, making it flexible
+    for any use case requiring efficient array operations.
     """
 
     def __init__(self, initial_capacity: int):
-        """Initialize base render data arrays."""
+        """Initialize generic structured array."""
         self.capacity = initial_capacity
         self.count = 0
 
@@ -40,7 +44,7 @@ class BaseRenderData(ABC):
         self._initialize_array(initial_capacity)
 
     def _initialize_array(self, capacity: int):
-        """Initialize the velocity vector structured array."""
+        """Initialize the structured array."""
         self.capacity = capacity
         self.data = np.zeros(capacity, dtype=self._get_dtype())
 
@@ -50,44 +54,51 @@ class BaseRenderData(ABC):
         pass
 
     @abstractmethod
-    def _update_object_data(self, index: int, game_obj: GameObject):
-        """Update the structured array with data from the game object."""
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        """Update the structured array element with provided data."""
         pass
 
-    def add_object(self, game_obj: GameObject) -> int:
-        """Add a game object to the array."""
+    def add_element(self, element_id: str, **kwargs) -> int:
+        """Add an element to the array with provided data."""
         index = self._get_free_index()
 
         # Store the mapping
-        self.id_to_index[game_obj.object_id] = index
-        self.index_to_id[index] = game_obj.object_id
+        self.id_to_index[element_id] = index
+        self.index_to_id[index] = element_id
 
         # Update the data
-        self._update_object_data(index, game_obj)
+        self._update_element_data(index, element_id, **kwargs)
         self.count += 1
 
         return index
 
-    def remove_object(self, object_id: str):
-        """Remove an object from the array using swap-with-last."""
-        if object_id not in self.id_to_index:
+    def remove_element(self, element_id: str):
+        """Remove an element from the array using swap-with-last."""
+        if element_id not in self.id_to_index:
             return
 
-        index = self.id_to_index[object_id]
-        self._remove_by_swap(index, object_id)
+        index = self.id_to_index[element_id]
+        self._remove_by_swap(index, element_id)
 
-    def update_object(self, game_obj: GameObject):
-        """Update an existing object in the array."""
-        if game_obj.object_id not in self.id_to_index:
-            self.add_object(game_obj)
+    def update_element(self, element_id: str, **kwargs):
+        """Update an existing element in the array."""
+        if element_id not in self.id_to_index:
+            self.add_element(element_id, **kwargs)
             return
 
-        index = self.id_to_index[game_obj.object_id]
-        self.index_to_id[index] = game_obj.object_id
-        self._update_object_data(index, game_obj)
+        index = self.id_to_index[element_id]
+        self._update_element_data(index, element_id, **kwargs)
+
+    def has_element(self, element_id: str) -> bool:
+        """Check if an element exists in the array."""
+        return element_id in self.id_to_index
+
+    def get_element_index(self, element_id: str) -> Optional[int]:
+        """Get the array index for an element ID."""
+        return self.id_to_index.get(element_id)
 
     def resize(self, new_capacity: int):
-        """Resize array to accommodate more objects."""
+        """Resize array to accommodate more elements."""
         if new_capacity <= self.capacity or self.data is None:
             return
 
@@ -105,35 +116,27 @@ class BaseRenderData(ABC):
             self.resize(self.capacity * 2)
         return self.count
 
-    def _remove_by_swap(self, index: int, object_id_to_remove: str):
+    def _remove_by_swap(self, index: int, element_id_to_remove: str):
         """Remove element by swapping with last element (O(1) removal)."""
         if index >= self.count or self.count == 0 or self.data is None:
-            # TODO maybe log a warnning here
+            # TODO maybe log a warning here
             raise IndexError("Index out of bounds or empty array")
-
-        # - perform the "swap"
-        #   1. Copy the last element to  index
-        #   2. Update both dictionaries for the swap:
-        #      a. index2id[index] = last_object_id
-        #      b. id2index[last_object_id] = index
-        #      c. Remove the object_id_to_remove from id_to_index
 
         last_index = self.count - 1
 
-        # Get the object_id_to_remove of the last element to update the mapping
-        last_element = self.data[last_index]
-        last_object_id = self.index_to_id[last_index]
+        # Get the element_id of the last element to update the mapping
+        last_element_id = self.index_to_id[last_index]
 
         # Swap the data
-        self.data[index] = last_element
+        self.data[index] = self.data[last_index]
 
         # Update the mapping for the swapped element
-        self.id_to_index[last_object_id] = index
-        self.index_to_id[index] = last_object_id
+        self.id_to_index[last_element_id] = index
+        self.index_to_id[index] = last_element_id
 
         # Remove from mapping
         del self.index_to_id[last_index]
-        del self.id_to_index[object_id_to_remove]
+        del self.id_to_index[element_id_to_remove]
 
         # decrement count
         self.count -= 1
@@ -145,13 +148,58 @@ class BaseRenderData(ABC):
         return self.data[:self.count]
 
     def get_render_data(self) -> Optional[np.ndarray]:
+        """Get the render data (alias for get_active_data for compatibility)."""
         return self.get_active_data()
+
+    def clear(self):
+        """Clear all elements from the array."""
+        self.count = 0
+        self.id_to_index.clear()
+        self.index_to_id.clear()
+
+
+class BaseRenderData(GenericStructuredArray):
+    """
+    Abstract base class for GameObject-specific Array of Structs render data.
+    Bridges between the generic structured array and GameObject-specific functionality.
+    Provides backwards compatibility for existing GameObject-based code.
+    """
+
+    @abstractmethod
+    def _update_object_data(self, index: int, game_obj: GameObject):
+        """Update the structured array with data from the game object."""
+        pass
+
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        """
+        Implementation of the generic update method.
+        Expects 'game_obj' in kwargs for GameObject-based updates.
+        """
+        if 'game_obj' in kwargs:
+            self._update_object_data(index, kwargs['game_obj'])
+        else:
+            # For direct parameter updates, subclasses can override this
+            # to handle specific parameter combinations
+            pass
+
+    def add_object(self, game_obj: GameObject) -> int:
+        """Add a game object to the array."""
+        return self.add_element(game_obj.object_id, game_obj=game_obj)
+
+    def remove_object(self, object_id: str):
+        """Remove an object from the array using swap-with-last."""
+        self.remove_element(object_id)
+
+    def update_object(self, game_obj: GameObject):
+        """Update an existing object in the array."""
+        self.update_element(game_obj.object_id, game_obj=game_obj)
 
 
 class IconRenderData(BaseRenderData):
     """
     Array of Structs for icon rendering.
     Each element contains: object_id, position, color, icon_id, scale, altitude, heading, status_flags
+    Supports both GameObject-based updates and direct parameter updates.
     """
 
     def _get_dtype(self):
@@ -185,12 +233,40 @@ class IconRenderData(BaseRenderData):
         # Scale (could be configurable per object type)
         element['scale'] = 10.0
 
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        """Update element with either GameObject or direct parameters."""
+        if 'game_obj' in kwargs:
+            # Use GameObject-based update
+            self._update_object_data(index, kwargs['game_obj'])
+        else:
+            # Direct parameter update
+            if self.data is None:
+                return
+
+            element = self.data[index]
+
+            # Update position if provided
+            if 'position' in kwargs:
+                element['position'] = kwargs['position']
+            elif 'x' in kwargs and 'y' in kwargs:
+                element['position'] = [kwargs['x'], kwargs['y']]
+
+            # Update color if provided
+            if 'color' in kwargs:
+                color = kwargs['color']
+                element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
+
+            # Update scale if provided
+            if 'scale' in kwargs:
+                element['scale'] = kwargs['scale']
+
 
 class VelocityVectorRenderData(BaseRenderData):
     """
     Array of Structs for velocity vector rendering.
     Each element contains: object_id, start_position, color, heading, velocity
     End positions are calculated in the fragment shader using heading and velocity with a fixed scale.
+    Supports both GameObject-based updates and direct parameter updates.
     """
 
     def _get_dtype(self):
@@ -220,11 +296,43 @@ class VelocityVectorRenderData(BaseRenderData):
         element['heading'] = game_obj.Heading
         element['velocity'] = game_obj.CAS
 
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        """Update element with either GameObject or direct parameters."""
+        if 'game_obj' in kwargs:
+            # Use GameObject-based update
+            self._update_object_data(index, kwargs['game_obj'])
+        else:
+            # Direct parameter update
+            if self.data is None:
+                return
+
+            element = self.data[index]
+
+            # Update start position if provided
+            if 'start_position' in kwargs:
+                element['start_position'] = kwargs['start_position']
+            elif 'x' in kwargs and 'y' in kwargs:
+                element['start_position'] = [kwargs['x'], kwargs['y']]
+
+            # Update color if provided
+            if 'color' in kwargs:
+                color = kwargs['color']
+                element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
+
+            # Update heading if provided
+            if 'heading' in kwargs:
+                element['heading'] = kwargs['heading']
+
+            # Update velocity if provided
+            if 'velocity' in kwargs:
+                element['velocity'] = kwargs['velocity']
+
 
 class LockLineRenderData(BaseRenderData):
     """
     Array of Structs for target lock line rendering.
     Each element contains: lock_pair, start_position, end_position, color
+    Supports both GameObject-based updates and direct parameter updates.
     """
 
     def __init__(self, initial_capacity: int):
@@ -239,21 +347,66 @@ class LockLineRenderData(BaseRenderData):
             ('color', np.float32, (4, ))  # RGBA normalized 0.0-1.0
         ])
 
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        """Update element with either GameObject pair or direct parameters."""
+        if 'source_obj' in kwargs and 'target_obj' in kwargs:
+            # Use GameObject-based update for lock lines
+            self._update_lock_line_data(index, kwargs['source_obj'], kwargs['target_obj'])
+        elif 'game_obj' in kwargs:
+            # This shouldn't be used for lock lines as they need two objects
+            pass
+        else:
+            # Direct parameter update
+            if self.data is None:
+                return
+
+            element = self.data[index]
+
+            # Update start position if provided
+            if 'start_position' in kwargs:
+                element['start_position'] = kwargs['start_position']
+            elif 'start_x' in kwargs and 'start_y' in kwargs:
+                element['start_position'] = [kwargs['start_x'], kwargs['start_y']]
+
+            # Update end position if provided
+            if 'end_position' in kwargs:
+                element['end_position'] = kwargs['end_position']
+            elif 'end_x' in kwargs and 'end_y' in kwargs:
+                element['end_position'] = [kwargs['end_x'], kwargs['end_y']]
+
+            # Update color if provided
+            if 'color' in kwargs:
+                color = kwargs['color']
+                element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
+
     def add_lock_line(self, source_obj: GameObject, target_obj: GameObject) -> int:
         """Add a lock line between two objects."""
-        index = self._get_free_index()
         lock_pair = f"{source_obj.object_id}:{target_obj.object_id}"
+        
+        index = self.add_element(lock_pair, source_obj=source_obj, target_obj=target_obj)
 
-        # Store the mapping
+        # Store the lock line mapping
         if not source_obj.object_id in self.id_to_locks:
             self.id_to_locks[source_obj.object_id] = {}
         self.id_to_locks[source_obj.object_id][target_obj.object_id] = index
-        self.id_to_index[lock_pair] = index
-        self.index_to_id[index] = lock_pair
 
-        # Update the data
-        self._update_lock_line_data(index, source_obj, target_obj)
-        self.count += 1
+        return index
+
+    def add_lock_line_direct(self, source_id: str, target_id: str, 
+                           start_position: tuple, end_position: tuple, 
+                           color: tuple = (1.0, 1.0, 1.0, 1.0)) -> int:
+        """Add a lock line with direct parameters."""
+        lock_pair = f"{source_id}:{target_id}"
+        
+        index = self.add_element(lock_pair, 
+                               start_position=start_position, 
+                               end_position=end_position, 
+                               color=color)
+
+        # Store the lock line mapping
+        if not source_id in self.id_to_locks:
+            self.id_to_locks[source_id] = {}
+        self.id_to_locks[source_id][target_id] = index
 
         return index
 
@@ -468,3 +621,43 @@ class RenderDataArrays:
         lock_lines = active_array_slice.copy() if active_array_slice is not None else None
 
         return {'icons': icon_arrays, 'velocity_vectors': velocity_vectors, 'lock_lines': lock_lines}
+
+
+# Example usage of the generic structured array for custom data structures:
+
+class CustomPointData(GenericStructuredArray):
+    """
+    Example custom structured array for arbitrary point data.
+    Demonstrates direct parameter usage without GameObject dependency.
+    """
+
+    def _get_dtype(self):
+        return np.dtype([
+            ('position', np.float32, (3,)),  # x, y, z
+            ('intensity', np.float32),
+            ('timestamp', np.float64),
+        ])
+
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        if self.data is None:
+            return
+
+        element = self.data[index]
+        
+        if 'position' in kwargs:
+            element['position'] = kwargs['position']
+        elif 'x' in kwargs and 'y' in kwargs:
+            z = kwargs.get('z', 0.0)
+            element['position'] = [kwargs['x'], kwargs['y'], z]
+            
+        if 'intensity' in kwargs:
+            element['intensity'] = kwargs['intensity']
+            
+        if 'timestamp' in kwargs:
+            element['timestamp'] = kwargs['timestamp']
+
+# Usage example:
+# points = CustomPointData(1000)
+# points.add_element("point_1", x=10.0, y=20.0, z=5.0, intensity=0.8, timestamp=1234567890.0)
+# points.update_element("point_1", intensity=0.9)
+# data_array = points.get_active_data()  # Returns numpy structured array
