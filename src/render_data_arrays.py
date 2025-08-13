@@ -661,3 +661,59 @@ class CustomPointData(GenericStructuredArray):
 # points.add_element("point_1", x=10.0, y=20.0, z=5.0, intensity=0.8, timestamp=1234567890.0)
 # points.update_element("point_1", intensity=0.9)
 # data_array = points.get_active_data()  # Returns numpy structured array
+
+
+class PolygonRenderData(GenericStructuredArray):
+    """
+    Array of Structs for polygon rendering.
+    Each element contains: offset, scale, width, color
+    Matches the PolygonInstance struct in map_polygon_vertex.glsl shader.
+    """
+
+    def _get_dtype(self):
+        """Get the numpy dtype for polygon structured array."""
+        return np.dtype([
+            ('offset', np.float32, (2,)),    # vec2 offset - x, y world coords
+            ('scale', np.float32),           # float scale - uniform scale factor
+            ('width', np.float32),           # float width - line width
+            ('color', np.float32, (4,)),     # vec4 color - RGBA normalized 0.0-1.0
+        ])
+
+    def _update_element_data(self, index: int, element_id: str, **kwargs):
+        """Update polygon element data with direct parameters."""
+        if self.data is None:
+            return
+
+        element = self.data[index]
+        
+        # Update offset (x, y world coordinates)
+        if 'offset' in kwargs:
+            element['offset'] = kwargs['offset']
+        elif 'x' in kwargs and 'y' in kwargs:
+            element['offset'] = [kwargs['x'], kwargs['y']]
+            
+        # Update scale factor
+        if 'scale' in kwargs:
+            element['scale'] = kwargs['scale']
+            
+        # Update line width
+        if 'width' in kwargs:
+            element['width'] = kwargs['width']
+            
+        # Update color (RGBA normalized 0.0-1.0)
+        if 'color' in kwargs:
+            color = kwargs['color']
+            # Ensure color is normalized to 0.0-1.0 range
+            if isinstance(color, (list, tuple)) and len(color) >= 4:
+                # Handle both 0-255 and 0.0-1.0 ranges
+                normalized_color = [c / 255.0 if c > 1.0 else c for c in color[:4]]
+                element['color'] = normalized_color
+            else:
+                element['color'] = color
+
+# Usage example:
+# polygons = PolygonRenderData(1000)
+# polygons.add_element("polygon_1", x=100.0, y=200.0, scale=1.5, width=2.0, color=(255, 0, 0, 255))
+# polygons.add_element("polygon_2", offset=(50.0, 75.0), scale=1.0, width=1.0, color=(0.0, 1.0, 0.0, 1.0))
+# polygons.update_element("polygon_1", scale=2.0, color=(0.5, 0.5, 1.0, 0.8))
+# data_array = polygons.get_active_data()  # Returns numpy structured array for GPU rendering
