@@ -827,8 +827,8 @@ class TestLockLineRenderData:
         assert lock_data.count == 0
 
 
-class TestRenderDataArrays:
-    """Test suite for RenderDataArrays master container."""
+class TestTrackRenderDataArrays:
+    """Test suite for TrackRenderDataArrays master container."""
 
     def create_mock_game_object(
         self,
@@ -858,8 +858,8 @@ class TestRenderDataArrays:
         return mock_obj
 
     def test_initialization(self):
-        """Test RenderDataArrays initialization."""
-        render_arrays = RenderDataArrays(100)
+        """Test TrackRenderDataArrays initialization."""
+        render_arrays = TrackRenderDataArrays(100)
 
         # Check that all shape types have IconRenderData
         assert len(render_arrays.icon_data) == len(Shapes)
@@ -876,7 +876,7 @@ class TestRenderDataArrays:
 
     def test_add_aircraft_object(self):
         """Test adding an aircraft object (should add to icon and velocity arrays)."""
-        render_arrays = RenderDataArrays(100)
+        render_arrays = TrackRenderDataArrays(100)
         aircraft_obj = self.create_mock_game_object("aircraft1",
                                                     GameObjectType.FIXEDWING,
                                                     100.0,
@@ -896,7 +896,7 @@ class TestRenderDataArrays:
 
     def test_add_object_with_locks(self):
         """Test adding an object with target locks."""
-        render_arrays = RenderDataArrays(100)
+        render_arrays = TrackRenderDataArrays(100)
         target_obj = self.create_mock_game_object("target", icon=2)  # icon=2 (SQUARE)
         source_obj = self.create_mock_game_object("source", icon=1, locked_targets=[target_obj])  # icon=1 (CIRCLE)
 
@@ -909,7 +909,7 @@ class TestRenderDataArrays:
 
     def test_remove_object(self):
         """Test removing an object from all arrays."""
-        render_arrays = RenderDataArrays(100)
+        render_arrays = TrackRenderDataArrays(100)
         target_obj = self.create_mock_game_object("target", icon=2)  # icon=2 (SQUARE)
         aircraft_obj = self.create_mock_game_object("aircraft1",
                                                     GameObjectType.FIXEDWING,
@@ -934,7 +934,7 @@ class TestRenderDataArrays:
 
     def test_update_object_velocity_change(self):
         """Test updating an aircraft object when velocity changes."""
-        render_arrays = RenderDataArrays(100)
+        render_arrays = TrackRenderDataArrays(100)
         aircraft_obj = self.create_mock_game_object("aircraft1", GameObjectType.FIXEDWING, icon=1,
                                                     cas=0.0)  # Initially no velocity, icon=1 (CIRCLE)
 
@@ -952,7 +952,7 @@ class TestRenderDataArrays:
 
     def test_update_object_lock_changes(self):
         """Test updating an object when lock targets change."""
-        render_arrays = RenderDataArrays(100)
+        render_arrays = TrackRenderDataArrays(100)
         target1 = self.create_mock_game_object("target1", icon=2)  # icon=2 (SQUARE)
         target2 = self.create_mock_game_object("target2", icon=2)  # icon=2 (SQUARE)
         source_obj = self.create_mock_game_object("source", icon=1, locked_targets=[target1])  # icon=1 (CIRCLE)
@@ -971,7 +971,7 @@ class TestRenderDataArrays:
 
     def test_get_render_data(self):
         """Test getting render data for GPU rendering."""
-        render_arrays = RenderDataArrays(100)
+        render_arrays = TrackRenderDataArrays(100)
         aircraft_obj = self.create_mock_game_object("aircraft1", GameObjectType.FIXEDWING, icon=1,
                                                     cas=250.0)  # icon=1 (CIRCLE)
 

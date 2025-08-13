@@ -535,9 +535,9 @@ class LockLineRenderData(BaseRenderData):
         element['color'] = lock_color
 
 
-class RenderDataArrays:
+class TrackRenderDataArrays:
     """
-    Master container for all Array of Structs render data arrays.
+    Master container for all Array of Structs render data arrays needed to Render Tracks.
     Contains separate arrays for icons, velocity vectors, and lock lines.
     All data is stored contiguously for optimal GPU performance.
     """

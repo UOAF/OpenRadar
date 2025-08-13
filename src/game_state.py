@@ -5,7 +5,7 @@ import math
 
 from game_object_types import GameObjectType, infer_object_type_from_tacview
 from game_object import GameObject
-from render_data_arrays import RenderDataArrays
+from render_data_arrays import TrackRenderDataArrays
 from draw.shapes import Shapes
 
 
@@ -36,7 +36,7 @@ class GameState:
         self.parser = acmi_parse.ACMIFileParser()
 
         # Initialize render data arrays for GPU rendering
-        self.render_arrays = RenderDataArrays()
+        self.render_arrays = TrackRenderDataArrays()
 
     def get_time(self) -> datetime.datetime:
         """Get current simulation time."""
