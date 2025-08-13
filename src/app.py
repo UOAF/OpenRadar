@@ -17,7 +17,6 @@ from game_state import GameState
 from trtt_client import TRTTClientThread
 from draw.map_gl import MapGL
 from draw.scene import Scene
-from draw.annotations import MapAnnotations
 from sensor_tracks import SensorTracks
 from display_data import DisplayData
 from gpu_timer import GPUTimer
@@ -141,12 +140,11 @@ class App:
         # Must be initialized after the OpenGL context is created
         self.gpu_timer = GPUTimer()
 
-        self._annotations = MapAnnotations(self.scene)
         self._tracks = SensorTracks(self.gamestate)
         self._display_data = DisplayData(self.scene, self.gamestate, self._tracks)
 
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate,
-                                           self._tracks, self._display_data, self._annotations, self.data_client)
+                                           self._tracks, self._display_data, self._display_data.annotations, self.data_client)
 
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
@@ -255,7 +253,6 @@ class App:
         """
         self.mgl_ctx.clear(*config.app_config.get_color_normalized("map", "background_color"))
         self._map_gl.render()
-        self._annotations.render()
         self._display_data.render()
         self._ImguiUI.render()
 
@@ -277,7 +274,7 @@ class App:
 
         self.args = args
         if args.ini is not None:
-            self._annotations.load_ini(args.ini)
+            self._display_data.load_annotations_ini(args.ini)
 
         time_sum = 0
         while self._running:

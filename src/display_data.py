@@ -5,6 +5,7 @@ from draw.icon_renderer import IconInstancedRenderer
 from draw.vector_renderer import VectorRenderer
 from draw.lock_renderer import LockRenderer
 from draw.bullseye_renderer import BullseyeRenderer
+from draw.annotations import MapAnnotations
 from draw.scene import Scene
 import config
 
@@ -24,6 +25,7 @@ class DisplayData:
         self.vector_renderer: VectorRenderer = VectorRenderer(self.scene)
         self.lock_renderer: LockRenderer = LockRenderer(self.scene)
         self.bullseye_renderer: BullseyeRenderer = BullseyeRenderer(self.scene)
+        self.annotations: MapAnnotations = MapAnnotations(self.scene)
 
     def generate_render_arrays(self):
         """
@@ -55,18 +57,21 @@ class DisplayData:
         """
         # self.track_renderer.render()
 
+        # Render annotations
+        self.annotations.render()
+
+        # Render bullseye if enabled
+        if config.app_config.get_bool("layers", "show_bullseye"):
+            self.bullseye_renderer.render()
+
+        # Render lock lines using the new lock renderer
+        self.lock_renderer.render()
+
         # Render icons using the new instanced renderer
         self.icon_renderer.render()
 
         # Render velocity vectors using the new vector renderer
         self.vector_renderer.render()
-
-        # Render lock lines using the new lock renderer
-        self.lock_renderer.render()
-
-        # Render bullseye if enabled
-        if config.app_config.get_bool("layers", "show_bullseye"):
-            self.bullseye_renderer.render()
 
     def clear(self):
         """
@@ -77,4 +82,13 @@ class DisplayData:
         self.vector_renderer.clear()
         self.lock_renderer.clear()
         self.bullseye_renderer.clear()
-        # self.annotations.clear()
+        self.annotations.clear()
+
+    def load_annotations_ini(self, ini_path):
+        """
+        Load annotations from INI file.
+        
+        Args:
+            ini_path: Path to the INI file containing annotation data
+        """
+        self.annotations.load_ini(ini_path)
