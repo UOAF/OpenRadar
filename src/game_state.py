@@ -2,6 +2,7 @@ import acmi_parse
 import datetime
 import queue
 import math
+import numpy as np
 
 from game_object_types import GameObjectType, infer_object_type_from_tacview
 from game_object import GameObject
@@ -89,8 +90,67 @@ class GameState:
             else:
                 print(f"Unknown action {acmiline.action} in {acmiline}")
 
-    def get_nearest_object(self, world_pos: tuple[float, float],
-                           hover_dist_world: float = float('inf')) -> GameObject | None:
+    def get_nearest_object(self, world_pos: tuple[float, float]) -> GameObject | None:
+        """
+        Gets the object that is nearest to the specified world position.
+
+        Args:
+            world_pos: The position in world units to search near
+
+        Returns:
+            The nearest GameObject, or None if none found within distance
+        """
+        nearest_obj_id = self.get_nearest_object_id(world_pos)
+        nearest_obj = self.all_objects.get(nearest_obj_id) if nearest_obj_id is not None else None
+        return nearest_obj
+
+    def get_nearest_object_id(self, world_pos: tuple[float, float]) -> str | None:
+        """
+        Gets the object_id that is nearest to the specified world position.
+        
+        Args:
+            world_pos: The position in world units to search near
+            
+        Returns:
+            The nearest object_id, or None if none found within distance
+        """
+        closest_object_id = None
+        closest_dist = float('inf')
+
+        # Convert world_pos to numpy array for vectorized operations
+        target_pos = np.array(world_pos, dtype=np.float32)
+
+        # Search through all icon render arrays (organized by shape)
+        for shape, icon_data in self.render_arrays.icon_data.items():
+            # Get active data from the numpy structured array
+            active_data = icon_data.get_active_data()
+
+            if active_data is None or len(active_data) == 0:
+                continue
+
+            # Extract positions from the structured array (shape: (N, 2))
+            positions = active_data['position']
+
+            # Calculate squared distances using vectorized numpy operations
+            # This is much faster than iterating through objects individually
+            diff = positions - target_pos
+            sq_distances = np.sum(diff * diff, axis=1)
+
+            # Find the minimum distance in this shape's data
+            if len(sq_distances) > 0:
+                min_idx = np.argmin(sq_distances)
+                min_dist = np.sqrt(sq_distances[min_idx])
+
+                # Check if this is the closest so far
+                if min_dist < closest_dist:
+                    closest_dist = min_dist
+                    # Get the object_id using the index mapping (convert numpy int to Python int)
+                    closest_object_id = icon_data.index_to_id.get(int(min_idx))
+
+        return closest_object_id
+
+    def get_nearest_object_old(
+        self, world_pos: tuple[float, float], hover_dist_world: float = float('inf')) -> GameObject | None:
         """
         Gets the object that is nearest to the specified world position.
         
