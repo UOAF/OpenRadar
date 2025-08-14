@@ -206,6 +206,15 @@ class App:
         mouse_world = self.scene.screen_to_world(glm.vec2(xpos, ypos))
         nearest_object = self.gamestate.get_nearest_object(
             (mouse_world.x, mouse_world.y))  # Update nearest object on hover
+        
+        # Find the corresponding track for the hovered object
+        nearest_track = None
+        if nearest_object:
+            nearest_track = self._tracks.get_nearest_track((mouse_world.x, mouse_world.y))
+        
+        # Update the display data with the currently hovered track
+        self._display_data.set_hovered_track(nearest_track)
+        
         if imgui.get_io().want_capture_mouse:
             return
         if self.mouseDragDown:  # dragging
