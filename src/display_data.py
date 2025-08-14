@@ -6,7 +6,10 @@ from draw.vector_renderer import VectorRenderer
 from draw.lock_renderer import LockRenderer
 from draw.bullseye_renderer import BullseyeRenderer
 from draw.annotations import MapAnnotations
+from draw.radar_labels_renderer import RadarLabelsRenderer
 from draw.scene import Scene
+from game_object_types import GameObjectType
+from typing import Optional
 import config
 
 
@@ -19,12 +22,12 @@ class DisplayData:
         self.gamestate = gamestate
         self.scene = scene
         self.sensor_tracks = tracks
-        # self.track_renderer: TrackRenderer = TrackRenderer(self.scene)
         self.icon_renderer: IconInstancedRenderer = IconInstancedRenderer(self.scene)
         self.vector_renderer: VectorRenderer = VectorRenderer(self.scene)
         self.lock_renderer: LockRenderer = LockRenderer(self.scene)
         self.bullseye_renderer: BullseyeRenderer = BullseyeRenderer(self.scene)
         self.annotations: MapAnnotations = MapAnnotations(self.scene)
+        self.labels_renderer: RadarLabelsRenderer = RadarLabelsRenderer(self.scene)
 
     def generate_render_arrays(self):
         """
@@ -50,6 +53,53 @@ class DisplayData:
             if bullseye_pos != (0, 0):  # Valid bullseye position
                 self.bullseye_renderer.set_bullseye(bullseye_pos[0], bullseye_pos[1])
 
+        # Clear and regenerate track labels
+        self.labels_renderer.clear()
+        self._generate_track_labels()
+
+    def set_hovered_track(self, track: Optional[Track]):
+        """
+        Set the currently hovered track for special label rendering.
+        
+        Args:
+            track: The track that is currently being hovered, or None if no track is hovered
+        """
+        self.labels_renderer.set_hovered_track(track)
+
+    def _generate_track_labels(self):
+        """Generate text labels for all visible tracks."""
+        all_tracks = self.sensor_tracks.tracks
+        
+        for track_type, tracks_dict in all_tracks.items():
+            # Check if this track type should be visible based on layer settings
+            if not self._should_render_track_type(track_type):
+                continue
+                
+            for track in tracks_dict.values():
+                # Special handling for bullseye labels
+                if track_type == GameObjectType.BULLSEYE:
+                    self.labels_renderer.draw_bullseye_labels(track)
+                else:
+                    # Regular track labels
+                    self.labels_renderer.draw_track_labels(track, track_type)
+
+    def _should_render_track_type(self, track_type: GameObjectType) -> bool:
+        """Check if a track type should be rendered based on layer configuration."""
+        layer_mapping = {
+            GameObjectType.FIXEDWING: "show_fixed_wing",
+            GameObjectType.ROTARYWING: "show_rotary_wing", 
+            GameObjectType.GROUND: "show_ground",
+            GameObjectType.SEA: "show_ships",
+            GameObjectType.MISSILE: "show_missiles",
+            GameObjectType.BULLSEYE: "show_bullseye",
+        }
+        
+        layer_key = layer_mapping.get(track_type)
+        if layer_key:
+            return config.app_config.get_bool("layers", layer_key)
+        
+        return True  # Default to showing unknown types
+
     def render(self):
         """
         Render the display data.
@@ -72,6 +122,9 @@ class DisplayData:
         # Render velocity vectors using the new vector renderer
         self.vector_renderer.render()
 
+        # Render all track labels
+        self.labels_renderer.render()
+
     def clear(self):
         """
         Clear the display data.
@@ -82,6 +135,7 @@ class DisplayData:
         self.lock_renderer.clear()
         self.bullseye_renderer.clear()
         self.annotations.clear()
+        self.labels_renderer.clear()
 
     def load_annotations_ini(self, ini_path):
         """
