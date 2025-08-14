@@ -194,10 +194,10 @@ class App:
             # Open a context menu for the nearest track
             if math.dist(pos, self._startPan) < 5:
                 mouse_world = self.scene.screen_to_world(glm.vec2(*pos))
-                nearest_track = self._tracks.get_nearest_track((mouse_world.x, mouse_world.y))
-                screen_pos_track = self.scene.world_to_screen(nearest_track.position_m) if nearest_track else None
+                nearest_object = self.gamestate.get_nearest_object((mouse_world.x, mouse_world.y))
+                screen_pos_track = self.scene.world_to_screen(nearest_object.get_pos()) if nearest_object else None
                 if screen_pos_track and math.dist(screen_pos_track, pos) < 40:
-                    self._ImguiUI.open_track_context_menu(nearest_track)
+                    self._ImguiUI.open_context_menu()
         elif button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False
 

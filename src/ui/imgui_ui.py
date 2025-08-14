@@ -1,5 +1,5 @@
 from imgui_bundle import imgui
-from imgui_bundle import portable_file_dialogs as pfd
+from imgui_bundle import portable_file_dialogs as pfd  # type: ignore
 from imgui_bundle.python_backends.glfw_backend import GlfwRenderer
 
 import numpy as np
@@ -9,6 +9,7 @@ import os
 from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
+from game_object import GameObject
 from trtt_client import TRTTClientThread, ThreadState
 from game_state import GameState
 from game_object_types import GameObjectType
@@ -137,7 +138,8 @@ class ImguiUserInterface:
         self._frame_time_history = [0.0] * 4000
         self._cpu_frame_time = 0.0
         self._cpu_frame_time_history = [0.0] * 4000
-        self.context_track: Track | None = None
+        self.context_object: GameObject | None = None
+        self.most_recent_context_object: GameObject | None = None
         self.flag_open_context_menu = False
 
         self.fps_window_open = False
@@ -282,7 +284,6 @@ class ImguiUserInterface:
         """
         Set the track for the context menu.
         """
-        self.context_track = track
         self.flag_open_context_menu = True
 
     def update(self):
@@ -372,14 +373,30 @@ class ImguiUserInterface:
 
             if expanded:
 
-                if self.context_track:
-                    imgui.text(f"Selected Track: {self.context_track.id}")
-                    imgui.text(f"Label: {self.context_track.label}")
-                    imgui.text(
-                        f"Position: {self.context_track.position_m[0]:.0f}, {self.context_track.position_m[1]:.0f}")
-                    imgui.text(f"Velocity: {self.context_track.velocity_kts:.0f} kts")
-                    imgui.text(f"Heading: {self.context_track.heading_deg:.0f}°")
-                    imgui.text(f"Altitude: {self.context_track.altitude_m * METERS_TO_FT:.0f} ft")
+                if self.most_recent_context_object:
+                    obj = self.most_recent_context_object
+                    imgui.text(f"Selected Track: {obj.get_display_name()}")
+                    imgui.text(f"Callsign: {obj.CallSign}")
+                    imgui.text(f"Type: {obj.Name}")
+                    imgui.text(f"Pilot: {obj.Pilot}")
+                    imgui.text(f"Altitude: {(obj.Altitude * METERS_TO_FT):.0f}")
+                    imgui.text(f"Heading: {(obj.Heading + 360) % 360:.0f}")
+                    imgui.text(f"Mach: {obj.Mach:.2f}")
+                    imgui.text(f"CAS: {(obj.CAS * M_PER_SEC_TO_KNOTS):.0f}")
+                    imgui.text(f"Fuel: {obj.FuelWeight:.0f}")
+                    imgui.text(f"AOA: {obj.AOA:.2f}")
+                    # imgui.text(f"Gforce:") # These only work for local clients
+                    # imgui.text(f" - Vertical: {obj.VerticalGForce:.2f}")
+                    # imgui.text(f" - Lateral: {obj.LateralGForce:.2f}")
+                    # imgui.text(f" - Longitudinal: {obj.LongitudinalGForce:.2f}")
+                    imgui.text(f"Coalition: {obj.Coalition}")
+                    imgui.text(f"Locked Targets: ")
+                    if len(obj.locked_target_objs) == 0:
+                        imgui.text("   None")
+                    for target in obj.locked_target_objs:
+                        if target is not None:
+                            imgui.text(f" - {target.get_display_name()}")
+
                 else:
                     imgui.text("No track selected")
                     imgui.text_disabled("Right-click on a track to select it")
@@ -698,8 +715,9 @@ class ImguiUserInterface:
 
         retries_changed, retries = imgui.input_int("Retries", config.app_config.get_int("server", "retries"))
 
-        autoconnect = create_checkbox("Autoconnect", config.app_config.get_bool("server", "autoconnect"), "server",
-                                      "autoconnect")
+        # TODO: Implement autoconnect
+        # autoconnect = create_checkbox("Autoconnect", config.app_config.get_bool("server", "autoconnect"), "server",
+        #                               "autoconnect")
 
         if connected:
             imgui.end_disabled()
@@ -888,27 +906,31 @@ class ImguiUserInterface:
 
     def context_menu(self):
 
-        if self.context_track is None:
-            return
-
         if self.flag_open_context_menu:
             self.flag_open_context_menu = False
+
+            mouse_pos = imgui.get_mouse_pos()
+            mouse_pos_world = self.scene.screen_to_world((mouse_pos.x, mouse_pos.y))
+            if self.context_object is None:
+                self.context_object = self.gamestate.get_nearest_object(mouse_pos_world.to_tuple())
+                self.most_recent_context_object = self.context_object
+
             imgui.open_popup(f"context_popup")
 
-        if imgui.begin_popup(f"context_popup"):  #Track Context Menu {self.context_track.data.object_id}##
-            imgui.text(f"hello world")
-            # imgui.text(f"Track: {self.context_track.data.Name} ({self.context_track.data.object_id})")
-            # if imgui.menu_item("Copy ID")[0]:
-            #     imgui.set_clipboard_text(self.context_track.data.object_id)
-            # if imgui.menu_item("Copy Name")[0]:
-            #     imgui.set_clipboard_text(self.context_track.data.Name)
-            # if imgui.menu_item("Copy Position")[0]:
-            #     pos = self.context_track.data.T.U, self.context_track.data.T.V
-            #     imgui.set_clipboard_text(f"{pos[0]}, {pos[1]}")
+        if imgui.begin_popup(f"context_popup") and self.context_object is not None:
+            imgui.text(f"{self.context_object.get_display_name()}")
+            imgui.separator()
+            if imgui.menu_item("Change Callsign", "", False)[0]:
+                # Placeholder for changing callsign functionality
+                pass
+            if imgui.menu_item("Change Color", "", False)[0]:
+                # Placeholder for changing color functionality
+                pass
+
             imgui.end_popup()
         else:
             # If the popup was not opened, reset the context track
-            self.context_track = None
+            self.context_object = None
             self.flag_open_context_menu = False
 
     def scale_indicator_window(self):

@@ -19,7 +19,6 @@ class DisplayData:
         self.gamestate = gamestate
         self.scene = scene
         self.sensor_tracks = tracks
-        self.tracks = self.sensor_tracks.tracks
         # self.track_renderer: TrackRenderer = TrackRenderer(self.scene)
         self.icon_renderer: IconInstancedRenderer = IconInstancedRenderer(self.scene)
         self.vector_renderer: VectorRenderer = VectorRenderer(self.scene)

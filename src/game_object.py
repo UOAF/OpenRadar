@@ -264,10 +264,13 @@ class GameObject:
         """Get the best available display name for this object."""
         if self.override_name:
             return self.override_name
+
+        if self.CallSign:  # Check CallSign before Name
+            if self.Pilot:
+                return f"{self.CallSign} ({self.Pilot})"
+            return self.CallSign
         if self.Pilot:
             return self.Pilot
-        if self.CallSign:  # Check CallSign before Name
-            return self.CallSign
         if self.Name:
             return self.Name
         return self.Type or self.object_id
@@ -350,35 +353,6 @@ class GameObject:
     def is_sea_unit(self) -> bool:
         """Check if this is a sea unit."""
         return self.object_type == GameObjectType.SEA
-
-    def _getVelocityVector(self,
-                           px_per_nm: float,
-                           heading: float | None = None,
-                           line_scale: int = 3) -> tuple[float, float]:
-        """
-        Calculates the end point of a velocity vector line to draw.
-        (Compatibility method for existing code that expects this on airUnit)
-
-        Args:
-        heading (float): The heading angle in degrees.
-        line_scale (int): The scale factor for the velocity vector line. Default is 3.
-
-        Returns:
-            tuple[float,float]: The end point of the velocity vector.
-        """
-        import math
-        from util.bms_math import NM_TO_METERS  # Import here to avoid circular deps
-
-        LINE_LEN_SECONDS = 30  # 30 seconds of velocity vector
-        px_per_second = px_per_nm * self.CAS / NM_TO_METERS  # Scale the velocity vector
-        vel_vec_len_px = px_per_second * LINE_LEN_SECONDS  # Scale the velocity vector
-
-        heading_rad = math.radians(self.Heading - 90)  # -90 rotates north to up
-        end_x = vel_vec_len_px * math.cos(heading_rad)
-        end_y = vel_vec_len_px * math.sin(heading_rad)
-        end_pt = (end_x, end_y)
-
-        return end_pt
 
     def __str__(self) -> str:
         """String representation for debugging."""
