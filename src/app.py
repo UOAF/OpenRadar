@@ -12,6 +12,7 @@ import numpy as np
 import math
 
 import config
+from game_object import GameObject
 from ui.imgui_ui import ImguiUserInterface
 from game_state import GameState
 from trtt_client import TRTTClientThread
@@ -27,6 +28,9 @@ from util.bms_math import THEATRE_DEFAULT_SIZE_FT
 VSYNC_ENABLE = True
 MOUSEDRAGBUTTON = 1
 MOUSEBRAABUTTON = 0
+
+MINIMUM_DRAG_DISTANCE = 5
+MAXIMUM_HOVER_DISTANCE = 40
 
 
 class Clock:
@@ -146,6 +150,8 @@ class App:
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate,
                                            self._tracks, self._display_data, self.data_client)
 
+        self.hovered_game_obj: GameObject | None = None
+
     def handle_error(self, err, desc):
         print(f"GLFW error: {err}, {desc}")
 
@@ -191,30 +197,23 @@ class App:
     def handle_mouse_button_up(self, button, pos: tuple[float, float], mods):
         if button == MOUSEDRAGBUTTON:
             self.mouseDragDown = False
-            # Open a context menu for the nearest track
-            if math.dist(pos, self._startPan) < 5:
-                mouse_world = self.scene.screen_to_world(glm.vec2(*pos))
-                nearest_object = self.gamestate.get_nearest_object((mouse_world.x, mouse_world.y))
-                screen_pos_track = self.scene.world_to_screen(nearest_object.get_pos()) if nearest_object else None
-                if screen_pos_track and math.dist(screen_pos_track, pos) < 40:
+
+            #If we haven't moved the mouse from when we pressed the button
+            if math.dist(pos, self._startPan) < MINIMUM_DRAG_DISTANCE:
+                if self.hovered_game_obj is not None:
                     self._ImguiUI.open_context_menu()
+
         elif button == MOUSEBRAABUTTON:
             self.mouseBRAADown = False
 
     def handle_mouse_motion(self, window, xpos, ypos):
         self._ImguiUI.impl.mouse_callback(window, xpos, ypos)
-        mouse_world = self.scene.screen_to_world(glm.vec2(xpos, ypos))
-        nearest_object = self.gamestate.get_nearest_object(
-            (mouse_world.x, mouse_world.y))  # Update nearest object on hover
-        
-        # Find the corresponding track for the hovered object
-        nearest_track = None
-        if nearest_object:
-            nearest_track = self._tracks.get_nearest_track((mouse_world.x, mouse_world.y))
-        
+
+        self.hovered_game_obj = self.get_hovered_obj((xpos, ypos))
+
         # Update the display data with the currently hovered track
-        self._display_data.set_hovered_track(nearest_track)
-        
+        self._display_data.set_hovered_obj(self.hovered_game_obj)
+
         if imgui.get_io().want_capture_mouse:
             return
         if self.mouseDragDown:  # dragging
@@ -306,6 +305,14 @@ class App:
             self._check_gpu_timing_results()
 
         self.on_cleanup()
+
+    def get_hovered_obj(self, mouse_pos) -> GameObject | None:
+        mouse_world = self.scene.screen_to_world(glm.vec2(*mouse_pos))
+        nearest_object = self.gamestate.get_nearest_object((mouse_world.x, mouse_world.y))
+        screen_pos_track = self.scene.world_to_screen(nearest_object.get_pos()) if nearest_object else None
+        if screen_pos_track and math.dist(screen_pos_track, mouse_pos) < MAXIMUM_HOVER_DISTANCE:
+            return nearest_object
+        return None
 
     def _start_gpu_timing(self):
         gpu_timer_available = self.gpu_timer is not None

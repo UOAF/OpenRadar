@@ -33,8 +33,17 @@ from util.other_utils import get_all_attributes
 #     """
 # return ipv4_pattern.match(ip) is not None or ipv6_pattern.match(ip) is not None
 
-example_track = Track("69420", "Jester11", (100, 100), 200, 90, 10000, datetime.datetime.now(),
-                      GameObjectType.FIXEDWING, Coalition("U.S.", (0, 0, 1, 1), [], []))
+example_object = GameObject("ExampleObject", GameObjectType.FIXEDWING, None)
+example_object.CallSign = "ExampleCallSign"
+example_object.Pilot = "ExamplePilot"
+example_object.Altitude = 15000
+example_object.Heading = 270
+example_object.Mach = 0.85
+example_object.CAS = 300
+example_object.FuelWeight = 5000
+example_object.AOA = 5.0
+example_object.Coalition = "U.S."
+example_object.Name = "F-16C"
 
 
 def help_marker(description: str):
@@ -878,7 +887,7 @@ class ImguiUserInterface:
                 imgui.same_line()
                 help_marker("Add the text to be displayed on the label. "
                             "This can be a static string or a formatted string with variables."
-                            "Valid variables include: \n" + "\n".join(get_all_attributes(example_track).keys()))
+                            "Valid variables include: \n" + "\n".join(get_all_attributes(example_object).keys()))
 
                 changed, user_input = imgui.input_text("##Label Contents", selected_label.label_format)
                 if changed:
@@ -888,7 +897,7 @@ class ImguiUserInterface:
                     config.app_config.set("labels", track_type.name, serialize_track_labels(labels)[1])
 
                 imgui.text("Preview")
-                imgui.text(evaluate_input_format(user_input, example_track))
+                imgui.text(evaluate_input_format(user_input, example_object))
 
                 if imgui.button("Delete Label"):
                     labels.labels.pop(get_label_loc_by_ui_coords(self.track_labels_selected_square))

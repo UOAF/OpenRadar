@@ -1,5 +1,6 @@
+from game_object import GameObject
 from game_object_types import GameObjectType
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from enum import Enum
 import json
 
@@ -94,14 +95,28 @@ def get_labels_for_class_type(class_type: GameObjectType) -> TrackLabels | None:
     return labels
 
 
-def evaluate_input_format(user_input, instance):
-    # Create a context with all dataclass fields
-    context = {field.name: getattr(instance, field.name) for field in fields(instance)}
-    # Add properties to context
-    context.update({
-        attr: getattr(instance, attr)
-        for attr in dir(instance) if isinstance(getattr(type(instance), attr, None), property)
-    })
+def evaluate_input_format(user_input, instance: GameObject):
+    # Create a context with all GameObject attributes
+    context = {}
+    
+    # Add all instance attributes to context
+    for attr_name in dir(instance):
+        if not attr_name.startswith('_'):  # Skip private attributes
+            try:
+                attr_value = getattr(instance, attr_name)
+                # Skip methods/functions, only include data
+                if not callable(attr_value):
+                    context[attr_name] = attr_value
+            except:
+                # Skip attributes that can't be accessed
+                pass
+    
+    # Add commonly used aliases for backwards compatibility
+    context['id'] = instance.object_id
+    context['object_id'] = instance.object_id
+    context['type'] = instance.object_type.name if hasattr(instance.object_type, 'name') else str(instance.object_type)
+    context['name'] = instance.get_display_name()
+    
     # Use eval to evaluate expressions within {}
     try:
         output = eval(f"f'{user_input}'", {}, context)
