@@ -1,3 +1,4 @@
+from game_object import GameObject
 from game_state import GameState
 from sensor_tracks import Track, SensorTracks
 from draw.track_renderer import TrackRenderer
@@ -55,49 +56,36 @@ class DisplayData:
 
         # Clear and regenerate track labels
         self.labels_renderer.clear()
-        self._generate_track_labels()
+        self._generate_ac_labels()
 
-    def set_hovered_track(self, track: Optional[Track]):
+    def set_hovered_obj(self, track: Optional[GameObject]):
         """
         Set the currently hovered track for special label rendering.
         
         Args:
             track: The track that is currently being hovered, or None if no track is hovered
         """
-        self.labels_renderer.set_hovered_track(track)
+        self.labels_renderer.set_hovered_obj(track)
 
-    def _generate_track_labels(self):
+    def _generate_ac_labels(self):
         """Generate text labels for all visible tracks."""
-        all_tracks = self.sensor_tracks.tracks
-        
-        for track_type, tracks_dict in all_tracks.items():
-            # Check if this track type should be visible based on layer settings
-            if not self._should_render_track_type(track_type):
-                continue
-                
-            for track in tracks_dict.values():
-                # Special handling for bullseye labels
-                if track_type == GameObjectType.BULLSEYE:
-                    self.labels_renderer.draw_bullseye_labels(track)
-                else:
-                    # Regular track labels
-                    self.labels_renderer.draw_track_labels(track, track_type)
+        self.labels_renderer.draw_all_ac_labels(self.gamestate)
 
     def _should_render_track_type(self, track_type: GameObjectType) -> bool:
         """Check if a track type should be rendered based on layer configuration."""
         layer_mapping = {
             GameObjectType.FIXEDWING: "show_fixed_wing",
-            GameObjectType.ROTARYWING: "show_rotary_wing", 
+            GameObjectType.ROTARYWING: "show_rotary_wing",
             GameObjectType.GROUND: "show_ground",
             GameObjectType.SEA: "show_ships",
             GameObjectType.MISSILE: "show_missiles",
             GameObjectType.BULLSEYE: "show_bullseye",
         }
-        
+
         layer_key = layer_mapping.get(track_type)
         if layer_key:
             return config.app_config.get_bool("layers", layer_key)
-        
+
         return True  # Default to showing unknown types
 
     def render(self):

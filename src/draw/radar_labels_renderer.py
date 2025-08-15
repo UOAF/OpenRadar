@@ -10,9 +10,11 @@ from typing import Dict, Optional
 
 from draw.scene import Scene
 from draw.text import TextRendererMsdf, make_text_renderer
+from game_object import GameObject
 from game_object_types import GameObjectType
+from game_state import GameState
 from sensor_tracks import Track
-from util.track_labels import (TrackLabelLocation, get_labels_for_class_type, evaluate_input_format)
+from util.track_labels import (TrackLabelLocation, TrackLabels, get_labels_for_class_type, evaluate_input_format)
 from util.bms_math import NM_TO_METERS
 
 import config
@@ -46,23 +48,44 @@ class RadarLabelsRenderer:
                                                 scale_source=("radar", "contact_font_scale"))
 
         # Track the currently hovered game object for special rendering
-        self._hovered_track: Optional[Track] = None
+        self._hovered_object: GameObject | None = None
 
     def clear(self):
         """Clear any cached text rendering data."""
         # Clear the text renderer's instance batches to prevent text accumulation
         self.text_renderer.init_buffers()
 
-    def set_hovered_track(self, track: Optional[Track]):
+    def set_hovered_obj(self, obj: GameObject | None):
         """
-        Set the currently hovered track for special label rendering.
-        
+        Set the currently hovered object for special label rendering.
+
         Args:
             track: The track that is currently being hovered, or None if no track is hovered
         """
-        self._hovered_track = track
+        self._hovered_object = obj
 
-    def draw_track_labels(self, track: Track, track_type: GameObjectType):
+    def draw_all_ac_labels(self, gamestate: GameState):
+
+        fixed_wing_objs = gamestate.objects[GameObjectType.FIXEDWING]
+
+        # Get the label configuration for this track type
+        labels = get_labels_for_class_type(GameObjectType.FIXEDWING)
+
+        # Get offset for positioning labels relative to track icons
+        offset = config.app_config.get_int("radar", "contact_size")
+        font_scale = config.app_config.get_int("radar", "contact_font_scale")
+
+        if labels is not None:
+            for obj in fixed_wing_objs.values():
+                self.draw_track_labels(obj, labels, offset, font_scale)
+
+        #draw hovered labels
+        # if self.labels_renderer._hovered_object:
+        #     hovered_obj = self.labels_renderer._hovered_object
+        #     if hovered_obj.type in GameObjectType:
+        #         self.labels_renderer.draw_track_labels(hovered_obj, hovered_obj.type)
+
+    def draw_track_labels(self, obj: GameObject, labels: TrackLabels, offset: int, font_scale: int):
         """
         Draw labels for a specific track based on its type and configuration.
         
@@ -70,35 +93,13 @@ class RadarLabelsRenderer:
             track: The track object to render labels for
             track_type: The type of game object (used for label configuration lookup)
         """
-        pos_x, pos_y = int(track.position_m[0]), int(track.position_m[1])
-
-        # Get the label configuration for this track type
-        labels = get_labels_for_class_type(track_type)
-
-        if labels is None:
-            return
-
-        # Get offset for positioning labels relative to track icons
-        offset = config.app_config.get_int("radar", "contact_size")
-        font_scale = config.app_config.get_int("radar", "contact_font_scale")
-
-        # Check if this track is currently hovered
-        is_hovered = self._hovered_track is not None and self._hovered_track.id == track.id
+        pos_x, pos_y = int(obj.U), int(obj.V)
 
         # Render each configured label at its specified location
         for location, track_label in labels.labels.items():
-            # Skip labels that should only show on hover if not hovered
-            if track_label.show_on_hover and not is_hovered:
-                continue
 
-            # Skip regular labels if hovered and there are hover-only labels
-            if is_hovered and not track_label.show_on_hover:
-                # Check if there are any hover-only labels for this location
-                has_hover_labels = any(label.show_on_hover for label in labels.labels.values() if label != track_label)
-                if has_hover_labels:
-                    continue
+            text = evaluate_input_format(track_label.label_format, obj)
 
-            text = evaluate_input_format(track_label.label_format, track)
             if text is not None and text != "":
                 self.text_renderer.draw_text(text,
                                              pos_x,
