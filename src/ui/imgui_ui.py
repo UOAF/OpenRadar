@@ -325,6 +325,7 @@ class ImguiUserInterface:
         self.track_labels_window()
         self.layers_window()
         self.context_menu()
+        self.callsign_change_modal()
         self.scale_indicator_window()
 
         # Add dockable demo windows
@@ -932,8 +933,10 @@ class ImguiUserInterface:
             imgui.text(f"{self.context_object.get_display_name()}")
             imgui.separator()
             if imgui.menu_item("Change Callsign", "", False)[0]:
-                # Placeholder for changing callsign functionality
-                pass
+                # Set flag to open the callsign change modal after context menu closes
+                self.callsign_modal_open = True
+                imgui.close_current_popup()
+
             if imgui.menu_item("Change Color", "", False)[0]:
                 # Placeholder for changing color functionality
                 pass
@@ -943,6 +946,54 @@ class ImguiUserInterface:
             # If the popup was not opened, reset the context track
             self.context_object = None
             self.flag_open_context_menu = False
+
+    def callsign_change_modal(self):
+        """Modal dialog for changing the callsign of a game object."""
+
+        # Open the modal if the flag is set
+        if self.callsign_modal_open:
+            imgui.open_popup("Change Callsign")
+            self.callsign_modal_open = False  # Reset the flag
+            # Initialize input text with current object name
+            obj = self.most_recent_context_object
+            if obj:
+                self.callsign_original_text = obj.get_display_name()
+                self.callsign_input_text = obj.get_display_name()
+
+        # Center the modal
+        center = imgui.get_main_viewport().get_center()
+        imgui.set_next_window_pos(center, imgui.Cond_.appearing.value, imgui.ImVec2(0.5, 0.5))
+        imgui.set_next_window_size(imgui.ImVec2(300, 120))
+
+        if imgui.begin_popup_modal("Change Callsign", True, imgui.WindowFlags_.always_auto_resize.value)[0]:
+            obj = self.most_recent_context_object
+
+            # Text input for new callsign
+            imgui.text("New Callsign:")
+            changed, self.callsign_input_text = imgui.input_text("##callsign_input", self.callsign_input_text)
+
+            # Set focus to the input field when the modal first opens
+            if imgui.is_window_appearing():
+                imgui.set_keyboard_focus_here(-1)
+
+            # Handle Enter key press
+            enter_pressed = imgui.is_key_pressed(imgui.Key.enter)
+
+            imgui.separator()
+
+            # Buttons
+            if imgui.button("OK", imgui.ImVec2(80, 0)) or enter_pressed:
+                # Apply the callsign change
+                if obj and self.callsign_input_text.strip():
+                    obj.override_name = self.callsign_input_text.strip()
+                imgui.close_current_popup()
+
+            imgui.same_line()
+
+            if imgui.button("Cancel", imgui.ImVec2(80, 0)):
+                # Close the modal without saving
+                imgui.close_current_popup()
+            imgui.end_popup()
 
     def scale_indicator_window(self):
         """Scale indicator showing distance gradations at 1,2,5,10,20,50,100,200 nm"""
