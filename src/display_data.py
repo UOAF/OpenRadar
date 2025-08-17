@@ -1,13 +1,13 @@
 from game_object import GameObject
 from game_state import GameState
 from sensor_tracks import Track, SensorTracks
-from draw.track_renderer import TrackRenderer
 from draw.icon_renderer import IconInstancedRenderer
 from draw.vector_renderer import VectorRenderer
 from draw.lock_renderer import LockRenderer
 from draw.bullseye_renderer import BullseyeRenderer
 from draw.annotations import MapAnnotations
 from draw.radar_labels_renderer import RadarLabelsRenderer
+from draw.imgui_radar_labels_renderer import ImGuiRadarLabelsRenderer
 from draw.scene import Scene
 from game_object_types import GameObjectType
 from typing import Optional
@@ -28,14 +28,13 @@ class DisplayData:
         self.lock_renderer: LockRenderer = LockRenderer(self.scene)
         self.bullseye_renderer: BullseyeRenderer = BullseyeRenderer(self.scene)
         self.annotations: MapAnnotations = MapAnnotations(self.scene)
-        self.labels_renderer: RadarLabelsRenderer = RadarLabelsRenderer(self.scene)
+        # self.labels_renderer: RadarLabelsRenderer = RadarLabelsRenderer(self.scene)
+        self.labels_renderer: ImGuiRadarLabelsRenderer = ImGuiRadarLabelsRenderer(self.scene)
 
     def generate_render_arrays(self):
         """
         Generate the instance arrays for rendering. called 
         """
-        # self.track_renderer.build_buffers(self.tracks)
-
         render_arrays = self.sensor_tracks.render_arrays
 
         if render_arrays:
@@ -92,8 +91,6 @@ class DisplayData:
         """
         Render the display data.
         """
-        # self.track_renderer.render()
-
         # Render annotations
         self.annotations.render()
 
@@ -117,7 +114,6 @@ class DisplayData:
         """
         Clear the display data.
         """
-        # self.track_renderer.clear()
         self.icon_renderer.clear()
         self.vector_renderer.clear()
         self.lock_renderer.clear()
