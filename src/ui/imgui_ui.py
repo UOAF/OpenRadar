@@ -330,6 +330,8 @@ class ImguiUserInterface:
         # Add dockable demo windows
         self.track_info_window()
 
+        self.display_data.labels_renderer.render()
+
     def _setup_dockspace(self):
         """Setup the main dockspace for docking windows."""
         # Create a fullscreen window for the dockspace, but leave space for bottom bar
