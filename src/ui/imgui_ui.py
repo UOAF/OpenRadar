@@ -1,4 +1,5 @@
 from imgui_bundle import imgui
+from imgui_bundle import portable_file_dialogs as pfd
 from imgui_bundle.python_backends.glfw_backend import GlfwRenderer
 
 import numpy as np
@@ -15,8 +16,7 @@ from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 import config
 
-from util.bms_math import METERS_TO_FT, NM_TO_METERS
-from util.os_utils import open_file_dialog
+from util.bms_math import METERS_TO_FT, NM_TO_METERS, M_PER_SEC_TO_KNOTS
 from util.track_labels import *
 from util.other_utils import get_all_attributes
 
@@ -161,6 +161,15 @@ class ImguiUserInterface:
 
         self.track_labels_selected_square = (0, 0)
 
+        # Modal state
+        self.callsign_modal_open = False
+        self.callsign_input_text = ""
+        self.callsign_original_text = ""
+
+        # File dialog state
+        self.ini_file_dialog = None
+        self.map_file_dialog = None
+
         # BRAA line state
         self.braa_active = False
         self.braa_start_world = None
@@ -207,7 +216,69 @@ class ImguiUserInterface:
     def cpu_frame_time(self, t):
         self._cpu_frame_time = t
 
-    def open_track_context_menu(self, track: Track | None):
+    def open_ini_file_dialog(self):
+        """Open a non-blocking file dialog for selecting INI files."""
+        # Don't open a new dialog if one is already active
+        if self.ini_file_dialog is not None:
+            return False
+
+        try:
+            # Use portable file dialogs for cross-platform file selection (non-blocking)
+            self.ini_file_dialog = pfd.open_file("Select INI File", "", ["INI files", "*.ini", "All files", "*"])
+            return True  # Dialog opened successfully
+        except Exception as e:
+            print(f"Error opening file dialog: {e}")
+            return False
+
+    def open_map_file_dialog(self):
+        """Open a non-blocking file dialog for selecting map image files."""
+        # Don't open a new dialog if one is already active
+        if self.map_file_dialog is not None:
+            return False
+
+        try:
+            # Use portable file dialogs for cross-platform file selection (non-blocking)
+            self.map_file_dialog = pfd.open_file("Select Map Image", "",
+                                                 ["PNG files", "*.png", "JPG files", "*.jpg", "All files", "*"])
+            return True  # Dialog opened successfully
+        except Exception as e:
+            print(f"Error opening map file dialog: {e}")
+            return False
+
+    def check_file_dialogs(self):
+        """Check for completed file dialog results and process them."""
+        # Check INI file dialog
+        if self.ini_file_dialog is not None:
+            try:
+                if self.ini_file_dialog.ready():
+                    result = self.ini_file_dialog.result()
+                    self.ini_file_dialog = None  # Clear the dialog
+                    if result and len(result) > 0:
+                        # Process the selected INI file
+                        self.annotations.load_ini(result[0])
+            except Exception as e:
+                print(f"Error processing INI file dialog result: {e}")
+                self.ini_file_dialog = None  # Clear the dialog on error
+
+        # Check map file dialog
+        if self.map_file_dialog is not None:
+            try:
+                if self.map_file_dialog.ready():
+                    result = self.map_file_dialog.result()
+                    self.map_file_dialog = None  # Clear the dialog
+                    if result and len(result) > 0:
+                        # Update the map selection dialog path with the selected file
+                        self.map_selection_dialog_path = result[0]
+            except Exception as e:
+                print(f"Error processing map file dialog result: {e}")
+                self.map_file_dialog = None  # Clear the dialog on error
+
+    def cancel_file_dialogs(self):
+        """Cancel any active file dialogs."""
+        self.ini_file_dialog = None
+        self.map_file_dialog = None
+
+    def open_context_menu(self):
         """
         Set the track for the context menu.
         """
@@ -224,6 +295,9 @@ class ImguiUserInterface:
 
         self._cpu_frame_time_history.append(self._cpu_frame_time)  # Keep as float
         self._cpu_frame_time_history.pop(0)
+
+        # Check for completed file dialogs
+        self.check_file_dialogs()
 
         imgui.new_frame()
 
@@ -335,7 +409,8 @@ class ImguiUserInterface:
                 # Ini submenu
                 if imgui.begin_menu('Ini', True):
                     if imgui.menu_item('Load', "", False, True)[0]:
-                        self.annotations.load_ini(open_file_dialog())
+                        # Start the non-blocking file dialog
+                        self.open_ini_file_dialog()
                     if imgui.menu_item('Clear', '', False, True)[0]:
                         self.annotations.clear()
                     imgui.end_menu()
@@ -384,28 +459,44 @@ class ImguiUserInterface:
 
         if self.map_selection_dialog_open:
             imgui.open_popup("Map Selection")
-            if imgui.begin_popup_modal("Map Selection", True)[0]:
 
+            # Get both the expanded state and the open state from begin_popup_modal
+            modal_result = imgui.begin_popup_modal("Map Selection", True)
+            expanded = modal_result[0]
+
+            # Check if the modal was closed via the X button
+            if len(modal_result) > 1 and modal_result[1] is not None:
+                if not modal_result[1]:  # X button was clicked
+                    self.map_selection_dialog_open = False
+                    imgui.close_current_popup()
+
+            if expanded:
                 # Create input text field with folder path
-                imgui.input_text("##mapfiledialog", self.map_selection_dialog_path,
-                                 imgui.InputTextFlags_.read_only.value)
+                _, self.map_selection_dialog_path = imgui.input_text("##mapfiledialog", self.map_selection_dialog_path,
+                                                                     imgui.InputTextFlags_.read_only.value)
 
-                # Button with folder icon
+                # Button to select map file
                 imgui.same_line()
-                if imgui.button("Select Map"):
-                    # Open folder dialog
-                    selected_folder = open_file_dialog()
-                    if selected_folder:  # Update the path if selected
-                        self.map_selection_dialog_path = selected_folder
+                if imgui.button("Select Map Image"):
+                    # Start the non-blocking file dialog for map image
+                    self.open_map_file_dialog()
 
-                sizes = ["512", "1024", "4096"]
+                sizes = ["1024", "2048"]
                 _, self.map_selection_dialog_size = imgui.combo("Theatre Size (km)", self.map_selection_dialog_size,
                                                                 sizes)
 
+                # Buttons row
                 if imgui.button("Confirm"):
                     self.map_gl.load_map(self.map_selection_dialog_path, int(sizes[self.map_selection_dialog_size]))
                     self.map_selection_dialog_open = False
                     imgui.close_current_popup()
+
+                imgui.same_line()
+
+                if imgui.button("Cancel"):
+                    self.map_selection_dialog_open = False
+                    imgui.close_current_popup()
+
                 imgui.end_popup()
 
     def ui_bottom_bar(self):
