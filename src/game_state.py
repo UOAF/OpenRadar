@@ -243,7 +243,6 @@ class GameState:
         #     if target.icon is not None:
         #         shape = Shapes.from_idx(target.icon)
         #         self.icon_data[shape].update_object(target)
-
     def _get_default_color(self, obj_type: GameObjectType, coalition: str) -> tuple[float, float, float, float]:
         """Get default color for an object based on its type and coalition."""
         # Simple default coloring - can be made more sophisticated
