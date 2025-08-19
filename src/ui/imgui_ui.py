@@ -393,6 +393,7 @@ class ImguiUserInterface:
 
         # Track Information Window
         if self.track_info_window_open:
+            imgui.set_next_window_size_constraints(imgui.ImVec2(250, 420), imgui.ImVec2(float('inf'), float('inf')))
             result = imgui.begin("Track Information", self.track_info_window_open)
             expanded = result[0] if isinstance(result, tuple) else result
             if len(result) > 1 and result[1] is not None:
@@ -758,7 +759,7 @@ class ImguiUserInterface:
         if not self.settings_window_open:
             return
 
-        _, open = imgui.begin("Settings", True)
+        _, open = imgui.begin("Settings", True, imgui.WindowFlags_.always_auto_resize.value)
         if imgui.begin_tab_bar("Settings Tabs"):
             if imgui.begin_tab_item("Map")[0]:
                 self.settings_tab_map()
@@ -968,6 +969,7 @@ class ImguiUserInterface:
     def notepad_window(self):
         if not self.notepad_window_open:
             return
+        imgui.set_next_window_size_constraints(imgui.ImVec2(200, 200), imgui.ImVec2(float('inf'), float('inf')))
         _, open = imgui.begin("Notepad", True)
         notes = config.app_config.get_str("notepad", "notes")
 
@@ -985,7 +987,7 @@ class ImguiUserInterface:
     def debug_window(self):
         if not self.debug_window_open:
             return
-        _, open = imgui.begin("Debug", True)
+        _, open = imgui.begin("Debug", True, imgui.WindowFlags_.always_auto_resize.value)
         mouse_pos = imgui.get_mouse_pos()
         tuple_mouse_pos = (mouse_pos.x, mouse_pos.y)
         mouse_pos_world = self.scene.screen_to_world((mouse_pos.x, mouse_pos.y))
@@ -1014,7 +1016,7 @@ class ImguiUserInterface:
         if not self.track_labels_window_open:
             return
 
-        _, open = imgui.begin("Track Labels", True)
+        _, open = imgui.begin("Track Labels", True, imgui.WindowFlags_.always_auto_resize.value)
 
         imgui.begin_tab_bar("Track Types")
         for track_type in GameObjectType:
