@@ -589,8 +589,9 @@ class TrackRenderDataArrays:
         """Update an object in all relevant render arrays."""
         # Update icon data (all objects have icons)
         shape_id = game_obj.icon
-        shape = Shapes.from_idx(shape_id)
-        self.icon_data[shape].update_object(game_obj)
+        shape = Shapes.from_idx(shape_id) if shape_id is not None else None
+        if shape is not None:
+            self.icon_data[shape].update_object(game_obj)
 
         # Update or add/remove velocity vector based on movement
         if game_obj.is_air_unit() and game_obj.CAS > 0:

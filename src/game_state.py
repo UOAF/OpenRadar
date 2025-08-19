@@ -257,3 +257,21 @@ class GameState:
             if obj.Coalition == coalition:
                 obj.override_color = new_color
                 self.render_arrays.update_object(obj)
+
+    def refresh_all_render_arrays(self) -> None:
+        """
+        Refresh all render arrays with current object data.
+        
+        This is useful when configuration changes affect how objects are rendered
+        (e.g., color schemes, icon sets, display settings, etc.)
+        """
+        from util.other_utils import rgba_from_str
+        
+        # Update all objects to reflect current configuration
+        for obj in self.all_objects.values():
+            # Refresh color based on current color configuration
+            if hasattr(obj, 'Color') and obj.Color:
+                obj.color_rgba = rgba_from_str(obj.Color)
+
+            # Update render arrays to reflect any configuration changes
+            self.render_arrays.update_object(obj)
