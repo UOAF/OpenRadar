@@ -36,6 +36,7 @@ import datetime
 
 from acmi_parse import ACMIObject
 from game_object_types import GameObjectType, get_icon_style
+from util.bms_math import M_PER_SEC_TO_KNOTS, METERS_TO_FT
 from util.other_utils import rgba_from_str
 
 
@@ -266,3 +267,32 @@ class GameObject:
     def is_air_unit(self) -> bool:
         """Check if this is an air unit (fixed wing, rotary wing, or missile)."""
         return self.object_type in (GameObjectType.FIXEDWING, GameObjectType.ROTARYWING)
+
+    # ----------------------------------------------------------------------------------
+    # Properties for Text Label Rendering
+    # ----------------------------------------------------------------------------------
+
+    @property
+    def altitude_ft(self) -> float:
+        """Get the altitude in feet."""
+        return self.Altitude * METERS_TO_FT
+
+    @property
+    def altitude_100ft(self) -> float:
+        """Get the altitude in hundreds of feet."""
+        return self.altitude_ft / 100.0
+
+    @property
+    def altitude_1000ft(self) -> float:
+        """Get the altitude in thousands of feet."""
+        return self.altitude_ft / 1000.0
+
+    @property
+    def speed_kt(self) -> float:
+        """Get the speed in knots."""
+        return self.CAS * M_PER_SEC_TO_KNOTS
+
+    @property
+    def display_name(self) -> str:
+        """Get the display name for this object."""
+        return self.get_display_name()
