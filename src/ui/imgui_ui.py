@@ -163,6 +163,7 @@ class ImguiUserInterface:
         self.track_info_window_open = False
         self.scale_indicator_window_open = True
         self.tacview_colors_window_open = False
+        self.contact_color_window_open = False
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -179,6 +180,10 @@ class ImguiUserInterface:
         self.callsign_modal_open = False
         self.callsign_input_text = ""
         self.callsign_original_text = ""
+
+        # Contact color window state
+        self.custom_colors = []  # List of previously used custom colors
+        self.current_contact_color = [1.0, 1.0, 1.0, 1.0]  # Current color being edited
 
         # File dialog state
         self.ini_file_dialog = None
@@ -339,6 +344,7 @@ class ImguiUserInterface:
         self.scale_indicator_window()
         self.track_info_window()
         self.tacview_colors_window()
+        self.contact_color_window()
 
         self.display_data.labels_renderer.render()
 
@@ -483,6 +489,98 @@ class ImguiUserInterface:
 
                 except Exception as e:
                     imgui.text(f"Error resetting colors: {e}")
+
+        imgui.end()
+
+    def contact_color_window(self):
+        """Window for changing individual contact colors."""
+        if not self.contact_color_window_open:
+            return
+
+        result = imgui.begin("Change Contact Color", self.contact_color_window_open)
+        expanded = result[0] if isinstance(result, tuple) else result
+        if len(result) > 1 and result[1] is not None:
+            self.contact_color_window_open = result[1]
+
+        if expanded:
+            obj = self.most_recent_context_object
+            if not obj:
+                imgui.text("No contact selected")
+                imgui.end()
+                return
+
+            imgui.text(f"Changing color for: {obj.get_display_name()}")
+            imgui.separator()
+
+            # Color editor
+            imgui.text("New Color:")
+            changed, new_color = imgui.color_edit4("##color_picker", self.current_contact_color,
+                                                   imgui.ColorEditFlags_.alpha_preview_half.value)
+
+            if changed:
+                self.current_contact_color = list(new_color)
+                obj.override_color = tuple(new_color)  # type: ignore
+
+            imgui.separator()
+
+            # Side/Coalition color swatches
+            imgui.text("Coalition Colors:")
+            color_names = ["White", "Green", "Blue", "Brown", "Orange", "Yellow", "Red", "Black"]
+
+            # Create a grid of color swatches
+            columns = 4
+            for i, color_name in enumerate(color_names):
+                if i > 0 and i % columns != 0:
+                    imgui.same_line()
+
+                try:
+                    coalition_color = config.app_config.get_color_rgba("tacview_colors", color_name)
+                    if imgui.color_button(f"##coalition_{color_name}", list(coalition_color),
+                                          imgui.ColorEditFlags_.no_border.value, imgui.ImVec2(30, 30)):
+                        self.current_contact_color = list(coalition_color)
+                        obj.override_color = tuple(coalition_color)  # type: ignore
+
+                    # Tooltip with color name
+                    if imgui.is_item_hovered():
+                        imgui.set_tooltip(color_name)
+
+                except (KeyError, ValueError):
+                    pass
+
+            imgui.separator()
+
+            # Custom colors section
+            if self.custom_colors:
+                imgui.text("Recently Used Colors:")
+                for i, custom_color in enumerate(self.custom_colors):
+                    if i > 0 and i % columns != 0:
+                        imgui.same_line()
+
+                    if imgui.color_button(f"##custom_{i}", list(custom_color), imgui.ColorEditFlags_.no_border.value,
+                                          imgui.ImVec2(30, 30)):
+                        self.current_contact_color = list(custom_color)
+                        obj.override_color = tuple(custom_color)  # type: ignore
+
+                imgui.separator()
+
+            # Buttons
+            if imgui.button("Accept", imgui.ImVec2(80, 0)):
+                self.contact_color_window_open = False
+
+                if self.current_contact_color not in self.custom_colors and self.current_contact_color is not None:
+                    self.custom_colors.append(self.current_contact_color)
+
+            imgui.same_line()
+
+            if imgui.button("Reset", imgui.ImVec2(80, 0)):
+                # Reset to original color (remove override)
+                obj.override_color = None
+                self.contact_color_window_open = False
+
+            imgui.same_line()
+
+            if imgui.button("Cancel", imgui.ImVec2(80, 0)):
+                self.contact_color_window_open = False
 
         imgui.end()
 
@@ -1042,8 +1140,16 @@ class ImguiUserInterface:
                 imgui.close_current_popup()
 
             if imgui.menu_item("Change Color", "", False)[0]:
-                # Placeholder for changing color functionality
-                pass
+                # Open the contact color window
+                self.contact_color_window_open = True
+                # Initialize the color editor with current contact color
+                obj = self.context_object
+                if obj:
+                    if obj.override_color:
+                        self.current_contact_color = list(obj.override_color)
+                    else:
+                        self.current_contact_color = list(obj.color_rgba)
+                imgui.close_current_popup()
 
             imgui.end_popup()
         else:
