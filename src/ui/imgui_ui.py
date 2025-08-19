@@ -121,6 +121,7 @@ class ImguiUserInterface:
         self.display_data = display_data
         self.annotations = display_data.annotations
         self.data_client = data_client
+        self.reset_state_callback = None
 
         imgui.create_context()
         io = imgui.get_io()
@@ -226,6 +227,9 @@ class ImguiUserInterface:
     @cpu_frame_time.setter
     def cpu_frame_time(self, t):
         self._cpu_frame_time = t
+
+    def set_reset_callback(self, callback):
+        self.reset_state_callback = callback
 
     def open_ini_file_dialog(self):
         """Open a non-blocking file dialog for selecting INI files."""
@@ -740,13 +744,14 @@ class ImguiUserInterface:
         imgui.text(f"{status.status_msg}  {description}")
 
         if imgui.button("Connect"):
+            if self.reset_state_callback:
+                self.reset_state_callback()
             self.data_client.connect(address, port, password, retries)
         imgui.same_line()
         if imgui.button("Disconnect"):
             self.data_client.disconnect()
-            self.gamestate.clear_state()
-            self.tracks.clear()
-            self.display_data.clear()
+            if self.reset_state_callback:
+                self.reset_state_callback()
         imgui.end()
 
         if address_changed:

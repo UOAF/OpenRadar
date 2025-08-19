@@ -238,11 +238,6 @@ class GameState:
         """Update target lock references for an object."""
         game_obj.resolve_locked_targets(self.all_objects)
 
-        # If the object has locked targets, update their render data
-        # for target in game_obj.locked_target_objs:
-        #     if target.icon is not None:
-        #         shape = Shapes.from_idx(target.icon)
-        #         self.icon_data[shape].update_object(target)
     def _get_default_color(self, obj_type: GameObjectType, coalition: str) -> tuple[float, float, float, float]:
         """Get default color for an object based on its type and coalition."""
         # Simple default coloring - can be made more sophisticated
