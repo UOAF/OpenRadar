@@ -242,6 +242,11 @@ class GameObject:
     def change_color(self, color: tuple[float, float, float, float]):
         self.override_color = color
 
+    def get_display_color(self):
+        return self.override_color if self.override_color else \
+               self.side_override_color if self.side_override_color else \
+               self.color_rgba
+
     # Target lock handling (external resolver should set locked_target_objs)
     def resolve_locked_targets(self, resolver: Dict[str, "GameObject"]):
         """Resolve LockedTarget string ID to actual GameObject reference."""
