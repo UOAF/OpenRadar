@@ -23,6 +23,8 @@ contact_size = 14 # Size of the track in pixels
 contact_stroke = 2 # Stroke width of the track in pixels
 contact_font_scale = 40 # Font size of the track labels
 center_point_size = 3.0 # Size of the center point quad in pixels
+bullseye_num_rings = 6 # Number of concentric rings in the bullseye display
+bullseye_ring_distance = 20 # Distance between bullseye rings in nautical miles
 
 [display]
 icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)

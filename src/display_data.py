@@ -121,6 +121,14 @@ class DisplayData:
         self.annotations.clear()
         self.labels_renderer.clear()
 
+    def refresh_configuration(self):
+        """
+        Refresh configuration for all renderers.
+        
+        This should be called when configuration changes to apply new settings.
+        """
+        self.bullseye_renderer.refresh_configuration()
+
     def load_annotations_ini(self, ini_path):
         """
         Load annotations from INI file.

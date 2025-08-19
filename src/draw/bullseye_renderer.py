@@ -38,9 +38,9 @@ class BullseyeRenderer:
         self.line_program: Optional[mgl.Program] = None
         self.ring_program: Optional[mgl.Program] = None
 
-        # Bullseye configuration
-        self.NUM_RINGS = 6
-        self.RING_DISTANCE_NM = 20
+        # Bullseye configuration from config
+        self.NUM_RINGS = config.app_config.get_int("radar", "bullseye_num_rings")
+        self.RING_DISTANCE_NM = config.app_config.get_float("radar", "bullseye_ring_distance")
 
         # Bullseye data
         self.bullseye_position: Optional[Tuple[float, float]] = None
@@ -122,6 +122,24 @@ class BullseyeRenderer:
             self.RING_DISTANCE_NM = distance_nm
             self._update_ring_data()
             self._update_line_data()
+
+    def refresh_configuration(self):
+        """
+        Refresh bullseye settings from configuration and update geometry.
+        
+        This should be called when configuration changes to apply new settings.
+        """
+        new_num_rings = config.app_config.get_int("radar", "bullseye_num_rings")
+        new_ring_distance = config.app_config.get_float("radar", "bullseye_ring_distance")
+        
+        # Update settings and refresh geometry if they changed
+        if new_num_rings != self.NUM_RINGS or new_ring_distance != self.RING_DISTANCE_NM:
+            self.NUM_RINGS = new_num_rings
+            self.RING_DISTANCE_NM = new_ring_distance
+            self._initialize_ring_geometry()
+            if self.bullseye_position is not None:
+                self._update_ring_data()
+                self._update_line_data()
 
     def _update_line_data(self):
         """Update the line instance data for the bullseye cross."""

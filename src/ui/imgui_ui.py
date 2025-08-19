@@ -75,7 +75,7 @@ def create_slider_float(label, value, min_val, max_val, config_section, config_k
     changed, new_value = imgui.slider_float(label, value, min_val, max_val)
     if changed:
         config.app_config.set(config_section, config_key, new_value)
-    return new_value
+    return changed
 
 
 def create_slider_int(label, value, min_val, max_val, config_section, config_key):
@@ -83,7 +83,7 @@ def create_slider_int(label, value, min_val, max_val, config_section, config_key
     changed, new_value = imgui.slider_int(label, value, min_val, max_val)
     if changed:
         config.app_config.set(config_section, config_key, new_value)
-    return new_value
+    return changed
 
 
 def create_checkbox(label, value, config_section, config_key):
@@ -713,6 +713,8 @@ class ImguiUserInterface:
         font_scale = config.app_config.get_int("radar", "contact_font_scale")
         center_point_size = config.app_config.get_float("radar", "center_point_size")
         update_interval = config.app_config.get_float("radar", "update_interval")
+        bullseye_num_rings = config.app_config.get_int("radar", "bullseye_num_rings")
+        bullseye_ring_distance = config.app_config.get_int("radar", "bullseye_ring_distance")
 
         create_slider_float("Contact Stroke Width", stoke_width, 1, 10.0, "radar", "contact_stroke")
         create_slider_float("Contact Shape Size", shape_size, 1, 40.0, "radar", "contact_size")
@@ -720,6 +722,19 @@ class ImguiUserInterface:
         create_slider_float("Center Point Size", center_point_size, 0, 6.0, "radar", "center_point_size")
         imgui.separator()
         create_slider_float("Radar Update Interval", update_interval, 0.0, 5.0, "radar", "update_interval")
+        imgui.separator()
+
+        # Bullseye configuration section
+        imgui.text("Bullseye Display Settings")
+        changed_rings = create_slider_int("Number of Rings", bullseye_num_rings, 1, 20, "radar", "bullseye_num_rings")
+        changed_distance = create_slider_int("Ring Distance (NM)", bullseye_ring_distance, 5, 100, "radar",
+                                             "bullseye_ring_distance")
+
+        # Refresh render arrays if bullseye settings changed
+        if changed_rings or changed_distance:
+            if self.render_refresh_callback:
+                self.render_refresh_callback()
+
         imgui.separator()
         if imgui.button("Change Coalition Display Colors"):
             self.tacview_colors_window_open = True

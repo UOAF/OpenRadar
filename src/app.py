@@ -170,6 +170,7 @@ class App:
     def render_refresh_callback(self):
         """Callback to refresh all render arrays when configuration changes."""
         self.gamestate.refresh_all_render_arrays()
+        self._display_data.refresh_configuration()
 
     def handle_window_moved(self, window, xpos, ypos):
         config.app_config.set("window", "location", (xpos, ypos))
