@@ -41,7 +41,7 @@ show_missiles = true # Show missiles on the map
 show_bullseye = true # Show the bullseye on the map
 
 [labels]
-FIXEDWING = '{"TOP_RIGHT": {"label_name": "TR", "label_format": "{Name} ({Pilot})", "show_on_hover": false}}' # Label for fixed wing aircraft
+FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{(altitude_ft//100)*100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}}" # Label for fixed wing aircraft
 ROTARYWING = '{}'
 MISSILE = '{}'
 GROUND = '{}'
