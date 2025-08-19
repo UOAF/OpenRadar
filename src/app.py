@@ -150,6 +150,8 @@ class App:
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate,
                                            self._tracks, self._display_data, self.data_client)
 
+        self._ImguiUI.set_reset_callback(self.reset_state_callback)
+
         self.hovered_game_obj: GameObject | None = None
 
     def handle_error(self, err, desc):
@@ -157,6 +159,12 @@ class App:
 
     def window_close_callback(self, event):
         self._running = False
+
+    def reset_state_callback(self):
+        self.data_client.disconnect()
+        self.gamestate.clear_state()
+        self._tracks.clear()
+        self._display_data.clear()
 
     def handle_window_moved(self, window, xpos, ypos):
         config.app_config.set("window", "location", (xpos, ypos))
