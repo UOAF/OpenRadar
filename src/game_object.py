@@ -148,6 +148,7 @@ class GameObject:
         # Special case: Color defaults to "White"
         self.Color = "White"
 
+        self.visible = True  # Default visibility
         # UI / runtime initialization
         self.color_rgba = (1.0, 1.0, 1.0, 1.0)
         self.override_name = None

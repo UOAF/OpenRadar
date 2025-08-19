@@ -232,6 +232,10 @@ class ImGuiRadarLabelsRenderer:
         Args:
             gamestate: Current game state containing all objects
         """
+        # Check if fixed wing layer is visible
+        if not config.app_config.get_bool("layers", "show_fixed_wing"):
+            return
+            
         fixed_wing_objs = gamestate.objects[GameObjectType.FIXEDWING]
 
         # Get the label configuration for this track type

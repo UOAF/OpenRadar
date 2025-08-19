@@ -169,7 +169,15 @@ class App:
 
     def render_refresh_callback(self):
         """Callback to refresh all render arrays when configuration changes."""
-        self.gamestate.refresh_all_render_arrays()
+        # Clear and rebuild render arrays to respect current layer visibility settings
+        self.gamestate.render_arrays.clear_all()
+        self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+        
+        # Update the cached render arrays in sensor tracks
+        self._tracks.render_arrays = self.gamestate.render_arrays.get_render_data()
+        
+        # Regenerate display data with updated arrays
+        self._display_data.generate_render_arrays()
         self._display_data.refresh_configuration()
 
     def handle_window_moved(self, window, xpos, ypos):
