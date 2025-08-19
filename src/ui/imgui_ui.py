@@ -161,6 +161,7 @@ class ImguiUserInterface:
         self.track_labels_window_open = False
         self.track_info_window_open = False
         self.scale_indicator_window_open = True
+        self.tacview_colors_window_open = False
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -331,9 +332,8 @@ class ImguiUserInterface:
         self.context_menu()
         self.callsign_change_modal()
         self.scale_indicator_window()
-
-        # Add dockable demo windows
         self.track_info_window()
+        self.tacview_colors_window()
 
         self.display_data.labels_renderer.render()
 
@@ -418,6 +418,58 @@ class ImguiUserInterface:
                     imgui.text_disabled("Right-click on a track to select it")
 
             imgui.end()
+
+    def tacview_colors_window(self):
+        """Window for editing Tacview coalition colors."""
+        if not self.tacview_colors_window_open:
+            return
+
+        result = imgui.begin("Tacview Display Colors", self.tacview_colors_window_open)
+        expanded = result[0] if isinstance(result, tuple) else result
+        if len(result) > 1 and result[1] is not None:
+            self.tacview_colors_window_open = result[1]
+
+        if expanded:
+            imgui.text("Edit Tacview Coalition Colors")
+            imgui.separator()
+
+            # Define the color names in the order they appear in config
+            color_names = ["White", "Green", "Blue", "Brown", "Orange", "Yellow", "Red", "Black"]
+
+            for color_name in color_names:
+                try:
+                    # Get current color from config
+                    current_color = config.app_config.get_color_rgba("tacview_colors", color_name)
+                    # Convert to list for imgui
+                    color_rgba = list(current_color)
+
+                    # Create color editor
+                    changed, new_color = imgui.color_edit4(f"{color_name}##color_{color_name}", color_rgba)
+
+                    if changed:
+                        # Update config with new color - ensure it's a 4-element tuple
+                        if len(new_color) >= 4:
+                            color_tuple = (float(new_color[0]), float(new_color[1]), float(new_color[2]),
+                                           float(new_color[3]))
+                            config.app_config.set_color_rgba("tacview_colors", color_name, color_tuple)
+
+                except (KeyError, ValueError) as e:
+                    imgui.text(f"Error loading {color_name}: {e}")
+
+            imgui.separator()
+            if imgui.button("Reset to Defaults"):
+                # Reset all colors to defaults from defaults.toml
+                try:
+                    defaults = config.app_config.config_defaults.get("tacview_colors", {})
+                    for color_name in color_names:
+                        if color_name in defaults:
+                            default_color = tuple(defaults[color_name])
+                            config.app_config.set_color_rgba("tacview_colors", color_name, default_color)
+
+                except Exception as e:
+                    imgui.text(f"Error resetting colors: {e}")
+
+        imgui.end()
 
     def ui_main_menu(self):
 
@@ -653,6 +705,9 @@ class ImguiUserInterface:
         create_slider_float("Center Point Size", center_point_size, 0, 6.0, "radar", "center_point_size")
         imgui.separator()
         create_slider_float("Radar Update Interval", update_interval, 0.0, 5.0, "radar", "update_interval")
+        imgui.separator()
+        if imgui.button("Change Coalition Display Colors"):
+            self.tacview_colors_window_open = True
 
     def settings_tab_display(self):
         # Make sure MSAA samples are one of the valid predefined values

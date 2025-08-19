@@ -1,8 +1,24 @@
 from dataclasses import fields, dataclass
+import config
+
+# Legacy color map - now replaced by config system
+# TACVIEW_COLOR_MAP = {
+#     "White": (1.0, 1.0, 1.0, 1.0),  # white
+#     "Green": (0.0, 1.0, 0.0, 1.0),  # green
+#     "Blue": (0.0, 0.0, 1.0, 1.0),  # blue
+#     "Brown": (0.5, 0.25, 0.0, 1.0),  # brown
+#     "Orange": (1.0, 0.5, 0.0, 1.0),  # orange
+#     "Yellow": (1.0, 1.0, 0.0, 1.0),  # yellow
+#     "Red": (1.0, 0.0, 0.0, 1.0),  # red
+#     "Black": (0.0, 0.0, 0.0, 1.0),  # black
+#     "White": (1.0, 1.0, 1.0, 1.0),  # white
+# }
 
 
-def rgba_from_str(str: str) -> tuple[float, float, float, float]:
-
+def rgba_from_str(color_name: str) -> tuple[float, float, float, float]:
+    """Get RGBA color from color name using config system.
+    
+    # Mapping from tacview color indices to color names:
     # 0=white
     # 1=green
     # 2=blue
@@ -12,20 +28,12 @@ def rgba_from_str(str: str) -> tuple[float, float, float, float]:
     # 6=red
     # 7=black
     # 8=white
-
-    color_map = {
-        "White": (1.0, 1.0, 1.0, 1.0),  # white
-        "Green": (0.0, 1.0, 0.0, 1.0),  # green
-        "Blue": (0.0, 0.0, 1.0, 1.0),  # blue
-        "Brown": (0.5, 0.25, 0.0, 1.0),  # brown
-        "Orange": (1.0, 0.5, 0.0, 1.0),  # orange
-        "Yellow": (1.0, 1.0, 0.0, 1.0),  # yellow
-        "Red": (1.0, 0.0, 0.0, 1.0),  # red
-        "Black": (0.0, 0.0, 0.0, 1.0),  # black
-        "White": (1.0, 1.0, 1.0, 1.0),  # white
-    }
-
-    return color_map.get(str, (1.0, 1.0, 1.0, 1.0))  # default to white
+    """
+    try:
+        return config.app_config.get_color_rgba("tacview_colors", color_name)
+    except (KeyError, ValueError):
+        # Return white as default if color not found
+        return (1.0, 1.0, 1.0, 1.0)
 
 
 # Function to extract all attributes from GameObject instances (non-dataclass)
