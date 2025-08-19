@@ -406,6 +406,8 @@ class ImguiUserInterface:
                     # imgui.text(f" - Lateral: {obj.LateralGForce:.2f}")
                     # imgui.text(f" - Longitudinal: {obj.LongitudinalGForce:.2f}")
                     imgui.text(f"Coalition: {obj.Coalition}")
+                    imgui.text(f"Latitude: {obj.Latitude:.6f}")
+                    imgui.text(f"Longitude: {obj.Longitude:.6f}")
                     imgui.text(f"Locked Targets: ")
                     if len(obj.locked_target_objs) == 0:
                         imgui.text("   None")
