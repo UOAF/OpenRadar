@@ -68,6 +68,9 @@ class RadarConfig:
     def get_list_int(self, heading, key) -> list[int]:
         return list(self.get_list(heading, key, int))
 
+    def get_list_float(self, heading, key) -> list[float]:
+        return list(self.get_list(heading, key, float))
+
     def get_color(self, heading, key) -> tuple[int, int, int]:
         if len(self.get_list_int(heading, key)) != 3:
             raise ValueError(f"Color value {key} in heading {heading} in {self.config_file_path} is not a valid color")
@@ -76,6 +79,19 @@ class RadarConfig:
     def get_color_normalized(self, heading, key) -> tuple[float, float, float]:
         color = self.get_color(heading, key)
         return tuple([c / 255 for c in color])  # type: ignore
+
+    def get_color_rgba(self, heading, key) -> tuple[float, float, float, float]:
+        """Get an RGBA color value as a tuple of floats (0.0-1.0)"""
+        color_list = self.get_list_float(heading, key)
+        if len(color_list) != 4:
+            raise ValueError(f"RGBA color value {key} in heading {heading} in {self.config_file_path} is not a valid RGBA color")
+        return tuple(color_list)  # type: ignore
+
+    def set_color_rgba(self, heading, key, color: tuple[float, float, float, float]):
+        """Set an RGBA color value from a tuple of floats (0.0-1.0)"""
+        if len(color) != 4:
+            raise ValueError(f"RGBA color value {key} in heading {heading} must have 4 components")
+        self.set(heading, key, list(color))
 
     def set_color_from_normalized(self, heading, key, color: tuple[float, float, float]):
         if len(color) != 3:

@@ -57,3 +57,13 @@ ini_font_scale = 40 # Font size of the ini file annotations
 
 [notepad]
 notes = "" # Notes stored in the user notepad
+
+[tacview_colors]
+White = [ 1.0, 1.0, 1.0, 1.0 ] # White color RGBA
+Green = [ 0.0, 1.0, 0.0, 1.0 ] # Green color RGBA
+Blue = [ 0.0, 0.0, 1.0, 1.0 ] # Blue color RGBA
+Brown = [ 0.5, 0.25, 0.0, 1.0 ] # Brown color RGBA
+Orange = [ 1.0, 0.5, 0.0, 1.0 ] # Orange color RGBA
+Yellow = [ 1.0, 1.0, 0.0, 1.0 ] # Yellow color RGBA
+Red = [ 1.0, 0.0, 0.0, 1.0 ] # Red color RGBA
+Black = [ 0.0, 0.0, 0.0, 1.0 ] # Black color RGBA

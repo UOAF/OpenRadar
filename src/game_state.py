@@ -238,18 +238,6 @@ class GameState:
         """Update target lock references for an object."""
         game_obj.resolve_locked_targets(self.all_objects)
 
-    def _get_default_color(self, obj_type: GameObjectType, coalition: str) -> tuple[float, float, float, float]:
-        """Get default color for an object based on its type and coalition."""
-        # Simple default coloring - can be made more sophisticated
-        if obj_type == GameObjectType.BULLSEYE:
-            return (128, 128, 128, 255)  # Gray
-        elif "Blue" in coalition or "US" in coalition:
-            return (0, 0, 255, 255)  # Blue for friendly
-        elif "Red" in coalition or "OPFOR" in coalition:
-            return (255, 0, 0, 255)  # Red for hostile
-        else:
-            return (255, 255, 0, 255)  # Yellow for unknown
-
     def clear_state(self) -> None:
         """Clear the game state."""
         # Clear any remaining data in the queue to prevent processing stale/corrupted data
@@ -261,3 +249,11 @@ class GameState:
 
         # Reinitialize all state
         self.__init__(self.data_queue)
+
+    def change_side_color(self, coalition: str, new_color: tuple[float, float, float, float]) -> None:
+        """Change the side color for a specific coalition."""
+        # Update the color for all objects belonging to the specified coalition
+        for obj in self.all_objects.values():
+            if obj.Coalition == coalition:
+                obj.override_color = new_color
+                self.render_arrays.update_object(obj)
