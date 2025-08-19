@@ -1,6 +1,33 @@
 from dataclasses import fields, dataclass
 
 
+def rgba_from_str(str: str) -> tuple[float, float, float, float]:
+
+    # 0=white
+    # 1=green
+    # 2=blue
+    # 3=brown
+    # 4=orange
+    # 5=yellow
+    # 6=red
+    # 7=black
+    # 8=white
+
+    color_map = {
+        "White": (1.0, 1.0, 1.0, 1.0),  # white
+        "Green": (0.0, 1.0, 0.0, 1.0),  # green
+        "Blue": (0.0, 0.0, 1.0, 1.0),  # blue
+        "Brown": (0.5, 0.25, 0.0, 1.0),  # brown
+        "Orange": (1.0, 0.5, 0.0, 1.0),  # orange
+        "Yellow": (1.0, 1.0, 0.0, 1.0),  # yellow
+        "Red": (1.0, 0.0, 0.0, 1.0),  # red
+        "Black": (0.0, 0.0, 0.0, 1.0),  # black
+        "White": (1.0, 1.0, 1.0, 1.0),  # white
+    }
+
+    return color_map.get(str, (1.0, 1.0, 1.0, 1.0))  # default to white
+
+
 # Function to extract all attributes from GameObject instances (non-dataclass)
 def get_all_attributes(instance):
     """Extract all attributes from a GameObject instance, including properties.
@@ -12,7 +39,7 @@ def get_all_attributes(instance):
         dict: Dictionary of attribute names and their values
     """
     attributes = {}
-    
+
     # Get all instance attributes (excluding private ones and methods)
     for attr_name in dir(instance):
         if not attr_name.startswith('_'):  # Skip private attributes
@@ -24,7 +51,7 @@ def get_all_attributes(instance):
             except:
                 # Skip attributes that can't be accessed
                 pass
-    
+
     return attributes
 
 

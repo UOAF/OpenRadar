@@ -227,7 +227,9 @@ class IconRenderData(BaseRenderData):
         element['position'] = [game_obj.U, game_obj.V]
 
         # Color (normalize from 0-255 to 0.0-1.0 for shaders)
-        color = game_obj.override_color if game_obj.override_color else game_obj.color_rgba
+        color = game_obj.override_color if game_obj.override_color else \
+                game_obj.side_override_color if game_obj.side_override_color else \
+                game_obj.color_rgba
         element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
 
         # Scale (could be configurable per object type)

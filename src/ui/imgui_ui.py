@@ -802,11 +802,10 @@ class ImguiUserInterface:
 
         nearest_object = self.gamestate.get_nearest_object(mouse_pos_world.to_tuple())
         if nearest_object:
-            imgui.text(f"Nearest Object: {nearest_object.data.Name} ({nearest_object.data.object_id})")
-            imgui.text(f"Object Pilot: {nearest_object.data.Pilot}")
-            imgui.text(f"Position (World): {nearest_object.data.T.U, nearest_object.data.T.V}")
-            imgui.text(
-                f"Position (Screen): {self.scene.world_to_screen((nearest_object.data.T.U, nearest_object.data.T.V))}")
+            imgui.text(f"Nearest Object: {nearest_object.Name} ({nearest_object.object_id})")
+            imgui.text(f"Object Pilot: {nearest_object.Pilot}")
+            imgui.text(f"Position (World): {nearest_object.U, nearest_object.V}")
+            imgui.text(f"Position (Screen): {self.scene.world_to_screen((nearest_object.U, nearest_object.V))}")
 
         imgui.end()
         if not open:
