@@ -31,14 +31,12 @@ Migration notes:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 import datetime
 
 from acmi_parse import ACMIObject
-from game_object_types import GameObjectType, infer_object_type_from_tacview, get_icon_style
-
-from draw.shapes import Shape  # Import shapes for icon rendering
+from game_object_types import GameObjectType, get_icon_style
+from util.other_utils import rgba_from_str
 
 
 def _coerce_number(value: Any, default: float = 0.0) -> float:
@@ -64,38 +62,6 @@ _LOCKED_TARGET_FIELDS = {
 }
 _STRING_FIELDS = {"Coalition", "Color", "Name", "Pilot", "Type", "CallSign", "Group"} | _LOCKED_TARGET_FIELDS
 _ALL_ACMI_FIELDS = _NUMERIC_FIELDS | _STRING_FIELDS
-
-
-@dataclass
-class GameObjectDataShim:
-    """Backwards compatibility shim so existing code that expects obj.data.<field>
-    can continue to function while refactoring occurs. Accesses the owning
-    GameObject's attributes directly. Do NOT store state here.
-    """
-    _owner: "GameObject"
-
-    def __getattr__(self, item):  # pragma: no cover - simple delegation
-        return getattr(self._owner, item)
-
-
-class _OrientationView:
-    """Property view to emulate previous obj.T.<field> access pattern.
-    The underlying values are stored flatly on the GameObject instance.
-    """
-
-    def __init__(self, owner: "GameObject"):
-        object.__setattr__(self, "_owner", owner)
-
-    def __getattr__(self, name: str):  # pragma: no cover simple delegation
-        if name in _ORIENTATION_FIELDS:
-            return getattr(self._owner, name)
-        raise AttributeError(name)
-
-    def __setattr__(self, name: str, value: Any):  # pragma: no cover simple delegation
-        if name in _ORIENTATION_FIELDS:
-            setattr(self._owner, name, _coerce_number(value, getattr(self._owner, name)))
-        else:
-            raise AttributeError(name)
 
 
 class GameObject:
@@ -157,18 +123,9 @@ class GameObject:
     color_rgba: tuple[float, float, float, float]
     visible: bool
     override_name: Optional[str]
+    side_override_color: Optional[tuple[float, float, float, float]]
     override_color: Optional[tuple[float, float, float, float]]
     locked_target_objs: list[Optional["GameObject"]]  # resolved reference
-
-    # Backwards compatibility property (simulate old obj.data usage)
-    @property
-    def data(self) -> GameObjectDataShim:  # pragma: no cover - simple shim
-        return GameObjectDataShim(_owner=self)
-
-    # Orientation compatibility property
-    @property
-    def T(self) -> _OrientationView:  # pragma: no cover - simple shim
-        return _OrientationView(self)
 
     # ----------------------------------------------------------------------------------
     # Creation / Update
@@ -195,6 +152,7 @@ class GameObject:
         self.override_name = None
         self.override_color = None
         self.locked_target_objs = []
+        self.side_override_color = None
 
         # Apply initial data if provided
         if initial is not None:
@@ -255,7 +213,7 @@ class GameObject:
         # if any(key.startswith("LockedTarget") for key in props.keys()):
         #     self.resolve_locked_targets()
 
-        self.color_rgba = self.rgba_from_str(self.Color)
+        self.color_rgba = rgba_from_str(self.Color)
 
     # ----------------------------------------------------------------------------------
     # API methods (mirroring old implementation)
@@ -277,44 +235,6 @@ class GameObject:
 
     def get_pos(self) -> tuple[float, float]:
         return (self.U, self.V)
-
-    def set_color(self, color: tuple[float, float, float, float]):
-        self.color_rgba = color
-
-    def get_color(self) -> tuple[float, float, float, float]:
-        return self.override_color if self.override_color is not None else self.color_rgba
-
-    def rgba_from_str(self, str: str) -> tuple[float, float, float, float]:
-
-        # 0=white
-        # 1=green
-        # 2=blue
-        # 3=brown
-        # 4=orange
-        # 5=yellow
-        # 6=red
-        # 7=black
-        # 8=white
-
-        color_map = {
-            "White": (1.0, 1.0, 1.0, 1.0),  # white
-            "Green": (0.0, 1.0, 0.0, 1.0),  # green
-            "Blue": (0.0, 0.0, 1.0, 1.0),  # blue
-            "Brown": (0.5, 0.25, 0.0, 1.0),  # brown
-            "Orange": (1.0, 0.5, 0.0, 1.0),  # orange
-            "Yellow": (1.0, 1.0, 0.0, 1.0),  # yellow
-            "Red": (1.0, 0.0, 0.0, 1.0),  # red
-            "Black": (0.0, 0.0, 0.0, 1.0),  # black
-            "White": (1.0, 1.0, 1.0, 1.0),  # white
-        }
-
-        return color_map.get(str, (1.0, 1.0, 1.0, 1.0))  # default to white
-
-    def hide(self):
-        self.visible = False
-
-    def show(self):
-        self.visible = True
 
     def change_name(self, name: str):
         self.override_name = name
@@ -338,27 +258,6 @@ class GameObject:
             if locked_target not in (None, "", "0") and locked_target in resolver:
                 self.locked_target_objs.append(resolver[locked_target])
 
-    def get_context_items(self) -> list[tuple[str, Any]]:
-        """Get context menu items for this object (for UI integration)."""
-        return [("Change Color", self.change_color), ("Change Name", self.change_name)]
-
     def is_air_unit(self) -> bool:
         """Check if this is an air unit (fixed wing, rotary wing, or missile)."""
         return self.object_type in (GameObjectType.FIXEDWING, GameObjectType.ROTARYWING)
-
-    def is_ground_unit(self) -> bool:
-        """Check if this is a ground unit."""
-        return self.object_type == GameObjectType.GROUND
-
-    def is_sea_unit(self) -> bool:
-        """Check if this is a sea unit."""
-        return self.object_type == GameObjectType.SEA
-
-    def __str__(self) -> str:
-        """String representation for debugging."""
-        return f"GameObject({self.object_id}, {self.object_type.name}, {self.get_display_name()})"
-
-    def __repr__(self) -> str:
-        """Detailed representation for debugging."""
-        return (f"GameObject(id={self.object_id}, type={self.object_type.name}, "
-                f"pos=({self.U:.1f}, {self.V:.1f}), name={self.get_display_name()!r})")

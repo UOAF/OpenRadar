@@ -162,21 +162,19 @@ class SensorTracks:
 
                 if not object_id in self.tracks:
                     # Create a new track
-                    if (classenum == GameObjectType.FIXEDWING and
-                        (self.cur_time - object.data.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
+                    if (classenum == GameObjectType.FIXEDWING
+                            and (self.cur_time - object.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
                         # Skip if the object has no timestamp or is too old
                         # will need to rethink this for ground/sea contacts
                         continue
-                    side = get_coalition(object.data.Coalition, object.color_rgba)
-                    self.tracks[classenum][object_id] = Track(object_id, object.data.Type,
-                                                              (object.data.T.U, object.data.T.V), object.data.CAS,
-                                                              object.data.T.Heading, object.data.T.Altitude,
-                                                              object.data.timestamp, classenum, side)
+                    side = get_coalition(object.Coalition, object.color_rgba)
+                    self.tracks[classenum][object_id] = Track(object_id, object.Type, (object.U, object.V), object.CAS,
+                                                              object.Heading, object.Altitude, object.timestamp,
+                                                              classenum, side)
 
                 else:
-                    self.tracks[classenum][object_id].update((object.data.T.U, object.data.T.V), object.data.CAS,
-                                                             object.data.T.Heading, object.data.T.Altitude,
-                                                             object.data.timestamp)
+                    self.tracks[classenum][object_id].update((object.U, object.V), object.CAS, object.Heading,
+                                                             object.Altitude, object.timestamp)
 
         # Remove old tracks
         # if self.cur_time is None:  # Do not remove tracks if the current time is not set
