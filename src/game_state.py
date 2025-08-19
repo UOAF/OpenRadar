@@ -267,6 +267,9 @@ class GameState:
         """
         from util.other_utils import rgba_from_str
         
+        # Refresh icon scale from configuration
+        self.render_arrays.refresh_icon_scale_from_config()
+        
         # Update all objects to reflect current configuration
         for obj in self.all_objects.values():
             # Refresh color based on current color configuration

@@ -239,11 +239,13 @@ class ImGuiRadarLabelsRenderer:
 
         # Get offset for positioning labels relative to track icons
         offset = config.app_config.get_int("radar", "contact_size")
+        label_padding = config.app_config.get_int("radar", "contact_label_padding")
+        total_offset = offset + label_padding
         font_scale = config.app_config.get_float("radar", "contact_font_scale") / 100.0  # Convert to ImGui scale
 
         if labels is not None:
             for obj in fixed_wing_objs.values():
-                self.draw_track_labels(obj, labels, offset, font_scale)
+                self.draw_track_labels(obj, labels, total_offset, font_scale)
 
     def draw_custom_text(self,
                          text: str,

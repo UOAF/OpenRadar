@@ -13,6 +13,7 @@ Data is stored contiguously and removal uses swap-with-last for O(1) deletion.
 
 import numpy as np
 from abc import ABC, abstractmethod
+import config
 from typing import Optional, Any, Dict, Union, List, Tuple
 from game_object import GameObject
 from draw.shapes import Shapes
@@ -211,10 +212,16 @@ class IconRenderData(BaseRenderData):
             ('color', np.float32, (4, )),  # RGBA normalized 0.0-1.0
         ])
 
-    def set_all_scale(self, scale: float):
-        """Set the scale for all icons."""
+    def set_all_scale(self, scale: float | None = None):
+        """Set the scale for all icons. If no scale provided, uses config value."""
         if self.data is not None:
+            if scale is None:
+                scale = config.app_config.get_float("radar", "contact_size")
             self.data['scale'] = scale
+
+    def refresh_scale_from_config(self):
+        """Refresh scale for all icons from config."""
+        self.set_all_scale()
 
     def _update_object_data(self, index: int, game_obj: GameObject):
         """Update the array data for an icon at the given index."""
@@ -232,8 +239,8 @@ class IconRenderData(BaseRenderData):
                 game_obj.color_rgba
         element['color'] = [c / 255.0 if c > 1.0 else c for c in color]
 
-        # Scale (could be configurable per object type)
-        element['scale'] = 10.0
+        # Scale (configurable per object type)
+        element['scale'] = config.app_config.get_float("radar", "contact_size")
 
     def _update_element_data(self, index: int, element_id: str, **kwargs):
         """Update element with either GameObject or direct parameters."""
@@ -624,6 +631,11 @@ class TrackRenderDataArrays:
         lock_lines = active_array_slice.copy() if active_array_slice is not None else None
 
         return {'icons': icon_arrays, 'velocity_vectors': velocity_vectors, 'lock_lines': lock_lines}
+
+    def refresh_icon_scale_from_config(self):
+        """Refresh icon scale for all icon arrays from config."""
+        for icon_data in self.icon_data.values():
+            icon_data.refresh_scale_from_config()
 
 
 class PolygonRenderData(GenericStructuredArray):
