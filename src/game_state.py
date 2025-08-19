@@ -257,4 +257,12 @@ class GameState:
 
     def clear_state(self) -> None:
         """Clear the game state."""
+        # Clear any remaining data in the queue to prevent processing stale/corrupted data
+        while not self.data_queue.empty():
+            try:
+                self.data_queue.get_nowait()
+            except queue.Empty:
+                break
+
+        # Reinitialize all state
         self.__init__(self.data_queue)
