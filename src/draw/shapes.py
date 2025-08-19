@@ -125,6 +125,12 @@ def get_diamond_points():
     return add_control_points_loop(points)
 
 
+def get_small_diamond_points():
+    points = np.array([[0, -0.5, 0, 1], [-0.5, 0, 0, 1], [0, 0.5, 0, 1], [0.5, 0, 0, 1], [0, -0.5, 0, 1]],
+                      dtype=np.float32)
+    return add_control_points_loop(points)
+
+
 def get_semicircle_points(radius, num_points):
     # Generate angles evenly spaced around the circle
     angles = np.linspace(0, np.pi, num_points, endpoint=True, dtype=np.float32)
@@ -179,9 +185,10 @@ class Shapes(Enum):
     SQUARE = Shape(2, "Square", get_square_points())
     SEMICIRCLE = Shape(3, "Semicircle", get_semicircle_points(1, 50))
     DIAMOND = Shape(4, "Diamond", get_diamond_points())
-    HALF_DIAMOND = Shape(5, "Half Diamond", get_half_diamond_points())
-    TOP_BOX = Shape(6, "Top Box", get_top_box_points())
-    SHIP = Shape(7, "Ship", get_ship_points())
+    SMALL_DIAMOND = Shape(5, "Small Diamond", get_small_diamond_points())
+    HALF_DIAMOND = Shape(6, "Half Diamond", get_half_diamond_points())
+    TOP_BOX = Shape(7, "Top Box", get_top_box_points())
+    SHIP = Shape(8, "Ship", get_ship_points())
 
     @classmethod
     def from_idx(cls, idx):

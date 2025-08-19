@@ -41,7 +41,7 @@ class ClassicIconSet:
             return (Shapes.SQUARE, base_color)
 
         elif object_type == GameObjectType.MISSILE:
-            return (Shapes.DIAMOND, base_color)
+            return (Shapes.SMALL_DIAMOND, base_color)
 
         elif object_type == GameObjectType.GROUND:
             return (Shapes.CIRCLE, base_color)
