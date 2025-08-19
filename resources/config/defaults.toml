@@ -18,8 +18,8 @@ map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more 
 background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
 
 [radar]
-update_interval = 1 # Update interval in seconds
-contact_size = 14 # Size of the track in pixels
+update_interval = 0 # Update interval in seconds
+contact_size = 10 # Size of the track in pixels
 contact_stroke = 2 # Stroke width of the track in pixels
 contact_font_scale = 40 # Font size of the track labels
 contact_label_padding = 5 # Additional padding for track labels in pixels
@@ -48,7 +48,6 @@ GROUND = '{}'
 SEA = '{}'
 BULLSEYE = '{}'
 UNKNOWN = '{}'
-
 
 [controler]
 coalition = "U.S." # Coalition to control on startup
