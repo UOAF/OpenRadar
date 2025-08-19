@@ -15,6 +15,7 @@ from game_state import GameState
 from game_object_types import GameObjectType
 from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
+from render_data_arrays import TrackRenderDataArrays
 import config
 
 from util.bms_math import METERS_TO_FT, NM_TO_METERS, M_PER_SEC_TO_KNOTS
@@ -75,7 +76,7 @@ def create_slider_float(label, value, min_val, max_val, config_section, config_k
     changed, new_value = imgui.slider_float(label, value, min_val, max_val)
     if changed:
         config.app_config.set(config_section, config_key, new_value)
-    return changed
+    return changed, new_value
 
 
 def create_slider_int(label, value, min_val, max_val, config_section, config_key):
@@ -83,7 +84,7 @@ def create_slider_int(label, value, min_val, max_val, config_section, config_key
     changed, new_value = imgui.slider_int(label, value, min_val, max_val)
     if changed:
         config.app_config.set(config_section, config_key, new_value)
-    return changed
+    return changed, new_value
 
 
 def create_checkbox(label, value, config_section, config_key):
@@ -91,7 +92,7 @@ def create_checkbox(label, value, config_section, config_key):
     changed, new_value = imgui.checkbox(label, value)
     if changed:
         config.app_config.set(config_section, config_key, new_value)
-    return new_value
+    return changed, new_value
 
 
 def create_color_edit(label, color, config_section, config_key):
@@ -100,7 +101,7 @@ def create_color_edit(label, color, config_section, config_key):
     if changed:
         color_tuple = (new_color[0], new_color[1], new_color[2])
         config.app_config.set_color_from_normalized(config_section, config_key, color_tuple)
-    return new_color
+    return changed, new_color
 
 
 def update_config_if_changed(changed, config_section, config_key, value):
@@ -818,15 +819,22 @@ class ImguiUserInterface:
 
         changed = False
 
-        if create_slider_float("Contact Stroke Width", stoke_width, 1, 10.0, "radar", "contact_stroke"):
+        stroke_changed, _ = create_slider_float("Contact Stroke Width", stoke_width, 1, 10.0, "radar", "contact_stroke")
+        if stroke_changed:
             changed = True
-        if create_slider_float("Contact Shape Size", shape_size, 1, 40.0, "radar", "contact_size"):
+        size_changed, _ = create_slider_float("Contact Shape Size", shape_size, 1, 40.0, "radar", "contact_size")
+        if size_changed:
             changed = True
-        if create_slider_int("Contact Font Scale", font_scale, 10, 100, "radar", "contact_font_scale"):
+        font_changed, _ = create_slider_int("Contact Font Scale", font_scale, 10, 100, "radar", "contact_font_scale")
+        if font_changed:
             changed = True
-        if create_slider_int("Contact Label Padding", label_padding, 0, 20, "radar", "contact_label_padding"):
+        padding_changed, _ = create_slider_int("Contact Label Padding", label_padding, 0, 20, "radar",
+                                               "contact_label_padding")
+        if padding_changed:
             changed = True
-        if create_slider_float("Center Point Size", center_point_size, 0, 6.0, "radar", "center_point_size"):
+        center_changed, _ = create_slider_float("Center Point Size", center_point_size, 0, 6.0, "radar",
+                                                "center_point_size")
+        if center_changed:
             changed = True
 
         imgui.separator()
@@ -840,9 +848,10 @@ class ImguiUserInterface:
 
         # Bullseye configuration section
         imgui.text("Bullseye Display Settings")
-        changed_rings = create_slider_int("Number of Rings", bullseye_num_rings, 1, 20, "radar", "bullseye_num_rings")
-        changed_distance = create_slider_int("Ring Distance (NM)", bullseye_ring_distance, 5, 100, "radar",
-                                             "bullseye_ring_distance")
+        changed_rings, _ = create_slider_int("Number of Rings", bullseye_num_rings, 1, 20, "radar",
+                                             "bullseye_num_rings")
+        changed_distance, _ = create_slider_int("Ring Distance (NM)", bullseye_ring_distance, 5, 100, "radar",
+                                                "bullseye_ring_distance")
 
         # Refresh render arrays if bullseye settings changed
         if changed_rings or changed_distance:
@@ -890,12 +899,22 @@ class ImguiUserInterface:
         _, open = imgui.begin("Layers", True, imgui.WindowFlags_.always_auto_resize.value)
 
         imgui.text("Enabled Map Layers")
-        create_checkbox("Bullseye", show_bullseye, "layers", "show_bullseye")
-        create_checkbox("Fixed Wing", show_fixed_wing, "layers", "show_fixed_wing")
-        create_checkbox("Rotary Wing", show_rotary_wing, "layers", "show_rotary_wing")
-        create_checkbox("Ground", show_ground, "layers", "show_ground")
-        create_checkbox("Ships", show_ships, "layers", "show_ships")
-        create_checkbox("Missiles", show_missiles, "layers", "show_missiles")
+
+        # Check if any layer visibility changed using the helper functions
+        changed_bullseye, _ = create_checkbox("Bullseye", show_bullseye, "layers", "show_bullseye")
+        changed_fixed_wing, _ = create_checkbox("Fixed Wing", show_fixed_wing, "layers", "show_fixed_wing")
+        changed_rotary_wing, _ = create_checkbox("Rotary Wing", show_rotary_wing, "layers", "show_rotary_wing")
+        changed_ground, _ = create_checkbox("Ground", show_ground, "layers", "show_ground")
+        changed_ships, _ = create_checkbox("Ships", show_ships, "layers", "show_ships")
+        changed_missiles, _ = create_checkbox("Missiles", show_missiles, "layers", "show_missiles")
+
+        # If any layer visibility changed, regenerate render arrays
+        if any([
+                changed_bullseye, changed_fixed_wing, changed_rotary_wing, changed_ground, changed_ships,
+                changed_missiles
+        ]):
+            if self.render_refresh_callback:
+                self.render_refresh_callback()
 
         imgui.end()
 

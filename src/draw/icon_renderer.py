@@ -74,13 +74,12 @@ class IconInstancedRenderer:
             self.shape_buffers[shape] = vertex_buffer
 
     def load_render_arrays(self, icon_arrays: Dict[Shapes, np.ndarray]):
+        # First, release ALL existing buffers
+        for shape in list(self.instance_buffers.keys()):
+            self.instance_buffers[shape].release()
+            del self.instance_buffers[shape]
 
-        keys = list(icon_arrays.keys())
-        for shape in keys:
-            if shape in self.instance_buffers:
-                self.instance_buffers[shape].release()
-                del self.instance_buffers[shape]
-
+        # Then create new buffers only for shapes that have data
         for shape, icon_data in icon_arrays.items():
             ssbo = self.ctx.buffer(icon_data.tobytes())
             if isinstance(ssbo, mgl.InvalidObject):

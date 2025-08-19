@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 import config
 from typing import Optional, Any, Dict, Union, List, Tuple
 from game_object import GameObject
+from game_object_types import GameObjectType
 from draw.shapes import Shapes
 
 
@@ -560,8 +561,29 @@ class TrackRenderDataArrays:
         self.velocity_vectors = VelocityVectorRenderData(initial_capacity // 2)
         self.lock_lines = LockLineRenderData(initial_capacity // 2)
 
+    def _should_render_object_type(self, obj_type) -> bool:
+        """Check if an object type should be rendered based on layer configuration."""
+        layer_mapping = {
+            GameObjectType.FIXEDWING: "show_fixed_wing",
+            GameObjectType.ROTARYWING: "show_rotary_wing",
+            GameObjectType.GROUND: "show_ground",
+            GameObjectType.SEA: "show_ships",
+            GameObjectType.MISSILE: "show_missiles",
+            # Note: Bullseye is handled separately in display_data.py
+        }
+
+        layer_key = layer_mapping.get(obj_type)
+        if layer_key:
+            return config.app_config.get_bool("layers", layer_key)
+
+        return True  # Default to showing unknown types
+
     def add_object(self, game_obj: GameObject):
         """Add a game object to all relevant render arrays."""
+
+        # Check if this object type should be rendered based on layer visibility
+        if not self._should_render_object_type(game_obj.object_type):
+            return
 
         # Add to icon array (Most objects have icons)
         shape_id = game_obj.icon
@@ -594,11 +616,24 @@ class TrackRenderDataArrays:
 
     def update_object(self, game_obj: GameObject):
         """Update an object in all relevant render arrays."""
+
+        # Check if this object type should be rendered based on layer visibility
+        if not self._should_render_object_type(game_obj.object_type):
+            # Object should not be rendered - remove it if it exists
+            self.remove_object(game_obj)
+            return
+
+        # Object should be rendered - update or add it
         # Update icon data (all objects have icons)
         shape_id = game_obj.icon
         shape = Shapes.from_idx(shape_id) if shape_id is not None else None
         if shape is not None:
-            self.icon_data[shape].update_object(game_obj)
+            if game_obj.object_id in self.icon_data[shape].id_to_index:
+                # Object exists, update it
+                self.icon_data[shape].update_object(game_obj)
+            else:
+                # Object doesn't exist, add it
+                self.icon_data[shape].add_object(game_obj)
 
         # Update or add/remove velocity vector based on movement
         if game_obj.is_air_unit() and game_obj.CAS > 0:
@@ -636,6 +671,19 @@ class TrackRenderDataArrays:
         """Refresh icon scale for all icon arrays from config."""
         for icon_data in self.icon_data.values():
             icon_data.refresh_scale_from_config()
+
+    def clear_all(self):
+        """Clear all render arrays."""
+        for icon_data in self.icon_data.values():
+            icon_data.clear()
+        self.velocity_vectors.clear()
+        self.lock_lines.clear()
+
+    def rebuild_from_objects(self, objects: dict):
+        """Rebuild all render arrays from a dictionary of game objects."""
+        self.clear_all()
+        for obj in objects.values():
+            self.add_object(obj)
 
 
 class PolygonRenderData(GenericStructuredArray):
