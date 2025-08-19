@@ -151,6 +151,7 @@ class App:
                                            self._tracks, self._display_data, self.data_client)
 
         self._ImguiUI.set_reset_callback(self.reset_state_callback)
+        self._ImguiUI.set_render_refresh_callback(self.render_refresh_callback)
 
         self.hovered_game_obj: GameObject | None = None
 
@@ -165,6 +166,10 @@ class App:
         self.gamestate.clear_state()
         self._tracks.clear()
         self._display_data.clear()
+
+    def render_refresh_callback(self):
+        """Callback to refresh all render arrays when configuration changes."""
+        self.gamestate.refresh_all_render_arrays()
 
     def handle_window_moved(self, window, xpos, ypos):
         config.app_config.set("window", "location", (xpos, ypos))

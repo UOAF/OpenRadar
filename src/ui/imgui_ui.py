@@ -122,6 +122,7 @@ class ImguiUserInterface:
         self.annotations = display_data.annotations
         self.data_client = data_client
         self.reset_state_callback = None
+        self.render_refresh_callback = None
 
         imgui.create_context()
         io = imgui.get_io()
@@ -231,6 +232,10 @@ class ImguiUserInterface:
 
     def set_reset_callback(self, callback):
         self.reset_state_callback = callback
+
+    def set_render_refresh_callback(self, callback):
+        """Set callback to refresh render arrays when configuration changes."""
+        self.render_refresh_callback = callback
 
     def open_ini_file_dialog(self):
         """Open a non-blocking file dialog for selecting INI files."""
@@ -455,6 +460,10 @@ class ImguiUserInterface:
                                            float(new_color[3]))
                             config.app_config.set_color_rgba("tacview_colors", color_name, color_tuple)
 
+                            # Refresh render arrays to show color changes immediately
+                            if self.render_refresh_callback:
+                                self.render_refresh_callback()
+
                 except (KeyError, ValueError) as e:
                     imgui.text(f"Error loading {color_name}: {e}")
 
@@ -467,6 +476,10 @@ class ImguiUserInterface:
                         if color_name in defaults:
                             default_color = tuple(defaults[color_name])
                             config.app_config.set_color_rgba("tacview_colors", color_name, default_color)
+
+                    # Refresh render arrays after resetting all colors
+                    if self.render_refresh_callback:
+                        self.render_refresh_callback()
 
                 except Exception as e:
                     imgui.text(f"Error resetting colors: {e}")
