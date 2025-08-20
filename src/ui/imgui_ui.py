@@ -46,6 +46,8 @@ example_object.AOA = 5.0
 example_object.Coalition = "U.S."
 example_object.Name = "F-16C"
 
+IMGUI_INI_FILENAME = "openradar_imgui.ini"
+
 
 def help_marker(description: str):
     imgui.text_disabled("(?)")
@@ -128,6 +130,10 @@ class ImguiUserInterface:
         imgui.create_context()
         io = imgui.get_io()
         io.display_size = self.size
+
+        print(f"Imgui INI file path: {str(config.application_dir / IMGUI_INI_FILENAME)}")
+        io.set_ini_filename(str(config.application_dir / IMGUI_INI_FILENAME))
+
         io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18)
 
         # Enable docking support

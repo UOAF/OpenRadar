@@ -290,6 +290,8 @@ class App:
         """
         Cleans up and quits the application.
         """
+        print("Cleaning up and saving configuration...")
+        config.app_config.save()
         if self.gpu_timer:
             self.gpu_timer.cleanup()
         glfw.terminate()

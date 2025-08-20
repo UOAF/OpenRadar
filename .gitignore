@@ -9,3 +9,5 @@ test.py
 output.txt
 imgui.ini
 renderdoc.cap
+openradar.toml
+openradar_imgui.ini
