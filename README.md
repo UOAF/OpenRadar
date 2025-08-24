@@ -11,10 +11,21 @@ UOAF OpenRadar for BMS Falcon 4.0
 
 ## Compile Workflow
 
-1. install python.
-2. `> pip install -r .\requirements.txt`
-3. `> pyinstaller .\OpenRadar.spec`
-4. compiled exe will be generated to `dist` directly.
+1. Install Python.
+2. Create venv (optional, but strongly recommended)
+```bash
+python -m venv venv
+.\venv\Scripts\Activate
+```
+3. Install dependencies
+```bash
+pip install -r .\requirements.txt
+```
+4. Create executable
+```bash
+pyinstaller .\OpenRadar.spec
+```
+5. Compiled exe will be generated to `\dist` directly.
 
 ### TIPS
 
