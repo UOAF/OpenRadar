@@ -39,6 +39,12 @@ from game_object_types import GameObjectType, get_icon_style
 from util.bms_math import M_PER_SEC_TO_KNOTS, METERS_TO_FT
 from util.other_utils import rgba_from_str
 
+#
+# Abbrev Name is intended to shorten Callsign like Trojan 21
+# to TN21
+# ~BS1 8/30/25
+#
+import re
 
 def _coerce_number(value: Any, default: float = 0.0) -> float:
     """Convert value to float, returning default if value is empty or invalid."""
@@ -234,6 +240,66 @@ class GameObject:
         if self.Name:
             return self.Name
         return self.Type or self.object_id
+    
+    #
+    # Abbrev Name is intended to shorten Callsign like Satan 21 to SN21
+    # It won't help you distinguish between SATAN2 and SPARTN2 though.  See abbrev3_name.
+    # It seems like a horrible implementation to do this every frame though
+    # wouldn't it be better to re-name each entity with an override once??
+    # ~BS1 8/30/25
+    #
+    def get_abbrev2_name(self) -> str:
+        if self.override_name:
+            return self.override_name
+
+        if self.Pilot:
+            #This wont work well if a player's player name ends with 2 digits... Like 'jenny8675309'
+            if re.search(r"\d{2}$", self.Pilot) != None:
+                return self.Pilot[:1].upper() + self.Pilot[len(self.Pilot)-3::].upper()
+            else:
+                return f"{self.Pilot} pi"
+        if self.CallSign:
+            if re.search(r"\d{2}$", self.CallSign) != None:
+                return "".join(re.findall(r"(^\D).*(\D)(\d{2})$", self.CallSign)[0]).upper()
+            else:
+                return f"{self.CallSign} cs"
+        if self.Name:
+            if re.search(r"\d{2}$", self.Name) != None:
+                return "".join(re.findall(r"(^\D).*(\D)(\d{2})$", self.Name)[0]).upper()
+            else:
+                return f"{self.Name} nm"
+        return 'Nuts'
+    
+    #
+    # Abbrev3 Name is intended to shorten Callsign like Satan 21 to SAN21 
+    # (incase there is SATAN21 and SPARTAN21[SRN21])
+    # It eliminates all but one collision and that collision is extremely unlikely to be seen in openradar (i'm good with it)
+    # ~BS1 8/30/25
+    #
+    def get_abbrev3_name(self) -> str:
+        if self.override_name:
+            return self.override_name
+
+        if self.Pilot:
+            #This wont work well if a player's player name ends with 2 digits... Like 'jenny8675309'
+            if re.search(r"\d{2}$", self.Pilot) != None:
+                if len(self.Pilot) <6:
+                    return self.Pilot[:1].upper() + re.sub("[eickm]","",self.Pilot[1:len(self.Pilot)-3:])[-1].upper() + self.Pilot[len(self.Pilot)-3::].upper()
+                else:
+                    return self.Pilot[:1].upper() + re.sub("[aeghiklt]","",self.Pilot[1:len(self.Pilot)-3:])[-1].upper() + self.Pilot[len(self.Pilot)-3::].upper()
+            else:
+                return f"{self.Pilot} pi"
+        if self.CallSign:
+            if re.search(r"\d{2}$", self.CallSign) != None:
+                return "".join(re.findall(r"(^\D).*(\D)(\d{2})$", self.CallSign)[0]).upper()
+            else:
+                return f"{self.CallSign} cs"
+        if self.Name:
+            if re.search(r"\d{2}$", self.Name) != None:
+                return "".join(re.findall(r"(^\D).*(\D)(\d{2})$", self.Name)[0]).upper()
+            else:
+                return f"{self.Name} nm"
+        return 'Nuts'
 
     def get_pos(self) -> tuple[float, float]:
         return (self.U, self.V)
@@ -297,3 +363,20 @@ class GameObject:
     def display_name(self) -> str:
         """Get the display name for this object."""
         return self.get_display_name()
+
+    #
+    # Abbrev Name is intended to shorten Callsign like Satan21 to SN21
+    # ~BS1 8/30/25
+    #
+    @property
+    def abbrev2_name(self) -> str:
+        return self.get_abbrev2_name()
+    
+    #
+    # Abbrev3 Name is intended to shorten Callsign like Satan21 SAN21 
+    # (incase there is SATAN21 and SPARTAN21[SRN21])
+    # ~BS1 8/30/25
+    #
+    @property
+    def abbrev3_name(self) -> str:
+        return self.get_abbrev3_name()
