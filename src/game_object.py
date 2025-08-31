@@ -40,8 +40,8 @@ from util.bms_math import M_PER_SEC_TO_KNOTS, METERS_TO_FT
 from util.other_utils import rgba_from_str
 
 #
-# Abbrev Name is intended to shorten Callsign like Trojan 21
-# to TN21
+# Abbrev Name is intended to shorten Callsign like Satan21 to SN21
+# Requires Python REGEXP Module: re
 # ~BS1 8/30/25
 #
 import re
