@@ -4,6 +4,7 @@ import queue
 import math
 import numpy as np
 
+from logging_config import get_logger
 from game_object_types import GameObjectType, infer_object_type_from_tacview
 from game_object import GameObject
 from render_data_arrays import TrackRenderDataArrays
@@ -39,6 +40,10 @@ class GameState:
         # Initialize render data arrays for GPU rendering
         self.render_arrays = TrackRenderDataArrays()
 
+        # Initialize logger
+        self.logger = get_logger(f"{__name__}.GameState")
+        self.logger.info("GameState initialized")
+
     def get_time(self) -> datetime.datetime:
         """Get current simulation time."""
         return self.parser.get_time()
@@ -48,10 +53,15 @@ class GameState:
         # Bullseye typically has a special object ID in Tacview
         bullseye_objects = self.objects[GameObjectType.BULLSEYE]
         if '7fffffffffffffff' in bullseye_objects:
-            return bullseye_objects['7fffffffffffffff'].get_pos()
+            pos = bullseye_objects['7fffffffffffffff'].get_pos()
+            self.logger.debug(f"Bullseye position: {pos}")
+            return pos
         # Fallback: return first bullseye found
         if bullseye_objects:
-            return next(iter(bullseye_objects.values())).get_pos()
+            pos = next(iter(bullseye_objects.values())).get_pos()
+            self.logger.debug(f"Fallback bullseye position: {pos}")
+            return pos
+        self.logger.debug("No bullseye found, returning (0,0)")
         return (0.0, 0.0)
 
     def update_state(self):
@@ -61,22 +71,25 @@ class GameState:
         while not self.data_queue.empty():
             line = self.data_queue.get()
             if line is None:
+                self.logger.debug("Received end-of-data marker")
                 break  # End of data
 
             acmiline = self.parser.parse_line(line)
             if acmiline is None:
-                print(f"Failed to parse line: {line}")
+                self.logger.error(f"Failed to parse ACMI line: {line}")
                 continue
 
             if acmiline.action == acmi_parse.ACTION_REMOVE:
                 # Remove object from battlefield
                 if acmiline.object_id is not None:
+                    self.logger.debug(f"Removing object: {acmiline.object_id}")
                     self._remove_object(acmiline.object_id)
                 else:
-                    print(f"Tried to delete object with uninitialized object_id")
+                    self.logger.warning("Attempted to delete object with uninitialized object_id")
 
             elif acmiline.action == acmi_parse.ACTION_TIME:
                 # Time updates are handled by the parser
+                self.logger.debug(f"Time update: {self.parser.get_time()}")
                 pass
 
             elif acmiline.action == acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
@@ -88,7 +101,7 @@ class GameState:
                 self._update_object(acmiline)
 
             else:
-                print(f"Unknown action {acmiline.action} in {acmiline}")
+                self.logger.warning(f"Unknown ACMI action '{acmiline.action}' in line: {acmiline}")
 
     def get_nearest_object(self, world_pos: tuple[float, float]) -> GameObject | None:
         """
@@ -102,6 +115,12 @@ class GameState:
         """
         nearest_obj_id = self.get_nearest_object_id(world_pos)
         nearest_obj = self.all_objects.get(nearest_obj_id) if nearest_obj_id is not None else None
+
+        if nearest_obj:
+            self.logger.debug(f"Found nearest object: {nearest_obj_id} at distance from {world_pos}")
+        else:
+            self.logger.debug(f"No nearby object found at {world_pos}")
+
         return nearest_obj
 
     def get_nearest_object_id(self, world_pos: tuple[float, float]) -> str | None:
@@ -184,7 +203,10 @@ class GameState:
         # Remove from render data arrays
         object_to_remove = self.all_objects.get(object_id)
         if object_to_remove is not None:
+            self.logger.debug(f"Removing object {object_id} ({object_to_remove.object_type.name})")
             self.render_arrays.remove_object(object_to_remove)
+        else:
+            self.logger.debug(f"Attempted to remove non-existent object: {object_id}")
 
         # Find and remove from type-specific dictionary
         for type_dict in self.objects.values():
@@ -266,10 +288,10 @@ class GameState:
         (e.g., color schemes, icon sets, display settings, etc.)
         """
         from util.other_utils import rgba_from_str
-        
+
         # Refresh icon scale from configuration
         self.render_arrays.refresh_icon_scale_from_config()
-        
+
         # Update all objects to reflect current configuration
         for obj in self.all_objects.values():
             # Refresh color based on current color configuration

@@ -2,6 +2,7 @@ __pycache__
 data/long.zip.acmi
 build/
 dist/
+logs/
 Data/2024-06-03_19-09-42_converted/acmi.txt
 Data/2024-06-03_19-09-42_converted.zip.acmi
 config.toml

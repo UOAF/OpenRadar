@@ -38,6 +38,10 @@ from acmi_parse import ACMIObject
 from game_object_types import GameObjectType, get_icon_style
 from util.bms_math import M_PER_SEC_TO_KNOTS, METERS_TO_FT
 from util.other_utils import rgba_from_str
+from logging_config import get_logger
+
+# Module logger
+logger = get_logger(__name__)
 
 
 def _coerce_number(value: Any, default: float = 0.0) -> float:
@@ -136,6 +140,8 @@ class GameObject:
         self.object_id = object_id
         self.object_type = object_type
         self.timestamp = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
+
+        logger.debug(f"Creating GameObject {object_id} of type {object_type}")
 
         # Initialize all ACMI numeric fields to 0.0
         for field in _NUMERIC_FIELDS:

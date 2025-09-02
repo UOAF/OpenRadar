@@ -10,6 +10,10 @@ import config
 import util.bms_math as bms_math
 from draw.scene import Scene
 
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 class Texture:
 
@@ -79,7 +83,7 @@ class MapGL:
         elif os.path.isfile(map_dir / filename):
             texture_path = map_dir / filename
         else:
-            print(f"Map file {filename} not found")
+            logger.error(f"Map file {filename} not found. Using default grey map.")
             self.default_grey_map()
             return
 
@@ -125,7 +129,7 @@ class MapGL:
     def render(self):
 
         scale = self.map_size_m
-        self.shader['camera'].write(self.scene.get_vp())
+        self.shader['camera'].write(self.scene.get_vp())  # type: ignore
         self.shader['alpha'] = config.app_config.get_int("map", "map_alpha") / 255.0
 
         # self.mesh.render(scale * self.zoom_level, (pan.x, pan.y, 0.0))

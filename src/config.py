@@ -25,6 +25,7 @@ class RadarConfig:
         self.bundle_dir = bundle_dir
         self.application_dir = application_dir
         self.config_file_path = config_file if config_file is not None else application_dir / DEFAULT_CONFIG_FILE
+        self.logger = None
 
         with self.config_defaults_path.open("r") as f:
             self.config_defaults = tomlkit.parse(f.read())
@@ -127,9 +128,27 @@ class RadarConfig:
         self.config = self.config_defaults
 
     def save(self):
-        print("Saving configuration to:", self.config_file_path)
+        if self.logger is not None:
+            self.logger.info("Saving configuration to: %s", self.config_file_path)
         with self.config_file_path.open('w') as f:
             f.write(tomlkit.dumps(self.config))
+
+    def set_logger(self, logger):
+        self.logger = logger
+
+    def get_app_dir(self):
+        return self.config_file_path.parent
+
+    def log_config_dirs(self):
+
+        if self.logger is not None:
+            self.logger.info("Config file path: %s", self.config_file_path)
+            self.logger.info("Bundle directory: %s", self.bundle_dir)
+            self.logger.info("Application directory: %s", self.get_app_dir())
+        else:
+            print("Config file path:", self.config_file_path)
+            print("Bundle directory:", self.bundle_dir)
+            print("Application directory:", self.get_app_dir())
 
 
 if 'app_config' not in globals():
@@ -144,7 +163,5 @@ if 'app_config' not in globals():
         bundle_dir = Path(os.getcwd())
         application_dir = Path(os.getcwd())
 
-    print(f"Bundle directory: {bundle_dir}")
-    print(f"Application path: {application_dir}")
     global app_config
     app_config = RadarConfig(bundle_dir=bundle_dir, application_dir=application_dir)  # global config

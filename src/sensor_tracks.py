@@ -9,8 +9,11 @@ from draw.shapes import Shapes
 from game_state import GameState
 from game_object_types import GameObjectType
 from util.bms_math import M_PER_SEC_TO_KNOTS
+from logging_config import get_logger
 
 from numpy.typing import NDArray
+
+logger = get_logger(__name__)
 
 
 class Declaration(Enum):
@@ -93,7 +96,7 @@ class Track:
             self.last_seen = time
         else:
             self.last_seen = datetime.datetime.now()
-            print(f"WARNING Track {self.id} has no timestamp")
+            logger.warning(f"Track {self.id} has no timestamp")
         self.position_m = position
         self.velocity_ms = velocity
         self.heading_deg = heading
@@ -104,7 +107,7 @@ class Track:
             "controler", "coalition",
             str)  #TODO parse to proper coalition object and link decleration to track for override
         if controler_coalition not in game_coalitions:
-            print(f"Controler coalition {controler_coalition} not found in game_coalitions")
+            logger.warning(f"Controler coalition {controler_coalition} not found in game_coalitions")
             return Declaration.UNKNOWN
 
         if controler_coalition == self.coalition.name or controler_coalition in self.coalition.allies:

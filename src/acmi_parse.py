@@ -47,6 +47,7 @@ from dataclasses import dataclass
 from typing import Optional, get_type_hints
 
 import datetime
+from logging_config import get_logger
 
 ACTION_UPDATE = "+"
 ACTION_REMOVE = "-"
@@ -224,6 +225,7 @@ class ACMIFileParser:
         self.objects = {}
         self.reference_time: datetime.datetime = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
         self.relative_time = 0
+        self.logger = get_logger(f"{__name__}.ACMIFileParser")
 
     def parse_file(self):
         """
@@ -315,14 +317,14 @@ class ACMIFileParser:
                 try:
                     key, value = prop.split('=')
                 except ValueError:
-                    print(f"Caught ValueError {parts}")
+                    self.logger.error(f"Failed to parse property in ACMI line - ValueError: {parts}")
                     break
                 if key in "T":
                     position_vals = self.parse_t(value)
                     if position_vals is not None:
                         value = {key: val for key, val in position_vals.items() if val is not None}
                     else:
-                        print(f"Invalid T value: {line}")
+                        self.logger.warning(f"Invalid T (position) value in ACMI line: {line}")
                         break
 
                 properties[key] = value
@@ -364,7 +366,7 @@ class ACMIFileParser:
 
             # START HACK FOR EXTRA PIPE BAR IN BULLSEYE
             #Todo remove when the extra pipe bar is removed
-            print(f"FIX ME | Extra pipe bar in bullseye: {t}")
+            self.logger.warning(f"FIX ME | Handling extra pipe bar in bullseye data: {t}")
             lon, lat, alt, u, v, tmp = map(lambda x: float(x.strip()) if x.strip() else None, data)
             return {"Longitude": lon, "Latitude": lat, "Altitude": alt, "U": u, "V": v}
 

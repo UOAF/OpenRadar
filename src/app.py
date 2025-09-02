@@ -12,6 +12,7 @@ import numpy as np
 import math
 
 import config
+from logging_config import get_logger, log_performance_metrics
 from game_object import GameObject
 from ui.imgui_ui import ImguiUserInterface
 from game_state import GameState
@@ -57,6 +58,9 @@ class App:
     """
 
     def __init__(self, *args, **kwargs):
+        self.logger = get_logger(__name__)
+        self.logger.info("Initializing OpenRadar application")
+
         self._running = True
         self.mouseDragDown = False
         self.mouseBRAADown = False
@@ -74,10 +78,13 @@ class App:
 
         try:
             os.chdir(sys._MEIPASS)  # type: ignore
+            self.logger.debug(f"Changed working directory to: {sys._MEIPASS}")  # type: ignore
         except AttributeError:
+            self.logger.debug("Running in development mode (not compiled)")
             pass
 
     def on_init(self):
+        self.logger.info("Initializing OpenGL and application components")
 
         glfw.init()
         self.clock = Clock()
@@ -97,10 +104,12 @@ class App:
         msaa_samples = config.app_config.get_int("display", "msaa_samples")
         if (msaa_enable):
             glfw.window_hint(glfw.SAMPLES, msaa_samples)
+            self.logger.info(f"MSAA enabled with {msaa_samples} samples")
 
         config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int, int])  # type: ignore
         h, w = config_size
         self.window = glfw.create_window(h, w, 'OpenRadar', None, None)
+        self.logger.info(f"Created window with size: {h}x{w}")
 
         window_x, window_y = config.app_config.get("window", "location", tuple[int, int])  # type: ignore
         glfw.set_window_pos(self.window, window_x, window_y)
@@ -118,6 +127,7 @@ class App:
         self.data_queue: queue.Queue[str] = queue.Queue()
         self.data_client = TRTTClientThread(self.data_queue)
         self.data_client.start()
+        self.logger.info("Started Tacview RT Telemetry client")
 
         self.gamestate = GameState(self.data_queue)
 
@@ -155,13 +165,18 @@ class App:
 
         self.hovered_game_obj: GameObject | None = None
 
+        self.logger.info("Application initialization completed successfully")
+
     def handle_error(self, err, desc):
-        print(f"GLFW error: {err}, {desc}")
+        error_msg = f"GLFW error: {err}, {desc}"
+        self.logger.error(error_msg)
 
     def window_close_callback(self, event):
+        self.logger.info("Window close requested")
         self._running = False
 
     def reset_state_callback(self):
+        self.logger.info("Resetting application state")
         self.data_client.disconnect()
         self.gamestate.clear_state()
         self._tracks.clear()
@@ -172,10 +187,10 @@ class App:
         # Clear and rebuild render arrays to respect current layer visibility settings
         self.gamestate.render_arrays.clear_all()
         self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
-        
+
         # Update the cached render arrays in sensor tracks
         self._tracks.render_arrays = self.gamestate.render_arrays.get_render_data()
-        
+
         # Regenerate display data with updated arrays
         self._display_data.generate_render_arrays()
         self._display_data.refresh_configuration()
@@ -290,11 +305,20 @@ class App:
         """
         Cleans up and quits the application.
         """
-        print("Cleaning up and saving configuration...")
+        self.logger.info("Cleaning up and saving configuration...")
         config.app_config.save()
         if self.gpu_timer:
             self.gpu_timer.cleanup()
+
+        # Stop the data client
+        try:
+            self.data_client.stop()
+            self.logger.info("Stopped data client")
+        except Exception as e:
+            self.logger.error(f"Error stopping data client: {e}")
+
         glfw.terminate()
+        self.logger.info("Application cleanup completed")
 
     def on_execute(self, args):
         """
@@ -306,7 +330,14 @@ class App:
 
         self.args = args
         if args.ini is not None:
+            self.logger.info(f"Loading annotations from: {args.ini}")
             self._display_data.load_annotations_ini(args.ini)
+
+        # Performance logging configuration
+        performance_logging_enabled = config.app_config.get_bool("logging", "performance_logging")
+
+        performance_log_interval = 5.0  # Log every 5 seconds
+        last_performance_log = 0.0
 
         time_sum = 0
         while self._running:
@@ -328,6 +359,12 @@ class App:
 
             self._check_gpu_timing_results()
 
+            # Periodic performance logging
+            if performance_logging_enabled and time_sum - last_performance_log >= performance_log_interval:
+                log_performance_metrics(self.clock.fps, self.cpu_frame_time, self.gpu_frame_time_us, self.radar_sleep)
+                last_performance_log = time_sum
+
+        self.logger.debug(f"Main loop ended.")
         self.on_cleanup()
 
     def get_hovered_obj(self, mouse_pos) -> GameObject | None:

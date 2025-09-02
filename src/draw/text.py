@@ -11,6 +11,10 @@ import config
 
 from util.track_labels import TrackLabelLocation
 
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 def orient_text_rect(location: TrackLabelLocation, object_size: tuple[float, float] = (0, 0)) -> tuple[float, float]:
     """Calculate the offset in model space for a text string based on the rendered bounding box of the string."""
@@ -64,7 +68,7 @@ def load_atlas(context: mgl.Context, atlas_name: str, atlas_path: str):
     atlas_texture = context.texture(atlas_image.size, 4, atlas_image.tobytes())
     atlas_texture.use()
 
-    print(f"Font atlas loaded: {atlas_image_path} ({atlas_image.size[0]}x{atlas_image.size[1]})")
+    logger.info(f"Font atlas loaded: {atlas_image_path} ({atlas_image.size[0]}x{atlas_image.size[1]})")
 
     with open(atlas_json_path, 'r') as f:
         atlas_metadata = json.load(f)

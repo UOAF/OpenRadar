@@ -1,3 +1,13 @@
+[logging]
+level = "WARNING" # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+log_to_file = false # If true, also log to rotating files. Always logs to stdout unless disable_stdout=true
+disable_stdout = false # If true, disable stdout logging (only log to files when log_to_file=true)
+log_directory = "logs" # Directory for log files (only used if log_to_file=true)
+max_file_size_mb = 10 # Maximum size of each log file in MB before rotation
+backup_count = 5 # Number of backup log files to keep
+memory_buffer_capacity = 1000 # Number of log records to keep in memory for crash dumps
+performance_logging = false # Enable periodic performance metrics logging
+
 [server]
 address = "localhost" # Address to connect to the server on
 port = 42674 # Port to connect to the server on

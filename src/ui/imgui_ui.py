@@ -6,6 +6,7 @@ import numpy as np
 import datetime
 import os
 
+from logging_config import get_logger
 from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
@@ -127,12 +128,17 @@ class ImguiUserInterface:
         self.reset_state_callback = None
         self.render_refresh_callback = None
 
+        # Initialize logger
+        self.logger = get_logger(f"{__name__}.ImguiUserInterface")
+        self.logger.debug("Initializing ImGui UI")
+
         imgui.create_context()
         io = imgui.get_io()
         io.display_size = self.size
 
-        print(f"Imgui INI file path: {str(config.application_dir / IMGUI_INI_FILENAME)}")
-        io.set_ini_filename(str(config.application_dir / IMGUI_INI_FILENAME))
+        ini_file_path = str(config.application_dir / IMGUI_INI_FILENAME)
+        self.logger.info(f"ImGui INI file path: {ini_file_path}")
+        io.set_ini_filename(ini_file_path)
 
         io.fonts.add_font_from_file_ttf(str(config.bundle_dir / "resources/fonts/ProggyClean.ttf"), 18)
 
@@ -260,7 +266,7 @@ class ImguiUserInterface:
             self.ini_file_dialog = pfd.open_file("Select INI File", "", ["INI files", "*.ini", "All files", "*"])
             return True  # Dialog opened successfully
         except Exception as e:
-            print(f"Error opening file dialog: {e}")
+            self.logger.error(f"Error opening INI file dialog: {e}")
             return False
 
     def open_map_file_dialog(self):
@@ -275,7 +281,7 @@ class ImguiUserInterface:
                                                  ["PNG files", "*.png", "JPG files", "*.jpg", "All files", "*"])
             return True  # Dialog opened successfully
         except Exception as e:
-            print(f"Error opening map file dialog: {e}")
+            self.logger.error(f"Error opening map file dialog: {e}")
             return False
 
     def check_file_dialogs(self):
@@ -290,7 +296,7 @@ class ImguiUserInterface:
                         # Process the selected INI file
                         self.annotations.load_ini(result[0])
             except Exception as e:
-                print(f"Error processing INI file dialog result: {e}")
+                self.logger.error(f"Error processing INI file dialog result: {e}")
                 self.ini_file_dialog = None  # Clear the dialog on error
 
         # Check map file dialog
@@ -303,7 +309,7 @@ class ImguiUserInterface:
                         # Update the map selection dialog path with the selected file
                         self.map_selection_dialog_path = result[0]
             except Exception as e:
-                print(f"Error processing map file dialog result: {e}")
+                self.logger.error(f"Error processing map file dialog result: {e}")
                 self.map_file_dialog = None  # Clear the dialog on error
 
     def cancel_file_dialogs(self):
@@ -784,7 +790,7 @@ class ImguiUserInterface:
         imgui.end()
 
         if not open:
-            print("Settings window closed")
+            self.logger.info("Settings window closed, Saving settings")
             self.settings_window_open = False
             config.app_config.save()
 
@@ -1050,7 +1056,7 @@ class ImguiUserInterface:
                 labels = deserialize_track_labels(track_type.name, config.app_config.get_str(
                     "labels", track_type.name))  # TODO: this may be slow, consider caching
                 if labels is None:
-                    print(f"Failed to load track labels {track_type.name}")
+                    self.logger.error(f"Failed to load track labels {track_type.name}")
                     raise Exception(f"Failed to load track labels for {track_type.name}")
                     labels = TrackLabels(track_type)
                 imgui.text(f"Track Type: {track_type.name}")
