@@ -122,7 +122,7 @@ class SensorTracks:
 
     def __init__(self, gamestate: GameState):
         self.gamestate = gamestate
-        self.tracks: dict[GameObjectType, dict[str, Track]] = {class_type: {} for class_type in GameObjectType}
+        # self.tracks: dict[GameObjectType, dict[str, Track]] = {class_type: {} for class_type in GameObjectType}
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 10
 
@@ -131,21 +131,21 @@ class SensorTracks:
     def update_bullseye(self):
         self.bullseye = self.gamestate.get_bullseye_pos()
 
-    def get_nearest_track(self, world_pos: tuple[float, float]) -> Track | None:
-        """
-        Get the nearest track to the given position.
-        """
-        nearest_track = None
-        nearest_distance = float('inf')
+    # def get_nearest_track(self, world_pos: tuple[float, float]) -> Track | None:
+    #     """
+    #     Get the nearest track to the given position.
+    #     """
+    #     nearest_track = None
+    #     nearest_distance = float('inf')
 
-        for classenum, track_dict in self.tracks.items():
-            for track in track_dict.values():
-                distance = math.dist(track.position_m, world_pos)
-                if distance < nearest_distance:
-                    nearest_distance = distance
-                    nearest_track = track
+    #     for classenum, track_dict in self.tracks.items():
+    #         for track in track_dict.values():
+    #             distance = math.dist(track.position_m, world_pos)
+    #             if distance < nearest_distance:
+    #                 nearest_distance = distance
+    #                 nearest_track = track
 
-        return nearest_track
+    #     return nearest_track
 
     def update(self):
         """
@@ -156,44 +156,46 @@ class SensorTracks:
 
         self.render_arrays = self.gamestate.render_arrays.get_render_data()
 
-        for classenum, object_class_dict in self.gamestate.objects.items():
+        # for classenum, object_class_dict in self.gamestate.objects.items():
 
-            for object_id, object in object_class_dict.items():
+        #     for object_id, object in object_class_dict.items():
 
-                if not object_id in self.tracks:
-                    # Create a new track
-                    if (classenum == GameObjectType.FIXEDWING
-                            and (self.cur_time - object.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
-                        # Skip if the object has no timestamp or is too old
-                        # will need to rethink this for ground/sea contacts
-                        continue
-                    side = get_coalition(object.Coalition, object.color_rgba)
-                    self.tracks[classenum][object_id] = Track(object_id, object.Type, (object.U, object.V), object.CAS,
-                                                              object.Heading, object.Altitude, object.timestamp,
-                                                              classenum, side)
+        #         if not object_id in self.tracks:
+        #             # Create a new track
+        #             if (classenum == GameObjectType.FIXEDWING
+        #                     and (self.cur_time - object.timestamp).total_seconds() > self.track_inactivity_timeout_sec):
+        #                 # Skip if the object has no timestamp or is too old
+        #                 # will need to rethink this for ground/sea contacts
+        #                 continue
+        #             side = get_coalition(object.Coalition, object.color_rgba)
+        #             self.tracks[classenum][object_id] = Track(object_id, object.Type, (object.U, object.V), object.CAS,
+        #                                                       object.Heading, object.Altitude, object.timestamp,
+        #                                                       classenum, side)
 
-                else:
-                    self.tracks[classenum][object_id].update((object.U, object.V), object.CAS, object.Heading,
-                                                             object.Altitude, object.timestamp)
+        #         else:
+        #             self.tracks[classenum][object_id].update((object.U, object.V), object.CAS, object.Heading,
+        #                                                      object.Altitude, object.timestamp)
 
-        # Remove old tracks
-        # if self.cur_time is None:  # Do not remove tracks if the current time is not set
-        #     return
-        for classenum, track_dict in self.tracks.items():
-            to_delete = []
-            for id, track in track_dict.items():
-                # if track.last_seen is not None:
-                if (classenum in [GameObjectType.FIXEDWING, GameObjectType.ROTARYWING]
-                        and (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec):
-                    to_delete.append(id)
-                    # print(f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}")
-            for id in to_delete:
-                del self.tracks[classenum][id]
+        # # Remove old tracks
+        # # if self.cur_time is None:  # Do not remove tracks if the current time is not set
+        # #     return
+        # for classenum, track_dict in self.tracks.items():
+        #     to_delete = []
+        #     for id, track in track_dict.items():
+        #         # if track.last_seen is not None:
+        #         if (classenum in [GameObjectType.FIXEDWING, GameObjectType.ROTARYWING]
+        #                 and (self.cur_time - track.last_seen).total_seconds() > self.track_inactivity_timeout_sec):
+        #             to_delete.append(id)
+        #             logger.warning(
+        #                 f"Removing track {id} due to inactivity, last seen {(self.cur_time - track.last_seen).total_seconds()}, timeout {self.track_inactivity_timeout_sec}"
+        #             )
+        #     for id in to_delete:
+        #         del self.tracks[classenum][id]
 
     def clear(self):
         """
         Clear all tracks.
         """
-        for dict in self.tracks.values():
-            dict.clear()
+        # for dict in self.tracks.values():
+        #     dict.clear()
         self.update()
