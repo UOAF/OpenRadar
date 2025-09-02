@@ -1,5 +1,7 @@
 UOAF OpenRadar for BMS Falcon 4.0
 
+![screenshot](https://github.com/UOAF/OpenRadar/blob/main/Data/Screenshot.png)
+
 ## Getting Started
 1. Download OpenRadar.exe from the release on github
 2. Set The following setting in 'user/config/Falcon BMS User.cfg' to enable Tacview RealTime Telemetry on the BMS host
