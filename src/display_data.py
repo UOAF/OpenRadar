@@ -98,8 +98,9 @@ class DisplayData:
         if config.app_config.get_bool("layers", "show_bullseye"):
             self.bullseye_renderer.render()
 
-        # Render lock lines using the new lock renderer
-        self.lock_renderer.render()
+        # Render lock lines using the new lock renderer (if enabled)
+        if config.app_config.get_bool("layers", "show_lock_lines"):
+            self.lock_renderer.render()
 
         # Render icons using the new instanced renderer
         self.icon_renderer.render()

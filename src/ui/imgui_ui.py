@@ -907,6 +907,7 @@ class ImguiUserInterface:
         show_ground = config.app_config.get_bool("layers", "show_ground")
         show_ships = config.app_config.get_bool("layers", "show_ships")
         show_missiles = config.app_config.get_bool("layers", "show_missiles")
+        show_lock_lines = config.app_config.get_bool("layers", "show_lock_lines")
 
         _, open = imgui.begin("Layers", True, imgui.WindowFlags_.always_auto_resize.value)
 
@@ -919,11 +920,12 @@ class ImguiUserInterface:
         changed_ground, _ = create_checkbox("Ground", show_ground, "layers", "show_ground")
         changed_ships, _ = create_checkbox("Ships", show_ships, "layers", "show_ships")
         changed_missiles, _ = create_checkbox("Missiles", show_missiles, "layers", "show_missiles")
+        changed_lock_lines, _ = create_checkbox("Lock Lines", show_lock_lines, "layers", "show_lock_lines")
 
         # If any layer visibility changed, regenerate render arrays
         if any([
                 changed_bullseye, changed_fixed_wing, changed_rotary_wing, changed_ground, changed_ships,
-                changed_missiles
+                changed_missiles, changed_lock_lines
         ]):
             if self.render_refresh_callback:
                 self.render_refresh_callback()
