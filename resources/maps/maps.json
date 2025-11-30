@@ -1,94 +1,131 @@
 {
-    "Balkans": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "4k Airbases",
-                "path": "balkans_4k_airbases.png"
-            }
-        ]
-    },
-    "Baltic": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "BalticMap.jpg"
-            },
-            {
-                "style": "White",
-                "path": "BalticWhite.png"
-            }
-        ]
-    },
-    "CoastalFront": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "BalticMap.jpg"
-            },
-            {
-                "style": "White",
-                "path": "BalticWhite.png"
-            }
-        ]
-    },
-    "Georgia": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "GeorgiaMap.png"
-            },
-            {
-                "style": "White",
-                "path": "GeorgiaWhite.png"
-            }
-        ]
-    },
-    "Israel": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "Israel.jpg"
-            }
-        ]
-    },
-    "KTO": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "Korea.jpg"
-            },
-            {
-                "style": "Blue 8k",
-                "path": "Korea_Blue_AWACS_Map_8k.png"
-            }
-        ]
-    },
-    "MidEast": {
-        "theatre_size_km": 1024,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "MidEast128Map.png"
-            }
-        ]
-    },
-    "Gibraltar": {
-        "theatre_size_km": 2048,
-        "maps": [
-            {
-                "style": "Standard",
-                "path": "Gibraltar.png"
-            },
-            {
-                "style": "White",
-                "path": "GibraltarWhite.png"
-            }
-        ]
-    }
+  "Balkans": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "4k Airbases",
+        "path": "balkans_4k_airbases.png"
+      },
+      {
+        "style": "Skyvector 4.38",
+        "path": "Balkans_4k_Skyvector_38.png"
+      },
+      {
+        "style": "2 Color 4.38",
+        "path": "Balkans_2_color_38.png"
+      }
+    ]
+  },
+  "Baltic": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "BalticMap.jpg"
+      },
+      {
+        "style": "White",
+        "path": "BalticWhite.png"
+      }
+    ]
+  },
+  "CoastalFront": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "BalticMap.jpg"
+      },
+      {
+        "style": "White",
+        "path": "BalticWhite.png"
+      }
+    ]
+  },
+  "Georgia": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "GeorgiaMap.png"
+      },
+      {
+        "style": "White",
+        "path": "GeorgiaWhite.png"
+      }
+    ]
+  },
+  "Hellas": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Skyvector 4.38",
+        "path": "Hellas_4k_Skyvector_38.png"
+      },
+      {
+        "style": "2 Color 4.38",
+        "path": "Hellas_2_color_38.png"
+      }
+    ]
+  },
+  "Israel": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "Israel.jpg"
+      },
+      {
+        "style": "Skyvector 4.38",
+        "path": "ITO_4k_skyvector_38.png"
+      },
+      {
+        "style": "2 Color 4.38",
+        "path": "ITO_2_color_38.png"
+      }
+    ]
+  },
+  "KTO": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "Korea.jpg"
+      },
+      {
+        "style": "Blue 8k",
+        "path": "Korea_Blue_AWACS_Map_8k.png"
+      },
+      {
+        "style": "Sykvektor 4.38",
+        "path": "KTO_4k_Skyvector_38.png"
+      },
+      {
+        "style": "2 Color 4.38",
+        "path": "Korea_4k_2_color_38.png"
+      }
+    ]
+  },
+  "MidEast": {
+    "theatre_size_km": 1024,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "MidEast128Map.png"
+      }
+    ]
+  },
+  "Gibraltar": {
+    "theatre_size_km": 2048,
+    "maps": [
+      {
+        "style": "Standard",
+        "path": "Gibraltar.png"
+      },
+      {
+        "style": "White",
+        "path": "GibraltarWhite.png"
+      }
+    ]
+  }
 }
