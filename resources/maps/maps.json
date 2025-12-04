@@ -1,6 +1,7 @@
 {
   "Balkans": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 4.0,
     "maps": [
       {
         "style": "4k Airbases",
@@ -18,6 +19,7 @@
   },
   "Baltic": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 6.0,
     "maps": [
       {
         "style": "Standard",
@@ -31,6 +33,7 @@
   },
   "CoastalFront": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 6.0,
     "maps": [
       {
         "style": "Standard",
@@ -44,6 +47,7 @@
   },
   "Georgia": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 4.0,
     "maps": [
       {
         "style": "Standard",
@@ -57,6 +61,7 @@
   },
   "Hellas": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 4.0,
     "maps": [
       {
         "style": "Skyvector 4.38",
@@ -70,6 +75,7 @@
   },
   "Israel": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 4.0,
     "maps": [
       {
         "style": "Standard",
@@ -87,6 +93,7 @@
   },
   "KTO": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": -7.5,
     "maps": [
       {
         "style": "Standard",
@@ -108,6 +115,7 @@
   },
   "MidEast": {
     "theatre_size_km": 1024,
+    "magnetic_variation_deg": 3.0,
     "maps": [
       {
         "style": "Standard",
@@ -117,6 +125,7 @@
   },
   "Gibraltar": {
     "theatre_size_km": 2048,
+    "magnetic_variation_deg": -1.5,
     "maps": [
       {
         "style": "Standard",

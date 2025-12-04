@@ -29,7 +29,7 @@ background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
 
 [navigation]
 use_magnetic_north = true # When enabled, bearings and headings reference magnetic north
-magnetic_variation_deg = 7.5 # Magnetic variation in degrees (only used if use_magnetic_north=true)
+magnetic_variation_deg = -7.5 # Magnetic variation in degrees (only used if use_magnetic_north=true)
 
 [radar]
 update_interval = 0 # Update interval in seconds
