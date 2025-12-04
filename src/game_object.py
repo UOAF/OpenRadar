@@ -300,6 +300,25 @@ class GameObject:
         return self.CAS * M_PER_SEC_TO_KNOTS
 
     @property
+    def magnetic_heading(self) -> float:
+        """Get the magnetic heading in degrees."""
+        import config
+        
+        # Get true heading
+        true_heading = (self.Heading + 360) % 360
+        
+        # Check if magnetic north is enabled
+        use_magnetic_north = config.app_config.get_bool("navigation", "use_magnetic_north")
+        if not use_magnetic_north:
+            return true_heading  # Return true heading if magnetic mode is disabled
+        
+        # Apply magnetic variation to get magnetic heading
+        mag_var_deg = config.app_config.get_float("navigation", "magnetic_variation_deg")
+        magnetic_hdg = (true_heading + mag_var_deg) % 360
+        
+        return magnetic_hdg
+
+    @property
     def display_name(self) -> str:
         """Get the display name for this object."""
         return self.get_display_name()

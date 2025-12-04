@@ -27,6 +27,10 @@ default_map_size_km = 1024 # Size of the map in kilometers
 map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
 background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
 
+[navigation]
+use_magnetic_north = true # When enabled, bearings and headings reference magnetic north
+magnetic_variation_deg = 7.5 # Magnetic variation in degrees (only used if use_magnetic_north=true)
+
 [radar]
 update_interval = 0 # Update interval in seconds
 contact_size = 10 # Size of the track in pixels

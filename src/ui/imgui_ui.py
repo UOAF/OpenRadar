@@ -421,7 +421,16 @@ class ImguiUserInterface:
                     imgui.text(f"Type: {obj.Name}")
                     imgui.text(f"Pilot: {obj.Pilot}")
                     imgui.text(f"Altitude: {(obj.Altitude * METERS_TO_FT):.0f}")
-                    imgui.text(f"Heading: {(obj.Heading + 360) % 360:.0f}")
+                    
+                    # Apply magnetic variation to heading if magnetic north is enabled
+                    heading = (obj.Heading + 360) % 360
+                    use_magnetic_north = config.app_config.get_bool("navigation", "use_magnetic_north")
+                    if use_magnetic_north:
+                        mag_var_deg = config.app_config.get_float("navigation", "magnetic_variation_deg")
+                        mag_heading = (heading - mag_var_deg) % 360
+                        imgui.text(f"Heading: {heading:.0f} / {mag_heading:.0f} M")
+                    else:
+                        imgui.text(f"Heading: {heading:.0f}")
                     imgui.text(f"Mach: {obj.Mach:.2f}")
                     imgui.text(f"CAS: {(obj.CAS * M_PER_SEC_TO_KNOTS):.0f}")
                     imgui.text(f"Fuel: {obj.FuelWeight:.0f}")
@@ -797,6 +806,7 @@ class ImguiUserInterface:
     def settings_tab_map(self):
         map_alpha = config.app_config.get_int("map", "map_alpha")
         map_background_color = config.app_config.get_color_normalized("map", "background_color")
+        use_magnetic_north = config.app_config.get_bool("navigation", "use_magnetic_north")
 
         create_color_edit("Background Color", map_background_color, "map", "background_color")
         imgui.same_line()
@@ -808,6 +818,37 @@ class ImguiUserInterface:
             imgui.end_tooltip()
 
         create_slider_int("Map Alpha", map_alpha, 0, 255, "map", "map_alpha")
+        
+        imgui.separator()
+        imgui.text("Navigation Reference")
+        create_checkbox("Use Magnetic North", use_magnetic_north, "navigation", "use_magnetic_north")
+        imgui.same_line()
+        imgui.text_disabled("(?)")
+        if imgui.is_item_hovered():
+            imgui.begin_tooltip()
+            imgui.text_unformatted("When enabled, all bearings and headings will be referenced to magnetic north.\n"
+                                   "When disabled, bearings will be referenced to true/grid north.")
+            imgui.end_tooltip()
+        
+        # Show current magnetic variation
+        current_variation = self.map_gl.get_current_magnetic_variation()
+        current_theatre = self.map_gl.get_current_theatre()
+        
+        if current_theatre:
+            imgui.text(f"Theatre: {current_theatre}")
+            if current_variation >= 0:
+                imgui.text(f"Magnetic Variation: {current_variation:.1f}° E")
+            else:
+                imgui.text(f"Magnetic Variation: {abs(current_variation):.1f}° W")
+        else:
+            imgui.text("Theatre: Custom/Unknown")
+            default_variation = config.app_config.get_float("navigation", "magnetic_variation_deg")
+            if default_variation >= 0:
+                imgui.text(f"Magnetic Variation: {default_variation:.1f}° E (default)")
+            else:
+                imgui.text(f"Magnetic Variation: {abs(default_variation):.1f}° W (default)")
+        
+        imgui.separator()
         imgui.text("Map Size")
 
     def settings_tab_annotations(self):
@@ -1423,6 +1464,14 @@ class ImguiUserInterface:
         from util.bms_math import world_distance, world_bearing
         distance_nm = world_distance(reference_pos, mouse_world_pos.to_tuple())
         bearing_deg = world_bearing(reference_pos, mouse_world_pos.to_tuple())
+
+        # When magnetic north is enabled, the bullseye visual is already rotated to show magnetic north,
+        # so we need to adjust the calculated bearing to account for this visual rotation
+        use_magnetic_north = config.app_config.get_bool("navigation", "use_magnetic_north")
+        if use_magnetic_north:
+            mag_var_deg = config.app_config.get_float("navigation", "magnetic_variation_deg")
+            # Subtract magnetic variation because the visual reference is already rotated
+            bearing_deg = (bearing_deg - mag_var_deg) % 360
 
         # Format the coordinates (3-digit bearing, range in NM)
         bearing_str = f"{bearing_deg:03.0f}°"

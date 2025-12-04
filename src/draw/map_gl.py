@@ -59,6 +59,10 @@ class MapGL:
         self._mgl_context = mgl_context
         self.display_size = display_size
         self.scene = scene
+        
+        # Track current theatre and magnetic variation
+        self.current_theatre = None
+        self.current_magnetic_variation = 0.0
 
         shader_dir = str((config.bundle_dir / "resources/shaders").resolve())
         vert_shader = open(os.path.join(shader_dir, "map_vertex.glsl")).read()
@@ -76,8 +80,16 @@ class MapGL:
 
         return maps
 
-    def load_map(self, filename, map_size_km):
+    def get_current_magnetic_variation(self):
+        """Get the current magnetic variation in degrees."""
+        return self.current_magnetic_variation
+        
+    def get_current_theatre(self):
+        """Get the current theatre name."""
+        return self.current_theatre
 
+    def load_map(self, filename, map_size_km, update_magnetic_variation=True):
+        """Load a map by filename and size, optionally updating magnetic variation."""
         if os.path.isfile(filename):
             texture_path = filename
         elif os.path.isfile(map_dir / filename):
@@ -87,6 +99,10 @@ class MapGL:
             self.default_grey_map()
             return
 
+        # If update_magnetic_variation is True, try to determine theatre from filename
+        if update_magnetic_variation:
+            self._update_magnetic_variation_from_filename(filename)
+
         self.texture = make_image_texture(texture_path)
         self.make_mesh()
 
@@ -95,6 +111,25 @@ class MapGL:
         config.app_config.set("map", "default_map", str(filename))
         config.app_config.set("map", "default_map_size_km", map_size_km)
         self.scene.set_size(self.map_size_m)
+        
+    def _update_magnetic_variation_from_filename(self, filename):
+        """Try to determine theatre from filename and update magnetic variation."""
+        maps = self.list_maps()
+        filename = os.path.basename(filename)
+        
+        # Search all theatres for this filename
+        for theatre, theatre_data in maps.items():
+            for map_entry in theatre_data["maps"]:
+                if os.path.basename(map_entry["path"]) == filename:
+                    self.current_theatre = theatre
+                    self.current_magnetic_variation = theatre_data.get("magnetic_variation_deg",
+                        config.app_config.get_float("navigation", "magnetic_variation_deg"))
+                    config.app_config.set("navigation", "magnetic_variation_deg", self.current_magnetic_variation)
+                    return
+                    
+        # If not found, use default
+        self.current_theatre = None
+        self.current_magnetic_variation = config.app_config.get_float("navigation", "magnetic_variation_deg")
 
     def clear_map(self):
         if self.texture is not None:
@@ -114,6 +149,10 @@ class MapGL:
         config.app_config.set("map", "default_map", "none")
         config.app_config.set("map", "default_map_size_km", bms_math.THEATRE_DEFAULT_SIZE_KM)
         self.scene.set_size(self.map_size_m)
+        
+        # Reset theatre and use default magnetic variation
+        self.current_theatre = None
+        self.current_magnetic_variation = config.app_config.get_float("navigation", "magnetic_variation_deg")
 
         self.make_mesh()
 
