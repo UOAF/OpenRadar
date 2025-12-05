@@ -314,7 +314,7 @@ class GameObject:
         
         # Apply magnetic variation to get magnetic heading
         mag_var_deg = config.app_config.get_float("navigation", "magnetic_variation_deg")
-        magnetic_hdg = (true_heading + mag_var_deg) % 360
+        magnetic_hdg = (true_heading - mag_var_deg) % 360
         
         return magnetic_hdg
 
