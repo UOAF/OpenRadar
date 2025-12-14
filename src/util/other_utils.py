@@ -1,5 +1,6 @@
 from dataclasses import fields, dataclass
 import config
+from logging_config import get_logger
 
 # Legacy color map - now replaced by config system
 # TACVIEW_COLOR_MAP = {
@@ -74,3 +75,29 @@ def get_all_dc_attributes(instance):
     }
     # Combine both
     return {**dataclass_fields, **property_fields}
+
+
+def configure_magnetic_north_from_bms_version(data_recorder: str):
+    """
+    Auto-configure magnetic north setting based on BMS version in DataRecorder field.
+    
+    Args:
+        data_recorder (str): DataRecorder value from ACMI file (e.g., "Falcon BMS 4.38.1")
+    """
+    logger = get_logger(f"{__name__}.configure_magnetic_north_from_bms_version")
+    
+    try:
+        if data_recorder.startswith("Falcon BMS 4.38"):
+            # BMS 4.38 and later: Enable magnetic north (true to aviation standards)
+            config.app_config.set("navigation", "use_magnetic_north", True)
+            logger.info(f"Auto-enabled magnetic north for {data_recorder}")
+        elif data_recorder.startswith("Falcon BMS 4.37"):
+            # BMS 4.37: Disable magnetic north (legacy behavior)
+            config.app_config.set("navigation", "use_magnetic_north", False)
+            logger.info(f"Auto-disabled magnetic north for {data_recorder}")
+        else:
+            # Unknown version: don't change setting
+            logger.info(f"Unknown BMS version in DataRecorder: {data_recorder}, keeping current magnetic north setting")
+            
+    except Exception as e:
+        logger.warning(f"Failed to auto-configure magnetic north from DataRecorder '{data_recorder}': {e}")

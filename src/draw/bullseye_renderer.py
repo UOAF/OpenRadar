@@ -28,6 +28,7 @@ class BullseyeRenderer:
     - Concentric rings using icon_vertex shader with Shapes.Circle
     - Based on deprecated track_renderer bullseye code
     - Single set_bullseye call to update position
+    - Supports magnetic variation when magnetic north mode is enabled
     """
 
     def __init__(self, scene: Scene):
@@ -150,16 +151,36 @@ class BullseyeRenderer:
 
         # Calculate line length in meters (covers all rings plus some extra)
         half_line_length_m = NM_TO_METERS * self.RING_DISTANCE_NM * (self.NUM_RINGS + 1)
-
-        # Line instance data: start_x, start_y, end_x, end_y, color_rgba
-        line_data = np.array(
-            [
-                # Horizontal line (west to east)
-                [x - half_line_length_m, y, x + half_line_length_m, y, 1.0, 1.0, 1.0, 1.0],
-                # Vertical line (south to north)
-                [x, y - half_line_length_m, x, y + half_line_length_m, 1.0, 1.0, 1.0, 1.0]
-            ],
-            dtype=np.float32)
+        
+        # Get magnetic variation if magnetic north is enabled
+        use_magnetic_north = config.app_config.get_bool("navigation", "use_magnetic_north")
+        mag_var_degrees = 0.0
+        
+        if use_magnetic_north:
+            # Get magnetic variation from config (set by map loading)
+            mag_var_degrees = config.app_config.get_float("navigation", "magnetic_variation_deg")
+        
+        # Convert magnetic variation to radians
+        # Note: Magnetic variation is applied as rotation from true north to magnetic north
+        # Negative mag var (west) means magnetic north is west of true north
+        # Positive mag var (east) means magnetic north is east of true north
+        mag_var_radians = math.radians(mag_var_degrees)  # Use positive value for visual rotation
+        
+        # Calculate rotated line endpoints
+        # North-South line (rotated by magnetic variation)
+        ns_dx = half_line_length_m * math.sin(mag_var_radians)
+        ns_dy = half_line_length_m * math.cos(mag_var_radians)
+    
+        # East-West line (perpendicular to N-S line)
+        ew_dx = half_line_length_m * math.cos(mag_var_radians)  
+        ew_dy = half_line_length_m * math.sin(mag_var_radians)
+        
+        line_data = np.array([
+            # Magnetic North-South line
+            [x - ns_dx, y - ns_dy, x + ns_dx, y + ns_dy, 1.0, 1.0, 1.0, 1.0],
+            # Magnetic East-West line  
+            [x - ew_dx, y + ew_dy, x + ew_dx, y - ew_dy, 1.0, 1.0, 1.0, 1.0]
+        ], dtype=np.float32)
 
         # Update buffer
         if self.line_instance_buffer:

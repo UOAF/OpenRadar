@@ -48,6 +48,7 @@ from typing import Optional, get_type_hints
 
 import datetime
 from logging_config import get_logger
+from util.other_utils import configure_magnetic_north_from_bms_version
 
 ACTION_UPDATE = "+"
 ACTION_REMOVE = "-"
@@ -227,6 +228,8 @@ class ACMIFileParser:
         self.relative_time = 0
         self.logger = get_logger(f"{__name__}.ACMIFileParser")
 
+
+
     def parse_file(self):
         """
         Parses an entire ACMI file into self.objects.
@@ -334,6 +337,11 @@ class ACMIFileParser:
                     # format 2024-6-9T00:00:00Z
                     self.reference_time = datetime.datetime.strptime(properties["ReferenceTime"], "%Y-%m-%dT%H:%M:%SZ")
                     self.reference_time = self.reference_time.replace(tzinfo=datetime.timezone.utc)
+                
+                # Auto-configure magnetic north based on BMS version
+                if "DataRecorder" in properties:
+                    configure_magnetic_north_from_bms_version(properties["DataRecorder"])
+                
                 return ACMIObject(ACTION_GLOBAL, object_id, properties, self.get_time())
 
             else:
