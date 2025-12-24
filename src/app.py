@@ -106,12 +106,34 @@ class App:
             glfw.window_hint(glfw.SAMPLES, msaa_samples)
             self.logger.info(f"MSAA enabled with {msaa_samples} samples")
 
-        config_size: tuple[int, int] = config.app_config.get("window", "size", tuple[int, int])  # type: ignore
+        def get_config_with_validation(
+            # default_value param is only used if the deafults.toml does not have a value either
+            window_attr: str, default_value=(0, 0)
+        ) -> tuple[int, int]:
+            value: tuple[int, int] = config.app_config.get("window", window_attr, tuple[int, int])  # type: ignore
+            if value[0] <= 0 or value[1] <= 0:
+                default_value = config.app_config.config_defaults.get("window", {}).get(
+                    window_attr, default_value
+                )
+
+                self.logger.warning(
+                    f"Invalid window {window_attr} in configuration: {value}. Using default: {default_value}"
+                )
+                value = default_value
+            return value
+
+        config_size: tuple[int, int] = get_config_with_validation("size")
         h, w = config_size
-        self.window = glfw.create_window(h, w, 'OpenRadar', None, None)
+        self.window = glfw.create_window(h, w, "OpenRadar", None, None)
         self.logger.info(f"Created window with size: {h}x{w}")
 
-        window_x, window_y = config.app_config.get("window", "location", tuple[int, int])  # type: ignore
+        window_x, window_y = get_config_with_validation("location", (0, 20))
+        glfw.set_window_pos(self.window, window_x, window_y)
+
+        h, w = config_size
+        self.window = glfw.create_window(h, w, "OpenRadar", None, None)
+        self.logger.info(f"Created window with size: {h}x{w}")
+
         glfw.set_window_pos(self.window, window_x, window_y)
 
         glfw.show_window(self.window)
@@ -199,6 +221,9 @@ class App:
         config.app_config.set("window", "location", (xpos, ypos))
 
     def handle_window_resized(self, window, width, height):
+        # if the window is minimized, width and height can be zero
+        if width == 0 or height == 0:
+            return
         self.size = self.width, self.height = width, height
         self.scene.resize(self.size)
         config.app_config.set("window", "size", (width, height))
