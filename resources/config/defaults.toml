@@ -84,4 +84,5 @@ Brown = [0.5, 0.25, 0.0, 1.0] # Brown color RGBA
 Orange = [1.0, 0.5, 0.0, 1.0] # Orange color RGBA
 Yellow = [1.0, 1.0, 0.0, 1.0] # Yellow color RGBA
 Red = [1.0, 0.0, 0.0, 1.0] # Red color RGBA
+Violet = [0.5, 0.0, 1.0, 1.0] # Violet color RGBA
 Black = [0.0, 0.0, 0.0, 1.0] # Black color RGBA
