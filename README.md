@@ -4,7 +4,7 @@ UOAF OpenRadar for BMS Falcon 4.0
 
 ## Getting Started
 1. Download OpenRadar.exe from the release on github
-2. Set The following setting in 'user/config/Falcon BMS User.cfg' to enable Tacview RealTime Telemetry on the BMS host
+2. Set the following setting in 'user/config/Falcon BMS User.cfg' to enable Tacview RealTime Telemetry on the BMS host
     ```
     set g_bTacviewRealTime 1
     set g_nTacviewPort 42674
@@ -14,7 +14,7 @@ UOAF OpenRadar for BMS Falcon 4.0
 (Optional - P2P)
 
 4. You can also use OpenRadar through Peer to Peer, this means you don't need BMS running or even installed.
-Instead you can use someone else's Tacview Real-Time Telemetry, tell them to open their chosen port (Default is 42674) to the internet on their router using their local address.
+Instead you can use someone else's Tacview Real-Time Telemetry, tell them to open their chosen port (Default is 42674) to the internet on their router using their local address, then connect with their public IP!
 
 ## Configuration & Customization
 When you run OpenRadar.exe, a config file will be generated in the same directory called "OpenRadar.toml"
