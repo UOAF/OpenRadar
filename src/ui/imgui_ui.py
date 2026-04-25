@@ -490,7 +490,7 @@ class ImguiUserInterface:
             imgui.separator()
 
             # Define the color names in the order they appear in config
-            color_names = ["White", "Green", "Blue", "Brown", "Orange", "Yellow", "Red", "Black"]
+            color_names = ["White", "Green", "Blue", "Cyan", "Brown", "Orange", "Yellow", "Red", "Black"]
 
             for color_name in color_names:
                 try:
@@ -512,7 +512,7 @@ class ImguiUserInterface:
                             # Refresh render arrays to show color changes immediately
                             if self.render_refresh_callback:
                                 self.render_refresh_callback()
-
+                
                 except (KeyError, ValueError) as e:
                     imgui.text(f"Error loading {color_name}: {e}")
 
@@ -532,7 +532,14 @@ class ImguiUserInterface:
 
                 except Exception as e:
                     imgui.text(f"Error resetting colors: {e}")
-
+            if imgui.button("Refresh"):
+                self.gamestate.render_arrays.clear_all()
+                self.gamestate.render_arrays.rebuild_from_objects(
+                    self.gamestate.all_objects
+                )
+                self.gamestate.refresh_all_render_arrays()
+                print("rebuilding")
+                
         imgui.end()
 
     def contact_color_window(self):
