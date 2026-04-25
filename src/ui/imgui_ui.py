@@ -490,7 +490,7 @@ class ImguiUserInterface:
             imgui.separator()
 
             # Define the color names in the order they appear in config
-            color_names = ["White", "Green", "Blue", "Cyan", "Brown", "Orange", "Yellow", "Red", "Black"]
+            color_names = ["White", "Green", "Blue", "Cyan", "Brown", "Orange", "Yellow", "Red", "Violet", "Black"]
 
             for color_name in color_names:
                 try:
