@@ -56,6 +56,24 @@ example_object.Name = "F-16C"
 
 IMGUI_INI_FILENAME = "openradar_imgui.ini"
 
+def f16_coord(value, is_lat=True):
+    # Hemisphere + degree padding
+    if is_lat:
+        hemisphere = 'N' if value >= 0 else 'S'
+        width = 2
+    else:
+        hemisphere = 'E' if value >= 0 else 'W'
+        width = 3
+
+    value = abs(value)
+
+    # Convert decimal degrees -> degrees + decimal minutes
+    degrees = int(value)
+    minutes = (value - degrees) * 60
+
+    # Return F-16 formatted string
+    return f"{hemisphere} {degrees:0{width}d}* {minutes:06.3f}'"
+
 
 def help_marker(description: str):
     imgui.text_disabled("(?)")
@@ -460,8 +478,8 @@ class ImguiUserInterface:
                     # imgui.text(f" - Lateral: {obj.LateralGForce:.2f}")
                     # imgui.text(f" - Longitudinal: {obj.LongitudinalGForce:.2f}")
                     imgui.text(f"Coalition: {obj.Coalition}")
-                    imgui.text(f"Latitude: {obj.Latitude:.6f}")
-                    imgui.text(f"Longitude: {obj.Longitude:.6f}")
+                    imgui.text(f"Latitude: {f16_coord(obj.Latitude, True)}")
+                    imgui.text(f"Longitude: {f16_coord(obj.Longitude, False)}")
                     imgui.text(f"Locked Targets: ")
                     if len(obj.locked_target_objs) == 0:
                         imgui.text("   None")
