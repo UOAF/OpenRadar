@@ -818,50 +818,6 @@ class ImguiUserInterface:
         if not open:
             self.fps_window_open = False
 
-        create_checkbox("Enable MSAA", config.app_config.get_bool("display", "msaa_enabled"), "display", "msaa_enabled")
-        imgui.same_line()
-        imgui.text_disabled("(?)")
-        imgui.same_line()
-        if imgui.radio_button("MSAA 4x", config.app_config.get_int("display", "msaa_samples") == 4):
-            config.app_config.set("display", "msaa_samples", 4)
-        imgui.same_line()
-        if imgui.radio_button("MSAA 8x", config.app_config.get_int("display", "msaa_samples") == 8):
-            config.app_config.set("display", "msaa_samples", 8)
-        imgui.same_line()
-        if imgui.radio_button("MSAA 16x", config.app_config.get_int("display", "msaa_samples") == 16):
-            config.app_config.set("display", "msaa_samples", 16)
-        if imgui.is_item_hovered():
-            imgui.begin_tooltip()
-            imgui.text_unformatted("Enable Multi-Sample Anti-Aliasing (MSAA) for smoother edges.")
-            imgui.end_tooltip()
-
-
-
-        if not self.settings_window_open:
-            return
-
-        _, open = imgui.begin("Settings", True, imgui.WindowFlags_.always_auto_resize.value)
-        if imgui.begin_tab_bar("Settings Tabs"):
-            if imgui.begin_tab_item("Map")[0]:
-                self.settings_tab_map()
-                imgui.end_tab_item()
-            if imgui.begin_tab_item("Annotations")[0]:
-                self.settings_tab_annotations()
-                imgui.end_tab_item()
-            if imgui.begin_tab_item("Radar")[0]:
-                self.settings_tab_radar()
-                imgui.end_tab_item()
-            if imgui.begin_tab_item("Display")[0]:
-                self.settings_tab_display()
-                imgui.end_tab_item()
-            imgui.end_tab_bar()
-        imgui.end()
-
-        if not open:
-            self.logger.info("Settings window closed, Saving settings")
-            self.settings_window_open = False
-            config.app_config.save()
-
     def settings_window(self):
 
         if not self.settings_window_open:
