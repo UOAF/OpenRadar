@@ -3,7 +3,6 @@ from imgui_bundle import portable_file_dialogs as pfd  # type: ignore
 from imgui_bundle.python_backends.glfw_backend import GlfwRenderer
 
 from coalition_manager import coalition_manager
-from render_data_arrays import clear_screen
 
 import numpy as np
 import datetime
@@ -17,7 +16,6 @@ from draw.scene import Scene
 from draw.map_gl import MapGL
 from draw.annotations import MapAnnotations
 from game_object import GameObject
-import render_data_arrays
 from trtt_client import TRTTClientThread, ThreadState
 from game_state import GameState
 from game_object_types import GameObjectType

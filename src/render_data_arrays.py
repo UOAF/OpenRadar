@@ -1046,9 +1046,3 @@ class LineRenderData:
 # metadata, points = lines.get_render_data()
 # # metadata contains start_index, end_index, width, color for each line
 # # points contains all the actual point coordinates
-
-def clear_screen(self):
-    """Clear all elements from the array."""
-    self.count = 0
-    self.id_to_index.clear()
-    self.index_to_id.clear()
