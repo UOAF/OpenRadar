@@ -2,8 +2,7 @@
     "python.analysis.typeCheckingMode": "basic",
     "python.analysis.autoImportCompletions": true,
     "python.analysis.extraPaths": [
-        "./src",
-        "./src/ui"
+        "./src"
     ],
     "yapf.args": [
         "--style={column_limit: 120}"

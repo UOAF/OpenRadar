@@ -9,41 +9,41 @@ memory_buffer_capacity = 1000 # Number of log records to keep in memory for cras
 performance_logging = false # Enable periodic performance metrics logging
 
 [server]
-address = "127.0.0.1" # Address to connect to the server on
+address = "localhost" # Address to connect to the server on
 port = 42674 # Port to connect to the server on
 retries = 0 # Number of times to retry connecting to the server, set to 0 for unlimited retries
 autoconnect = true # Automatically connect to the server on startup (true/false)
 password = "" # Password to use when connecting to the server (leave blank for no password "")
 
 [window]
-size = [1920, 1000] # [width, height] in pixels # Set to 0, 0 to use borderless window
-location = [0, 23] # [x, y] in pixels
+size = [ 1920, 1060 ] # [width, height] in pixels # Set to 0, 0 to use borderless window
+location = [ 0, 20 ] # [x, y] in pixels
 
 [map]
 # Current Included default maps are listed in resources/maps/maps.json
 # Feel free to contribute with new map textures and they can be added to the release
 default_map = "Korea.jpg" # Map to load on startup
 default_map_size_km = 1024 # Size of the map in kilometers
-map_alpha = 105 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
-background_color = [28, 28, 28] # [r, g, b] # Background color for the map
+map_alpha = 100 # 0-255 # Alpha value for the map, the lower the value the more transparent the map will be
+background_color = [ 50, 75, 75 ] # [r, g, b] # Background color for the map
 
 [navigation]
 use_magnetic_north = true # When enabled, bearings and headings reference magnetic north
 magnetic_variation_deg = -7.5 # Magnetic variation in degrees (only used if use_magnetic_north=true)
 
 [radar]
-update_interval = 0.0 # Update interval in seconds
-contact_size = 7.59499979019165 # Size of the track in pixels
-contact_stroke = 2.124000072479248 # Stroke width of the track in pixels
-contact_font_scale = 55 # Font size of the track labels
-contact_label_padding = 10 # Additional padding for track labels in pixels
-center_point_size = 2.734999895095825 # Size of the center point quad in pixels
+update_interval = 0 # Update interval in seconds
+contact_size = 10 # Size of the track in pixels
+contact_stroke = 2 # Stroke width of the track in pixels
+contact_font_scale = 40 # Font size of the track labels
+contact_label_padding = 5 # Additional padding for track labels in pixels
+center_point_size = 3.0 # Size of the center point quad in pixels
 bullseye_num_rings = 6 # Number of concentric rings in the bullseye display
 bullseye_ring_distance = 20 # Distance between bullseye rings in nautical miles
 
 [display]
-icon_set = "NTDS" # Icon set to use for displaying objects (NTDS, classic)
-msaa_enabled = false # Enable MSAA (true/false)
+icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)
+msaa_enabled = true # Enable MSAA (true/false)
 msaa_samples = 4 # Number of MSAA samples (4, 8, 16)
 
 [layers]
@@ -56,13 +56,13 @@ show_bullseye = true # Show the bullseye on the map
 show_lock_lines = true # Show lock lines between aircraft and their targets
 
 [labels]
-FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name} | {Name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{(altitude_ft//100)*100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}, \"BOTTOM_RIGHT\": {\"label_name\": \"X\", \"label_format\": \"{speed_kt:.0f}kn\", \"show_on_hover\": false}, \"BOTTOM_LEFT\": {\"label_name\": \"B\", \"label_format\": \"{bullseye[0]:.0f} {bullseye[1]:.0f}\", \"show_on_hover\": false}}" # Label for fixed wing aircraft
-ROTARYWING = "{\"TOP_RIGHT\": {\"label_name\": \"XD\", \"label_format\": \"{Name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{(altitude_ft//100)*100:.0f}ft M{Mach:2.2f}\", \"show_on_hover\": false}}"
-MISSILE = "{\"TOP_RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{Name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"D\", \"label_format\": \"{speed_kt:.1f}kt | {altitude_ft:.1f}ft\", \"show_on_hover\": false}}"
-GROUND = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"x\", \"show_on_hover\": true}}"
-SEA = "{\"TOP_RIGHT\": {\"label_name\": \"\", \"label_format\": \"{Name}\", \"show_on_hover\": false}}"
+FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{(altitude_ft//100)*100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}}" # Label for fixed wing aircraft
+ROTARYWING = '{}'
+MISSILE = '{}'
+GROUND = '{}'
+SEA = '{}'
 BULLSEYE = '{}'
-UNKNOWN = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}}"
+UNKNOWN = '{}'
 
 [controler]
 coalition = "U.S." # Coalition to control on startup
@@ -73,16 +73,14 @@ ini_color = [ 255, 255, 0 ] # [r, g, b] # Color of the ini file annotations
 ini_font_scale = 40 # Font size of the ini file annotations
 
 [notepad]
-notes = "test c:" # Notes stored in the user notepad
+notes = "" # Notes stored in the user notepad
 
 [tacview_colors]
-White = [1.0, 1.0, 1.0, 1.0] # White color RGBA
-Green = [0.0, 1.0, 0.0, 1.0] # Green color RGBA
-Blue = [0.0, 0.0, 1.0, 1.0] # Blue color RGBA
-Cyan = [0.0, 0.9, 1.0, 1.0] # Cyan color RGBA
-Brown = [0.5, 0.25, 0.0, 1.0] # Brown color RGBA
-Orange = [1.0, 0.5, 0.0, 1.0] # Orange color RGBA
-Yellow = [1.0, 1.0, 0.0, 1.0] # Yellow color RGBA
-Red = [1.0, 0.0, 0.0, 1.0] # Red color RGBA
-Violet = [0.5, 0.0, 1.0, 1.0] # Violet color RGBA
-Black = [0.0, 0.0, 0.0, 1.0] # Black color RGBA
+White = [ 1.0, 1.0, 1.0, 1.0 ] # White color RGBA
+Green = [ 0.0, 1.0, 0.0, 1.0 ] # Green color RGBA
+Blue = [ 0.0, 0.0, 1.0, 1.0 ] # Blue color RGBA
+Brown = [ 0.5, 0.25, 0.0, 1.0 ] # Brown color RGBA
+Orange = [ 1.0, 0.5, 0.0, 1.0 ] # Orange color RGBA
+Yellow = [ 1.0, 1.0, 0.0, 1.0 ] # Yellow color RGBA
+Red = [ 1.0, 0.0, 0.0, 1.0 ] # Red color RGBA
+Black = [ 0.0, 0.0, 0.0, 1.0 ] # Black color RGBA

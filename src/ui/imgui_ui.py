@@ -125,20 +125,11 @@ def create_checkbox(label, value, config_section, config_key):
 
 def create_color_edit(label, color, config_section, config_key):
     """Helper function to create a color picker and update configuration."""
-
-    col = imgui.ImVec4(color[0], color[1], color[2], 1.0)
-
-    changed, new_color = imgui.color_edit3(label, col)
-
+    changed, new_color = imgui.color_edit3(label, [*color])
     if changed:
-        color_tuple = (new_color.x, new_color.y, new_color.z)
-        config.app_config.set_color_from_normalized(
-            config_section,
-            config_key,
-            color_tuple
-        )
-
-    return changed, (new_color.x, new_color.y, new_color.z)
+        color_tuple = (new_color[0], new_color[1], new_color[2])
+        config.app_config.set_color_from_normalized(config_section, config_key, color_tuple)
+    return changed, new_color
 
 
 def update_config_if_changed(changed, config_section, config_key, value):
