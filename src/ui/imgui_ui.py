@@ -16,6 +16,7 @@ from game_object import GameObject
 from trtt_client import TRTTClientThread, ThreadState
 from game_state import GameState
 from game_object_types import GameObjectType
+from icons import get_available_icon_sets
 from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 from render_data_arrays import TrackRenderDataArrays
@@ -1066,6 +1067,20 @@ class ImguiUserInterface:
             self.tacview_colors_window_open = True
 
     def settings_tab_display(self):
+        imgui.text("Icon Set")
+        current_icon_set = config.app_config.get_str("display", "icon_set")
+        for icon_set_name, icon_set_display_name in get_available_icon_sets():
+            if imgui.radio_button(f"{icon_set_display_name}##icon_set", current_icon_set == icon_set_name):
+                config.app_config.set("display", "icon_set", icon_set_name)
+                # Icon shape assignment is cached per-object in the per-shape render
+                # arrays; switching sets leaves stale entries behind in the old
+                # shape's array (same reason the Coalition window has its own
+                # Refresh button), so force a full rebuild.
+                self.gamestate.render_arrays.clear_all()
+                self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+            imgui.same_line()
+        imgui.new_line()
+
         # Make sure MSAA samples are one of the valid predefined values
         if (config.app_config.get_int("display", "msaa_samples") not in (4, 8, 16)):
             config.app_config.set("display", "msaa_samples", 4)
