@@ -5,8 +5,6 @@ This class extracts all text rendering capabilities from the TrackRenderer, prov
 separation of concerns between shape/geometry rendering and text label rendering.
 """
 
-from os import close
-
 import numpy as np
 from typing import Dict, Optional
 
