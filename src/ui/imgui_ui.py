@@ -227,6 +227,12 @@ class ImguiUserInterface:
         self.notepad_save_dialog = None
         self.notepad_load_dialog = None
 
+        # Icon/relation changes take effect immediately, but GameObject.icon is
+        # only recomputed on the object's next ACMI-driven update(); this counts
+        # down frames until a follow-up render array rebuild picks up objects
+        # that hadn't updated their icon yet at the time of the first rebuild.
+        self._pending_icon_rebuild_frames = 0
+
         # BRAA line state
         self.braa_active = False
         self.braa_start_world = None
@@ -377,6 +383,28 @@ class ImguiUserInterface:
         self.notepad_save_dialog = None
         self.notepad_load_dialog = None
 
+    def request_icon_render_rebuild(self):
+        """Rebuild the icon render arrays now, and again next frame.
+
+        Icon shape changes (coalition relation, icon set) take effect
+        immediately in config/coalition_manager, but GameObject.icon is only
+        recomputed on that object's next ACMI-driven update(). Rebuilding a
+        second time a frame later catches objects whose icon hadn't updated
+        yet at the moment of the first rebuild, without needing per-object
+        shape tracking in TrackRenderDataArrays (see TODO.txt item 4).
+        """
+        self.gamestate.render_arrays.clear_all()
+        self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+        self._pending_icon_rebuild_frames = 1
+
+    def check_pending_icon_rebuild(self):
+        """Perform the deferred second rebuild queued by request_icon_render_rebuild()."""
+        if self._pending_icon_rebuild_frames > 0:
+            self._pending_icon_rebuild_frames -= 1
+            if self._pending_icon_rebuild_frames == 0:
+                self.gamestate.render_arrays.clear_all()
+                self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+
     def open_context_menu(self):
         """
         Set the track for the context menu.
@@ -396,6 +424,7 @@ class ImguiUserInterface:
 
         # Check for completed file dialogs
         self.check_file_dialogs()
+        self.check_pending_icon_rebuild()
 
         imgui.new_frame()
 
@@ -948,10 +977,7 @@ class ImguiUserInterface:
                 relation_changed = True
 
             if relation_changed:
-                # Relation changes shape which per-shape render array an object
-                # belongs in; rebuild so no stale icons are left behind
-                self.gamestate.render_arrays.clear_all()
-                self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+                self.request_icon_render_rebuild()
 
         imgui.end()
 
@@ -1076,12 +1102,7 @@ class ImguiUserInterface:
         for icon_set_name, icon_set_display_name in get_available_icon_sets():
             if imgui.radio_button(f"{icon_set_display_name}##icon_set", current_icon_set == icon_set_name):
                 config.app_config.set("display", "icon_set", icon_set_name)
-                # Icon shape assignment is cached per-object in the per-shape render
-                # arrays; switching sets leaves stale entries behind in the old
-                # shape's array (same rebuild-on-change done for Coalition relation
-                # changes below; see TODO.txt item 4 for the underlying cause).
-                self.gamestate.render_arrays.clear_all()
-                self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+                self.request_icon_render_rebuild()
             imgui.same_line()
         imgui.new_line()
 
