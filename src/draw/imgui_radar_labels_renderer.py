@@ -253,19 +253,11 @@ class ImGuiRadarLabelsRenderer:
         # Check if fixed wing layer is visible
         if not config.app_config.get_bool("layers", "show_fixed_wing"):
             return
-            
+
         fixed_wing_objs = gamestate.objects[GameObjectType.FIXEDWING]
-        rotary_wing_objs = gamestate.objects[GameObjectType.ROTARYWING]
-        missile_objs = gamestate.objects[GameObjectType.MISSILE]
-        ground_objs = gamestate.objects[GameObjectType.GROUND]
-        sea_objs = gamestate.objects[GameObjectType.SEA]
 
         # Get the label configuration for this track type
         labels = get_labels_for_class_type(GameObjectType.FIXEDWING)
-        labels2 = get_labels_for_class_type(GameObjectType.ROTARYWING)
-        labels3 = get_labels_for_class_type(GameObjectType.MISSILE)
-        labels4 = get_labels_for_class_type(GameObjectType.GROUND)
-        labels5 = get_labels_for_class_type(GameObjectType.SEA)
 
         # Get offset for positioning labels relative to track icons
         offset = config.app_config.get_int("radar", "contact_size")
@@ -273,38 +265,15 @@ class ImGuiRadarLabelsRenderer:
         total_offset = offset + label_padding
         font_scale = config.app_config.get_float("radar", "contact_font_scale") / 100.0  # Convert to ImGui scale
 
-        if labels is not None and labels2 is not None and labels3 is not None and labels4 is not None and labels5 is not None:
+        # TODO: labels are only rendered for fixed wing; extending to all object
+        # types was reverted because CPU-side quad calculation for text rendering
+        # isn't performant enough yet. Revisit once font rendering is off the CPU path.
+        if labels is not None:
             for obj in fixed_wing_objs.values():
                 screen_pos = self.scene.world_to_screen(obj.get_pos())
                 if not self._is_on_screen(screen_pos):
                     continue
                 self.draw_track_labels(obj, labels, total_offset, font_scale)
-
-            for obj in rotary_wing_objs.values():
-                screen_pos = self.scene.world_to_screen(obj.get_pos())
-                if not self._is_on_screen(screen_pos):
-                    continue
-                self.draw_track_labels(obj, labels2, total_offset, font_scale)
-
-
-            for obj in missile_objs.values():
-                screen_pos = self.scene.world_to_screen(obj.get_pos())
-                if not self._is_on_screen(screen_pos):
-                    continue
-                self.draw_track_labels(obj, labels3, total_offset, font_scale)
-                
-
-            for obj in ground_objs.values():
-                screen_pos = self.scene.world_to_screen(obj.get_pos())
-                if not self._is_on_screen(screen_pos):
-                    continue
-                self.draw_track_labels(obj, labels4, total_offset, font_scale)
-
-            for obj in sea_objs.values():
-                screen_pos = self.scene.world_to_screen(obj.get_pos())
-                if not self._is_on_screen(screen_pos):
-                    continue
-                self.draw_track_labels(obj, labels5, total_offset, font_scale)
 
     def draw_custom_text(self,
                          text: str,
