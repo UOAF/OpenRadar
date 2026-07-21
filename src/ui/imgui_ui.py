@@ -7,9 +7,6 @@ from coalition_manager import coalition_manager
 import numpy as np
 import datetime
 import os
-import time
-import tkinter as tk
-from tkinter import filedialog
 
 from logging_config import get_logger
 from draw.scene import Scene
@@ -226,6 +223,8 @@ class ImguiUserInterface:
         # File dialog state
         self.ini_file_dialog = None
         self.map_file_dialog = None
+        self.notepad_save_dialog = None
+        self.notepad_load_dialog = None
 
         # BRAA line state
         self.braa_active = False
@@ -338,10 +337,44 @@ class ImguiUserInterface:
                 self.logger.error(f"Error processing map file dialog result: {e}")
                 self.map_file_dialog = None  # Clear the dialog on error
 
+        # Check notepad save dialog
+        if self.notepad_save_dialog is not None:
+            try:
+                if self.notepad_save_dialog.ready():
+                    result = self.notepad_save_dialog.result()
+                    self.notepad_save_dialog = None  # Clear the dialog
+                    if result:
+                        try:
+                            with open(result, "w", encoding="utf-8") as f:
+                                f.write(config.app_config.get_str("notepad", "notes"))
+                        except OSError as e:
+                            self.logger.error(f"Error saving notepad to file: {e}")
+            except Exception as e:
+                self.logger.error(f"Error processing notepad save dialog result: {e}")
+                self.notepad_save_dialog = None  # Clear the dialog on error
+
+        # Check notepad load dialog
+        if self.notepad_load_dialog is not None:
+            try:
+                if self.notepad_load_dialog.ready():
+                    result = self.notepad_load_dialog.result()
+                    self.notepad_load_dialog = None  # Clear the dialog
+                    if result and len(result) > 0:
+                        try:
+                            with open(result[0], "r", encoding="utf-8") as f:
+                                config.app_config.set("notepad", "notes", f.read())
+                        except OSError as e:
+                            self.logger.error(f"Error loading notepad from file: {e}")
+            except Exception as e:
+                self.logger.error(f"Error processing notepad load dialog result: {e}")
+                self.notepad_load_dialog = None  # Clear the dialog on error
+
     def cancel_file_dialogs(self):
         """Cancel any active file dialogs."""
         self.ini_file_dialog = None
         self.map_file_dialog = None
+        self.notepad_save_dialog = None
+        self.notepad_load_dialog = None
 
     def open_context_menu(self):
         """
@@ -854,42 +887,25 @@ class ImguiUserInterface:
 
         return list(countries)
     
-    def save_notepad_with_dialog(self, text: str):
-        root = tk.Tk()
-        root.withdraw()  # Hide the empty tkinter window
+    def open_notepad_save_dialog(self):
+        """Open a non-blocking file dialog for saving notepad contents."""
+        if self.notepad_save_dialog is not None:
+            return
 
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Text Files", "*.txt")],
-            title="Save Notepad"
-        )
+        try:
+            self.notepad_save_dialog = pfd.save_file("Save Notepad", "", ["Text Files", "*.txt", "All files", "*"])
+        except Exception as e:
+            self.logger.error(f"Error opening notepad save dialog: {e}")
 
-        if not file_path:
-            return  # User cancelled
+    def open_notepad_load_dialog(self):
+        """Open a non-blocking file dialog for loading notepad contents."""
+        if self.notepad_load_dialog is not None:
+            return
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(text)
-
-        root.destroy()
-
-    def load_notepad_with_dialog(self) -> str:
-        root = tk.Tk()
-        root.withdraw()
-
-        file_path = filedialog.askopenfilename(
-            filetypes=[("Text Files", "*.txt")],
-            title="Load Notepad"
-        )
-
-        if not file_path:
-            root.destroy()
-            return ""
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        root.destroy()
-        return content
+        try:
+            self.notepad_load_dialog = pfd.open_file("Load Notepad", "", ["Text Files", "*.txt", "All files", "*"])
+        except Exception as e:
+            self.logger.error(f"Error opening notepad load dialog: {e}")
     
     def coalition_window(self):
 
@@ -1207,15 +1223,12 @@ class ImguiUserInterface:
 
         # Buttons
         if imgui.button("Save File"):
-            current_notes = config.app_config.get_str("notepad", "notes")
-            self.save_notepad_with_dialog(current_notes)
+            self.open_notepad_save_dialog()
 
         imgui.same_line()
 
         if imgui.button("Load File"):
-            notes = self.load_notepad_with_dialog()
-            if notes != "":
-                config.app_config.set("notepad", "notes", notes)
+            self.open_notepad_load_dialog()
 
         imgui.end()
 
