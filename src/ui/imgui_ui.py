@@ -929,25 +929,29 @@ class ImguiUserInterface:
             imgui.same_line()
 
             current = coalition_manager.get_relation(country)
+            relation_changed = False
 
             if imgui.radio_button(f"Friendly##{country}", current == "friendly"):
                 coalition_manager.set_relation(country, "friendly")
+                relation_changed = True
 
             imgui.same_line()
 
             if imgui.radio_button(f"Neutral##{country}", current == "neutral"):
                 coalition_manager.set_relation(country, "neutral")
+                relation_changed = True
 
             imgui.same_line()
 
             if imgui.radio_button(f"Hostile##{country}", current == "hostile"):
                 coalition_manager.set_relation(country, "hostile")
+                relation_changed = True
 
-        if imgui.button("Refresh"):
-            self.gamestate.render_arrays.clear_all()
-            self.gamestate.render_arrays.rebuild_from_objects(
-                self.gamestate.all_objects
-            )
+            if relation_changed:
+                # Relation changes shape which per-shape render array an object
+                # belongs in; rebuild so no stale icons are left behind
+                self.gamestate.render_arrays.clear_all()
+                self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
 
         imgui.end()
 
@@ -1074,8 +1078,8 @@ class ImguiUserInterface:
                 config.app_config.set("display", "icon_set", icon_set_name)
                 # Icon shape assignment is cached per-object in the per-shape render
                 # arrays; switching sets leaves stale entries behind in the old
-                # shape's array (same reason the Coalition window has its own
-                # Refresh button), so force a full rebuild.
+                # shape's array (same rebuild-on-change done for Coalition relation
+                # changes below; see TODO.txt item 4 for the underlying cause).
                 self.gamestate.render_arrays.clear_all()
                 self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
             imgui.same_line()
