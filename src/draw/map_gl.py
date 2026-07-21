@@ -14,6 +14,13 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
+# OpenRadar supports high-resolution local theatre maps (e.g., 16k x 16k).
+# PIL defaults can reject these with DecompressionBombError, so raise the
+# guardrail to a value suitable for trusted local assets.
+MAX_MAP_IMAGE_PIXELS = 32768 * 32768  # 32k pixels
+if Image.MAX_IMAGE_PIXELS is None or Image.MAX_IMAGE_PIXELS < MAX_MAP_IMAGE_PIXELS:
+    Image.MAX_IMAGE_PIXELS = MAX_MAP_IMAGE_PIXELS
+
 
 class Texture:
 
@@ -31,7 +38,8 @@ class Texture:
 
 def make_image_texture(filepath: str) -> Texture:
     filepath = str(filepath)
-    img = Image.open(filepath).transpose(Image.Transpose.FLIP_TOP_BOTTOM).convert('RGBA')
+    with Image.open(filepath) as image:
+        img = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM).convert('RGBA')
     return Texture(img.size, img.tobytes())
 
 
@@ -103,7 +111,13 @@ class MapGL:
         if update_magnetic_variation:
             self._update_magnetic_variation_from_filename(filename)
 
-        self.texture = make_image_texture(texture_path)
+        try:
+            self.texture = make_image_texture(texture_path)
+        except Exception as exc:
+            logger.exception(f"Failed to load map texture {texture_path}: {exc}. Using default grey map.")
+            self.default_grey_map()
+            return
+
         self.make_mesh()
 
         self.map_size_m = map_size_km * 1000
