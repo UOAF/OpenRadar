@@ -95,35 +95,41 @@ def get_labels_for_class_type(class_type: GameObjectType) -> TrackLabels | None:
     return labels
 
 
-def evaluate_input_format(user_input, instance: GameObject):
-    # Create a context with all GameObject attributes
-    context = {}
-    
-    # Add all instance attributes to context
-    for attr_name in dir(instance):
-        if not attr_name.startswith('_'):  # Skip private attributes
-            try:
-                attr_value = getattr(instance, attr_name)
-                # Skip methods/functions, only include data
-                if not callable(attr_value):
-                    context[attr_name] = attr_value
-            except:
-                # Skip attributes that can't be accessed
-                pass
-    
-    # Add commonly used aliases for backwards compatibility
-    context['id'] = instance.object_id
-    context['object_id'] = instance.object_id
-    context['type'] = instance.object_type.name if hasattr(instance.object_type, 'name') else str(instance.object_type)
-    context['name'] = instance.get_display_name()
-    
-    # Use eval to evaluate expressions within {}
+class _LabelFieldMapping:
+    """Resolves label placeholder names to GameObject attributes on demand.
+
+    Used with str.format_map, which only calls __getitem__ for placeholders
+    actually present in the format string - unreferenced attributes/properties
+    (e.g. expensive ones like magnetic_heading) are never touched.
+    """
+
+    def __init__(self, instance: GameObject):
+        self._instance = instance
+
+    def __getitem__(self, key: str):
+        if key == "id":
+            return self._instance.object_id
+        if key == "type":
+            object_type = self._instance.object_type
+            return object_type.name if hasattr(object_type, 'name') else str(object_type)
+        if key == "name":
+            return self._instance.get_display_name()
+
+        try:
+            value = getattr(self._instance, key)
+        except AttributeError:
+            raise KeyError(key)
+
+        if callable(value):
+            raise KeyError(key)
+        return value
+
+
+def evaluate_input_format(user_input: str, instance: GameObject) -> str:
     try:
-        output = eval(f"f'{user_input}'", {}, context)
+        return user_input.format_map(_LabelFieldMapping(instance))
     except Exception as e:
-        output = (f"Error evaluating user input: {e}")
-        # print(output)
-    return output
+        return f"Error evaluating user input: {e}"
 
 
 # default_label = {TrackLabelLocation.TOP_LEFT: TrackLabel("Top Left", "{id}"),}

@@ -319,6 +319,11 @@ class GameObject:
         return self.altitude_ft / 1000.0
 
     @property
+    def altitude_ft_floor100(self) -> float:
+        """Get the altitude in feet, floored to the nearest 100 ft."""
+        return (self.altitude_ft // 100) * 100
+
+    @property
     def speed_kt(self) -> float:
         """Get the speed in knots."""
         return self.CAS * M_PER_SEC_TO_KNOTS
