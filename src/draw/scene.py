@@ -1,4 +1,5 @@
 import glm
+import numpy as np
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
 import moderngl as mgl
@@ -107,6 +108,25 @@ class Scene:
         point_screen = point_screen_with_pan + pan
         point_screen.y = h - point_screen.y
         return point_screen
+
+    def world_to_screen_batch(self, points_world: np.ndarray) -> np.ndarray:
+        """
+        Vectorized world_to_screen for many points at once.
+
+        Args:
+            points_world: (N, 2) array of (x, y) world coordinates.
+
+        Returns:
+            (N, 2) array of (x, y) screen coordinates.
+        """
+        w, h = self.display_size
+        ratio = h / self.map_size_m
+
+        screen = points_world * (ratio * self.zoom_level)
+        screen[:, 0] += self._pan_screen.x
+        screen[:, 1] += self._pan_screen.y
+        screen[:, 1] = h - screen[:, 1]
+        return screen
 
     def world_to_screen_distance(self, distance_world: glm.vec2 | float):
         w, h = self.display_size

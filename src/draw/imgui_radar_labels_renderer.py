@@ -24,6 +24,21 @@ from util.bms_math import NM_TO_METERS
 
 import config
 
+# Per-anchor-location offset formula, as (offset_x_sign, text_width_coef, offset_y_sign, text_height_coef):
+#   dx = offset_x_sign * offset + text_width_coef * text_width
+#   dy = offset_y_sign * offset + text_height_coef * text_height
+_LABEL_OFFSET_COEFFICIENTS: Dict[TrackLabelLocation, Tuple[float, float, float, float]] = {
+    TrackLabelLocation.TOP_LEFT: (-1.0, -1.0, -1.0, -1.0),
+    TrackLabelLocation.TOP_CENTER: (0.0, -0.5, -1.0, -1.0),
+    TrackLabelLocation.TOP_RIGHT: (1.0, 0.0, -1.0, -1.0),
+    TrackLabelLocation.LEFT: (-1.0, -1.0, 0.0, -0.5),
+    TrackLabelLocation.CENTER: (0.0, -0.5, 0.0, -0.5),
+    TrackLabelLocation.RIGHT: (1.0, 0.0, 0.0, -0.5),
+    TrackLabelLocation.BOTTOM_LEFT: (-1.0, -1.0, 1.0, 0.0),
+    TrackLabelLocation.BOTTOM_CENTER: (0.0, -0.5, 1.0, 0.0),
+    TrackLabelLocation.BOTTOM_RIGHT: (1.0, 0.0, 1.0, 0.0),
+}
+
 
 @dataclass
 class CachedTextLabel:
@@ -92,22 +107,6 @@ class ImGuiRadarLabelsRenderer:
         
         self._hovered_object = obj
 
-    def _compute_content_hash(self, text: str, obj: GameObject, location: TrackLabelLocation) -> str:
-        """
-        Compute a hash of the label content to detect changes.
-        
-        Args:
-            text: The text content
-            obj: The game object
-            location: The label location
-            
-        Returns:
-            A hash string representing the content
-        """
-        # Include relevant object properties that might affect the text
-        content_str = f"{text}_{obj.object_id}_{location.value}_{obj.U}_{obj.V}"
-        return hashlib.md5(content_str.encode()).hexdigest()[:8]
-
     def _world_to_screen_coordinates(self, world_x: float, world_y: float) -> Tuple[float, float]:
         """
         Convert world coordinates to screen coordinates using the scene's transformation.
@@ -139,51 +138,37 @@ class ImGuiRadarLabelsRenderer:
         """
         text_width, text_height = text_size
 
-        # Define offset multipliers for each location
-        offset_map = {
-            TrackLabelLocation.TOP_LEFT: (-offset - text_width, -offset - text_height),
-            TrackLabelLocation.TOP_CENTER: (-text_width / 2, -offset - text_height),
-            TrackLabelLocation.TOP_RIGHT: (offset, -offset - text_height),
-            TrackLabelLocation.LEFT: (-offset - text_width, -text_height / 2),
-            TrackLabelLocation.CENTER: (-text_width / 2, -text_height / 2),
-            TrackLabelLocation.RIGHT: (offset, -text_height / 2),
-            TrackLabelLocation.BOTTOM_LEFT: (-offset - text_width, offset),
-            TrackLabelLocation.BOTTOM_CENTER: (-text_width / 2, offset),
-            TrackLabelLocation.BOTTOM_RIGHT: (offset, offset),
-        }
+        offset_x_sign, text_width_coef, offset_y_sign, text_height_coef = _LABEL_OFFSET_COEFFICIENTS.get(
+            location, (0.0, 0.0, 0.0, 0.0))
 
-        dx, dy = offset_map.get(location, (0, 0))
+        dx = offset_x_sign * offset + text_width_coef * text_width
+        dy = offset_y_sign * offset + text_height_coef * text_height
         return x_screen + dx, y_screen + dy
 
     def _update_or_create_cached_label(self, obj: GameObject, location: TrackLabelLocation, text: str,
-                                       font_scale: float) -> CachedTextLabel:
+                                       font_scale: float, screen_x: float, screen_y: float) -> CachedTextLabel:
         """
         Update an existing cached label or create a new one.
-        
+
         Args:
             obj: The game object
             location: Label location
             text: Text content
             font_scale: Font scaling factor
-            
+            screen_x: Precomputed screen X position for this object
+            screen_y: Precomputed screen Y position for this object
+
         Returns:
             The cached label (updated or newly created)
         """
         cache_key = f"{obj.object_id}_{location.value}"
-        content_hash = self._compute_content_hash(text, obj, location)
 
-        # Convert world position to screen position
-        screen_x, screen_y = self._world_to_screen_coordinates(obj.U, obj.V)
-
-        # Check if we have a cached label
-        if cache_key in self._text_cache:
-            cached_label = self._text_cache[cache_key]
-
-            # If content hasn't changed, just update position
-            if cached_label.content_hash == content_hash:
-                cached_label.x_screen = screen_x
-                cached_label.y_screen = screen_y
-                return cached_label
+        cached_label = self._text_cache.get(cache_key)
+        if cached_label is not None and cached_label.text == text:
+            # Content hasn't changed, just update position
+            cached_label.x_screen = screen_x
+            cached_label.y_screen = screen_y
+            return cached_label
 
         # Content changed or new label - create/update cache entry
         cached_label = CachedTextLabel(text=text,
@@ -191,21 +176,23 @@ class ImGuiRadarLabelsRenderer:
                                        y_screen=screen_y,
                                        font_scale=font_scale,
                                        location=location,
-                                       content_hash=content_hash,
                                        object_id=obj.object_id)
 
         self._text_cache[cache_key] = cached_label
         return cached_label
 
-    def draw_track_labels(self, obj: GameObject, labels: TrackLabels, offset: int, font_scale: float):
+    def draw_track_labels(self, obj: GameObject, labels: TrackLabels, offset: int, font_scale: float,
+                          screen_x: float, screen_y: float):
         """
         Draw labels for a specific track based on its type and configuration.
-        
+
         Args:
             obj: The game object to render labels for
             labels: The track labels configuration
             offset: Offset distance from the track center
             font_scale: Font scaling factor
+            screen_x: Precomputed screen X position for this object
+            screen_y: Precomputed screen Y position for this object
         """
         # Render each configured label at its specified location
         for location, track_label in labels.labels.items():
@@ -222,7 +209,8 @@ class ImGuiRadarLabelsRenderer:
 
             if text is not None and text != "":
                 # Update or create cached label
-                cached_label = self._update_or_create_cached_label(obj, location, text, font_scale)
+                cached_label = self._update_or_create_cached_label(obj, location, text, font_scale, screen_x,
+                                                                    screen_y)
 
                 # Calculate text size for positioning
                 text_size = imgui.calc_text_size(text)
@@ -235,12 +223,12 @@ class ImGuiRadarLabelsRenderer:
                 cached_label.x_screen = final_x
                 cached_label.y_screen = final_y
 
-    def _is_on_screen(self, screen_pos) -> bool:
+    def _is_on_screen(self, screen_x: float, screen_y: float) -> bool:
         io = imgui.get_io()
 
         return (
-            0 <= screen_pos.x <= io.display_size.x and
-            0 <= screen_pos.y <= io.display_size.y
+            0 <= screen_x <= io.display_size.x and
+            0 <= screen_y <= io.display_size.y
         )
 
     def draw_all_ac_labels(self, gamestate: GameState):
@@ -268,12 +256,20 @@ class ImGuiRadarLabelsRenderer:
         # TODO: labels are only rendered for fixed wing; extending to all object
         # types was reverted because CPU-side quad calculation for text rendering
         # isn't performant enough yet. Revisit once font rendering is off the CPU path.
-        if labels is not None:
-            for obj in fixed_wing_objs.values():
-                screen_pos = self.scene.world_to_screen(obj.get_pos())
-                if not self._is_on_screen(screen_pos):
-                    continue
-                self.draw_track_labels(obj, labels, total_offset, font_scale)
+        if labels is None:
+            return
+
+        objs = list(fixed_wing_objs.values())
+        if not objs:
+            return
+
+        world_positions = np.array([(obj.U, obj.V) for obj in objs], dtype=np.float64)
+        screen_positions = self.scene.world_to_screen_batch(world_positions).tolist()
+
+        for obj, (screen_x, screen_y) in zip(objs, screen_positions):
+            if not self._is_on_screen(screen_x, screen_y):
+                continue
+            self.draw_track_labels(obj, labels, total_offset, font_scale, screen_x, screen_y)
 
     def draw_custom_text(self,
                          text: str,
