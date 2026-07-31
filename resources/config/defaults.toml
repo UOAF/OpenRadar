@@ -56,7 +56,7 @@ show_bullseye = true # Show the bullseye on the map
 show_lock_lines = true # Show lock lines between aircraft and their targets
 
 [labels]
-FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{(altitude_ft//100)*100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}}" # Label for fixed wing aircraft
+FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{(altitude_ft//100)*100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}, \"BOTTOM_LEFT\": {\"label_name\": \"B\", \"label_format\": \"{bullseye[0]:.0f} {bullseye[1]:.0f}\", \"show_on_hover\": true}}" # Label for fixed wing aircraft
 ROTARYWING = '{}'
 MISSILE = '{}'
 GROUND = '{}'
@@ -79,8 +79,10 @@ notes = "" # Notes stored in the user notepad
 White = [ 1.0, 1.0, 1.0, 1.0 ] # White color RGBA
 Green = [ 0.0, 1.0, 0.0, 1.0 ] # Green color RGBA
 Blue = [ 0.0, 0.0, 1.0, 1.0 ] # Blue color RGBA
+Cyan = [ 0.0, 0.9, 1.0, 1.0 ] # Cyan color RGBA
 Brown = [ 0.5, 0.25, 0.0, 1.0 ] # Brown color RGBA
 Orange = [ 1.0, 0.5, 0.0, 1.0 ] # Orange color RGBA
 Yellow = [ 1.0, 1.0, 0.0, 1.0 ] # Yellow color RGBA
 Red = [ 1.0, 0.0, 0.0, 1.0 ] # Red color RGBA
+Violet = [ 0.5, 0.0, 1.0, 1.0 ] # Violet color RGBA
 Black = [ 0.0, 0.0, 0.0, 1.0 ] # Black color RGBA

@@ -2,6 +2,8 @@ from imgui_bundle import imgui
 from imgui_bundle import portable_file_dialogs as pfd  # type: ignore
 from imgui_bundle.python_backends.glfw_backend import GlfwRenderer
 
+from coalition_manager import coalition_manager
+
 import numpy as np
 import datetime
 import os
@@ -14,6 +16,7 @@ from game_object import GameObject
 from trtt_client import TRTTClientThread, ThreadState
 from game_state import GameState
 from game_object_types import GameObjectType
+from icons import get_available_icon_sets
 from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 from render_data_arrays import TrackRenderDataArrays
@@ -48,6 +51,24 @@ example_object.Coalition = "U.S."
 example_object.Name = "F-16C"
 
 IMGUI_INI_FILENAME = "openradar_imgui.ini"
+
+def f16_coord(value, is_lat=True):
+    # Hemisphere + degree padding
+    if is_lat:
+        hemisphere = 'N' if value >= 0 else 'S'
+        width = 2
+    else:
+        hemisphere = 'E' if value >= 0 else 'W'
+        width = 3
+
+    value = abs(value)
+
+    # Convert decimal degrees -> degrees + decimal minutes
+    degrees = int(value)
+    minutes = (value - degrees) * 60
+
+    # Return F-16 formatted string
+    return f"{hemisphere} {degrees:0{width}d}* {minutes:06.3f}'"
 
 
 def help_marker(description: str):
@@ -116,7 +137,7 @@ def update_config_if_changed(changed, config_section, config_key, value):
 class ImguiUserInterface:
 
     def __init__(self, size, window, scene: Scene, map_gl: MapGL, gamestate: GameState, tracks: SensorTracks,
-                 display_data: DisplayData, data_client: TRTTClientThread):
+                 display_data: DisplayData, data_client: TRTTClientThread, coalition_manager):
         self.size = size
         self.scene = scene
         self.map_gl: MapGL = map_gl
@@ -127,6 +148,7 @@ class ImguiUserInterface:
         self.data_client = data_client
         self.reset_state_callback = None
         self.render_refresh_callback = None
+        self.coalition_manager = coalition_manager
 
         # Initialize logger
         self.logger = get_logger(f"{__name__}.ImguiUserInterface")
@@ -169,6 +191,7 @@ class ImguiUserInterface:
         self.fps_window_open = False
         self.layers_window_open = False
         self.settings_window_open = False
+        self.coalition_window_open = False
         self.server_window_open = True
         self.notepad_window_open = False
         self.debug_window_open = False
@@ -201,6 +224,14 @@ class ImguiUserInterface:
         # File dialog state
         self.ini_file_dialog = None
         self.map_file_dialog = None
+        self.notepad_save_dialog = None
+        self.notepad_load_dialog = None
+
+        # Icon/relation changes take effect immediately, but GameObject.icon is
+        # only recomputed on the object's next ACMI-driven update(); this counts
+        # down frames until a follow-up render array rebuild picks up objects
+        # that hadn't updated their icon yet at the time of the first rebuild.
+        self._pending_icon_rebuild_frames = 0
 
         # BRAA line state
         self.braa_active = False
@@ -215,6 +246,7 @@ class ImguiUserInterface:
         imgui.render()
         self.impl.render(imgui.get_draw_data())
         imgui.end_frame()
+        
 
     @property
     def fps(self):
@@ -312,10 +344,66 @@ class ImguiUserInterface:
                 self.logger.error(f"Error processing map file dialog result: {e}")
                 self.map_file_dialog = None  # Clear the dialog on error
 
+        # Check notepad save dialog
+        if self.notepad_save_dialog is not None:
+            try:
+                if self.notepad_save_dialog.ready():
+                    result = self.notepad_save_dialog.result()
+                    self.notepad_save_dialog = None  # Clear the dialog
+                    if result:
+                        try:
+                            with open(result, "w", encoding="utf-8") as f:
+                                f.write(config.app_config.get_str("notepad", "notes"))
+                        except OSError as e:
+                            self.logger.error(f"Error saving notepad to file: {e}")
+            except Exception as e:
+                self.logger.error(f"Error processing notepad save dialog result: {e}")
+                self.notepad_save_dialog = None  # Clear the dialog on error
+
+        # Check notepad load dialog
+        if self.notepad_load_dialog is not None:
+            try:
+                if self.notepad_load_dialog.ready():
+                    result = self.notepad_load_dialog.result()
+                    self.notepad_load_dialog = None  # Clear the dialog
+                    if result and len(result) > 0:
+                        try:
+                            with open(result[0], "r", encoding="utf-8") as f:
+                                config.app_config.set("notepad", "notes", f.read())
+                        except OSError as e:
+                            self.logger.error(f"Error loading notepad from file: {e}")
+            except Exception as e:
+                self.logger.error(f"Error processing notepad load dialog result: {e}")
+                self.notepad_load_dialog = None  # Clear the dialog on error
+
     def cancel_file_dialogs(self):
         """Cancel any active file dialogs."""
         self.ini_file_dialog = None
         self.map_file_dialog = None
+        self.notepad_save_dialog = None
+        self.notepad_load_dialog = None
+
+    def request_icon_render_rebuild(self):
+        """Rebuild the icon render arrays now, and again next frame.
+
+        Icon shape changes (coalition relation, icon set) take effect
+        immediately in config/coalition_manager, but GameObject.icon is only
+        recomputed on that object's next ACMI-driven update(). Rebuilding a
+        second time a frame later catches objects whose icon hadn't updated
+        yet at the moment of the first rebuild, without needing per-object
+        shape tracking in TrackRenderDataArrays (see TODO.txt item 4).
+        """
+        self.gamestate.render_arrays.clear_all()
+        self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
+        self._pending_icon_rebuild_frames = 1
+
+    def check_pending_icon_rebuild(self):
+        """Perform the deferred second rebuild queued by request_icon_render_rebuild()."""
+        if self._pending_icon_rebuild_frames > 0:
+            self._pending_icon_rebuild_frames -= 1
+            if self._pending_icon_rebuild_frames == 0:
+                self.gamestate.render_arrays.clear_all()
+                self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
 
     def open_context_menu(self):
         """
@@ -336,6 +424,7 @@ class ImguiUserInterface:
 
         # Check for completed file dialogs
         self.check_file_dialogs()
+        self.check_pending_icon_rebuild()
 
         imgui.new_frame()
 
@@ -346,6 +435,7 @@ class ImguiUserInterface:
         self.ui_bottom_bar()
         self.map_selection_dialog()
         self.fps_counter()
+        self.coalition_window()
         self.settings_window()
         self.server_window()
         self.notepad_window()
@@ -440,8 +530,8 @@ class ImguiUserInterface:
                     # imgui.text(f" - Lateral: {obj.LateralGForce:.2f}")
                     # imgui.text(f" - Longitudinal: {obj.LongitudinalGForce:.2f}")
                     imgui.text(f"Coalition: {obj.Coalition}")
-                    imgui.text(f"Latitude: {obj.Latitude:.6f}")
-                    imgui.text(f"Longitude: {obj.Longitude:.6f}")
+                    imgui.text(f"Latitude: {f16_coord(obj.Latitude, True)}")
+                    imgui.text(f"Longitude: {f16_coord(obj.Longitude, False)}")
                     imgui.text(f"Locked Targets: ")
                     if len(obj.locked_target_objs) == 0:
                         imgui.text("   None")
@@ -470,7 +560,7 @@ class ImguiUserInterface:
             imgui.separator()
 
             # Define the color names in the order they appear in config
-            color_names = ["White", "Green", "Blue", "Brown", "Orange", "Yellow", "Red", "Black"]
+            color_names = ["White", "Green", "Blue", "Cyan", "Brown", "Orange", "Yellow", "Red", "Violet", "Black"]
 
             for color_name in color_names:
                 try:
@@ -492,7 +582,7 @@ class ImguiUserInterface:
                             # Refresh render arrays to show color changes immediately
                             if self.render_refresh_callback:
                                 self.render_refresh_callback()
-
+                
                 except (KeyError, ValueError) as e:
                     imgui.text(f"Error loading {color_name}: {e}")
 
@@ -512,7 +602,14 @@ class ImguiUserInterface:
 
                 except Exception as e:
                     imgui.text(f"Error resetting colors: {e}")
-
+            if imgui.button("Refresh"):
+                self.gamestate.render_arrays.clear_all()
+                self.gamestate.render_arrays.rebuild_from_objects(
+                    self.gamestate.all_objects
+                )
+                self.gamestate.refresh_all_render_arrays()
+                print("rebuilding")
+                
         imgui.end()
 
     def contact_color_window(self):
@@ -611,6 +708,8 @@ class ImguiUserInterface:
 
         if imgui.begin_main_menu_bar():
 
+            
+
             # File Dropdown
             if imgui.begin_menu('File', True):
                 # Map submenu
@@ -636,9 +735,13 @@ class ImguiUserInterface:
                         self.annotations.clear()
                     imgui.end_menu()
 
+
+                if imgui.menu_item("Coalition", "", False, True)[0]:
+                    self.coalition_window_open = True
+
+
                 if imgui.menu_item('Settings', "", self.settings_window_open, True)[0]:
                     self.settings_window_open = not self.settings_window_open
-
                 imgui.end_menu()
 
             # Windows Dropdown
@@ -803,6 +906,84 @@ class ImguiUserInterface:
             self.settings_window_open = False
             config.app_config.save()
 
+    def get_countries(self, gamestate: GameState):
+        countries = set()
+
+        for obj_dict in gamestate.objects.values():
+         for obj in obj_dict.values():
+                country = getattr(obj, "Coalition", None)
+                if country:
+                    countries.add(country)
+
+        return list(countries)
+    
+    def open_notepad_save_dialog(self):
+        """Open a non-blocking file dialog for saving notepad contents."""
+        if self.notepad_save_dialog is not None:
+            return
+
+        try:
+            self.notepad_save_dialog = pfd.save_file("Save Notepad", "", ["Text Files", "*.txt", "All files", "*"])
+        except Exception as e:
+            self.logger.error(f"Error opening notepad save dialog: {e}")
+
+    def open_notepad_load_dialog(self):
+        """Open a non-blocking file dialog for loading notepad contents."""
+        if self.notepad_load_dialog is not None:
+            return
+
+        try:
+            self.notepad_load_dialog = pfd.open_file("Load Notepad", "", ["Text Files", "*.txt", "All files", "*"])
+        except Exception as e:
+            self.logger.error(f"Error opening notepad load dialog: {e}")
+    
+    def coalition_window(self):
+
+        if not self.coalition_window_open:
+            return
+
+        _, open = imgui.begin(
+            "Coalition",
+            True,
+            imgui.WindowFlags_.always_auto_resize.value
+        )
+
+        imgui.text("Set each coalition's relation to you.")
+        imgui.separator()
+
+        countries = self.get_countries(self.gamestate)  # or however you're collecting them
+        imgui.text(f"Detected countries: {len(countries)}")
+        for country in sorted(countries):
+            imgui.text(country)
+            imgui.same_line()
+
+            current = coalition_manager.get_relation(country)
+            relation_changed = False
+
+            if imgui.radio_button(f"Friendly##{country}", current == "friendly"):
+                coalition_manager.set_relation(country, "friendly")
+                relation_changed = True
+
+            imgui.same_line()
+
+            if imgui.radio_button(f"Neutral##{country}", current == "neutral"):
+                coalition_manager.set_relation(country, "neutral")
+                relation_changed = True
+
+            imgui.same_line()
+
+            if imgui.radio_button(f"Hostile##{country}", current == "hostile"):
+                coalition_manager.set_relation(country, "hostile")
+                relation_changed = True
+
+            if relation_changed:
+                self.request_icon_render_rebuild()
+
+        imgui.end()
+
+        if not open:
+            self.coalition_window_open = False
+
     def settings_tab_map(self):
         map_alpha = config.app_config.get_int("map", "map_alpha")
         map_background_color = config.app_config.get_color_normalized("map", "background_color")
@@ -916,6 +1097,15 @@ class ImguiUserInterface:
             self.tacview_colors_window_open = True
 
     def settings_tab_display(self):
+        imgui.text("Icon Set")
+        current_icon_set = config.app_config.get_str("display", "icon_set")
+        for icon_set_name, icon_set_display_name in get_available_icon_sets():
+            if imgui.radio_button(f"{icon_set_display_name}##icon_set", current_icon_set == icon_set_name):
+                config.app_config.set("display", "icon_set", icon_set_name)
+                self.request_icon_render_rebuild()
+            imgui.same_line()
+        imgui.new_line()
+
         # Make sure MSAA samples are one of the valid predefined values
         if (config.app_config.get_int("display", "msaa_samples") not in (4, 8, 16)):
             config.app_config.set("display", "msaa_samples", 4)
@@ -1043,18 +1233,45 @@ class ImguiUserInterface:
     def notepad_window(self):
         if not self.notepad_window_open:
             return
-        imgui.set_next_window_size_constraints(imgui.ImVec2(200, 200), imgui.ImVec2(float('inf'), float('inf')))
+
+        imgui.set_next_window_size_constraints(
+            imgui.ImVec2(200, 200),
+            imgui.ImVec2(float('inf'), float('inf'))
+        )
+
         _, open = imgui.begin("Notepad", True)
+
         notes = config.app_config.get_str("notepad", "notes")
 
-        # Get window size
+        # Get available size
         width, height = imgui.get_content_region_avail()
-        changed, notes = imgui.input_text_multiline("##notepad", notes, imgui.ImVec2(width, height),
-                                                    imgui.InputTextFlags_.allow_tab_input.value)
-        imgui.end()
+
+        # Reserve space for buttons (about 35px)
+        button_height = 35
+        text_height = height - button_height
+
+        # Multiline input
+        changed, notes = imgui.input_text_multiline(
+            "##notepad",
+            notes,
+            imgui.ImVec2(width, text_height),
+            imgui.InputTextFlags_.allow_tab_input.value
+        )
 
         if changed:
             config.app_config.set("notepad", "notes", notes)
+
+        # Buttons
+        if imgui.button("Save File"):
+            self.open_notepad_save_dialog()
+
+        imgui.same_line()
+
+        if imgui.button("Load File"):
+            self.open_notepad_load_dialog()
+
+        imgui.end()
+
         if not open:
             self.notepad_window_open = False
 

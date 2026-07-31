@@ -87,13 +87,14 @@ class DisplayData:
 
         return True  # Default to showing unknown types
 
+
+
     def render(self):
         """
         Render the display data.
         """
         # Render annotations
         self.annotations.render()
-
         # Render bullseye if enabled
         if config.app_config.get_bool("layers", "show_bullseye"):
             self.bullseye_renderer.render()

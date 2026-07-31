@@ -35,10 +35,12 @@ from typing import Any, Dict, Optional
 import datetime
 
 from acmi_parse import ACMIObject
+from coalition_manager import coalition_manager
 from game_object_types import GameObjectType, get_icon_style
 from util.bms_math import M_PER_SEC_TO_KNOTS, METERS_TO_FT
 from util.other_utils import rgba_from_str
 from logging_config import get_logger
+import math
 
 # Module logger
 logger = get_logger(__name__)
@@ -140,6 +142,13 @@ class GameObject:
         self.object_id = object_id
         self.object_type = object_type
         self.timestamp = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
+        self._bullseye_provider = None
+        # Bullseye position (meters)
+        self.current_bearing = 0.0
+        self.current_distance = 0.0
+        self.bull_x = 0.0
+        self.bull_y = 0.0
+        self.magnetic_variation = 0.0
 
         logger.debug(f"Creating GameObject {object_id} of type {object_type}")
 
@@ -174,8 +183,19 @@ class GameObject:
     # Public update API
     def update(self, delta: ACMIObject):
         self.apply_delta(delta)
+        # Only update relation
+        country = getattr(self, "Coalition", None)
+        if country:
+            self.current_relation = coalition_manager.get_relation(country)
 
-    # Core delta application logic
+        # Then refresh icon style safely
+        icon, icon_color = get_icon_style(self)
+
+        self.icon = icon
+
+        if icon_color is not None:
+            self.override_color = icon_color
+        # Core delta application logic
     def apply_delta(self, acmi_obj: ACMIObject):
         """Apply delta update from ACMIObject. Only non-empty values overwrite existing ones.
         
@@ -274,6 +294,10 @@ class GameObject:
     def is_air_unit(self) -> bool:
         """Check if this is an air unit (fixed wing, rotary wing, or missile)."""
         return self.object_type in (GameObjectType.FIXEDWING, GameObjectType.ROTARYWING)
+    
+    def set_bullseye_provider(self, func):
+        self._bullseye_provider = func
+
 
     # ----------------------------------------------------------------------------------
     # Properties for Text Label Rendering
@@ -298,6 +322,29 @@ class GameObject:
     def speed_kt(self) -> float:
         """Get the speed in knots."""
         return self.CAS * M_PER_SEC_TO_KNOTS
+    
+    @property
+    def bullseye(self):
+
+        # Target position (same system as bullseye)
+        target_u, target_v = self.get_pos()
+
+        bull_u = getattr(self, "bull_x", 0.0)
+        bull_v = getattr(self, "bull_y", 0.0)
+
+        dx = target_u - bull_u
+        dy = target_v - bull_v
+
+        distance_m = math.hypot(dx, dy)
+        distance_nm = distance_m / 1852
+
+        true_bearing = (math.degrees(math.atan2(dx, dy)) + 360) % 360
+
+        #Apply magnetic variation
+        magnetic_bearing = (true_bearing - self.magnetic_variation + 360) % 360
+
+        return magnetic_bearing, distance_nm
+
 
     @property
     def magnetic_heading(self) -> float:

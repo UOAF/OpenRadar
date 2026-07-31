@@ -89,6 +89,7 @@ class ImGuiRadarLabelsRenderer:
         Args:
             obj: The object that is currently being hovered, or None if no object is hovered
         """
+        
         self._hovered_object = obj
 
     def _compute_content_hash(self, text: str, obj: GameObject, location: TrackLabelLocation) -> str:
@@ -208,6 +209,15 @@ class ImGuiRadarLabelsRenderer:
         """
         # Render each configured label at its specified location
         for location, track_label in labels.labels.items():
+            # If this label is set to show only on hover,
+            # only render it when this object is currently hovered
+            if track_label.show_on_hover:
+                if self._hovered_object is None:
+                    continue
+
+                if self._hovered_object.object_id != obj.object_id:
+                    continue
+
             text = evaluate_input_format(track_label.label_format, obj)
 
             if text is not None and text != "":
@@ -225,6 +235,14 @@ class ImGuiRadarLabelsRenderer:
                 cached_label.x_screen = final_x
                 cached_label.y_screen = final_y
 
+    def _is_on_screen(self, screen_pos) -> bool:
+        io = imgui.get_io()
+
+        return (
+            0 <= screen_pos.x <= io.display_size.x and
+            0 <= screen_pos.y <= io.display_size.y
+        )
+
     def draw_all_ac_labels(self, gamestate: GameState):
         """
         Draw labels for all aircraft in the game state.
@@ -235,7 +253,7 @@ class ImGuiRadarLabelsRenderer:
         # Check if fixed wing layer is visible
         if not config.app_config.get_bool("layers", "show_fixed_wing"):
             return
-            
+
         fixed_wing_objs = gamestate.objects[GameObjectType.FIXEDWING]
 
         # Get the label configuration for this track type
@@ -247,8 +265,14 @@ class ImGuiRadarLabelsRenderer:
         total_offset = offset + label_padding
         font_scale = config.app_config.get_float("radar", "contact_font_scale") / 100.0  # Convert to ImGui scale
 
+        # TODO: labels are only rendered for fixed wing; extending to all object
+        # types was reverted because CPU-side quad calculation for text rendering
+        # isn't performant enough yet. Revisit once font rendering is off the CPU path.
         if labels is not None:
             for obj in fixed_wing_objs.values():
+                screen_pos = self.scene.world_to_screen(obj.get_pos())
+                if not self._is_on_screen(screen_pos):
+                    continue
                 self.draw_track_labels(obj, labels, total_offset, font_scale)
 
     def draw_custom_text(self,

@@ -38,7 +38,7 @@ class ClassicIconSet:
             return (Shapes.SQUARE, base_color)
 
         elif object_type == GameObjectType.ROTARYWING:
-            return (Shapes.SQUARE, base_color)
+            return (Shapes.TOP_BOX, base_color)
 
         elif object_type == GameObjectType.MISSILE:
             return (Shapes.SMALL_DIAMOND, base_color)

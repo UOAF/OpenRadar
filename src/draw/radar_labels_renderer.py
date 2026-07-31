@@ -93,6 +93,7 @@ class RadarLabelsRenderer:
             track: The track object to render labels for
             track_type: The type of game object (used for label configuration lookup)
         """
+
         pos_x, pos_y = int(obj.U), int(obj.V)
 
         # Render each configured label at its specified location

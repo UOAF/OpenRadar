@@ -4,36 +4,37 @@ UOAF OpenRadar for BMS Falcon 4.0
 
 ## Getting Started
 1. Download OpenRadar.exe from the release on github
-2. Set The following setting in 'user/config/Falcon BMS User.cfg' to enable Tacview RealTime Telemetry on the BMS host
+2. Set the following setting in 'user/config/Falcon BMS User.cfg' to enable Tacview RealTime Telemetry on the BMS host
     ```
     set g_bTacviewRealTime 1
     set g_nTacviewPort 42674
     ```
-3. Run OpenRadar.exe and connect to the server in the settings page
+3. Run OpenRadar.exe and connect to the server in the settings page. Make sure to be in-game and in 3D or telemetry won't be visible!
+   
+(Optional - P2P)
 
-## Compile Workflow
+4. You can also use OpenRadar through Peer to Peer, this means you don't need BMS running or even installed.
+Instead you can use someone else's Tacview Real-Time Telemetry, tell them to open their chosen port (Default is 42674) to the internet on their router using their local address, then connect with their public IP!
 
-1. Install Python.
-2. Create venv (optional, but strongly recommended)
-```bash
-python -m venv venv
-.\venv\Scripts\Activate
-```
-3. Install dependencies
-```bash
-pip install -r .\requirements.txt
-```
-4. Create executable
-```bash
-pyinstaller .\OpenRadar.spec
-```
-5. Compiled exe will be generated to `\dist` directly.
+## Configuration & Customization
+When you run OpenRadar.exe, a config file will be generated in the same directory called "OpenRadar.toml"
+This file contains a bunch of configuration stuff that you can change in the file, or through the in-program settings.
 
-### TIPS
+This line dictates what icon set the program will use. You cannot change this in the application.
 
-- to check scripts install directly `> python -m site --user-site`
-then locate to `../Scripts` from there, you will find pyinstaller.exe
-so you can add environment path to the directly.
+    ```
+    [display]
+    icon_set = "NTDS" # Icon set to use for displaying objects (NTDS, classic)
+    ```
+Classic = Classic OpenRadar icons
+
+NTDS = Naval Tactical Data System symbology. You can change each faction's relation in the Coalition tab. 
+<img src="https://github.com/ValerieOSD/OpenRadar/blob/6f586ed2f2ad9cdd3d7d780e9b5a8bfe224d9d71/Data/NTDS.png" width="600">
+
+
+You can also customize the track labels of all targets visible on OpenRadar with your own text, or through the usage of variables such as speed, altitude, fuel, bullseye position and more.
+List of variables [here](https://github.com/ValerieOSD/OpenRadar/wiki/Track-Label-Variables).
+<img src="https://github.com/ValerieOSD/OpenRadar/blob/493ca90e8d328af058e5955ba3d9175ae4a5c1ad/Data/TrackLabels.png" width="600">
 
 ## Work in Progress
 This project is a work in progress. Features and functionalities are continuously being developed and improved. Some features will be incomplete or not functional. Your feedback and contributions are highly appreciated to help us enhance the tool.

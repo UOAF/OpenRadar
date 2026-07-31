@@ -10,6 +10,7 @@ import OpenGL.GL as gl
 import moderngl as mgl
 import numpy as np
 import math
+from coalition_manager import CoalitionManager
 
 import config
 from logging_config import get_logger, log_performance_metrics
@@ -58,6 +59,7 @@ class App:
     """
 
     def __init__(self, *args, **kwargs):
+        self.coalition_manager = CoalitionManager()
         self.logger = get_logger(__name__)
         self.logger.info("Initializing OpenRadar application")
 
@@ -180,7 +182,7 @@ class App:
         self._display_data = DisplayData(self.scene, self.gamestate, self._tracks)
 
         self._ImguiUI = ImguiUserInterface(self.size, self.window, self.scene, self._map_gl, self.gamestate,
-                                           self._tracks, self._display_data, self.data_client)
+                                           self._tracks, self._display_data, self.data_client, self.coalition_manager)
 
         self._ImguiUI.set_reset_callback(self.reset_state_callback)
         self._ImguiUI.set_render_refresh_callback(self.render_refresh_callback)
@@ -304,6 +306,18 @@ class App:
         Performs any necessary updates or calculations for the application.
         """
         self.gamestate.update_state()
+        use_magnetic = config.app_config.get_bool(
+            "navigation",
+            "use_magnetic_north"
+        )
+        mag_variation = self._ImguiUI.map_gl.get_current_magnetic_variation()
+        bull_u, bull_v = self.gamestate.get_bullseye_pos()
+
+        for obj_dict in self.gamestate.objects.values():
+            for obj in obj_dict.values():
+                obj.bull_x = bull_u
+                obj.bull_y = bull_v
+                obj.magnetic_variation = mag_variation if use_magnetic else 0.0
 
         self.radar_sleep += delta_time
         if self.radar_sleep > config.app_config.get("radar", "update_interval",
@@ -320,6 +334,7 @@ class App:
     def on_render(self, delta_time):
         """
         Renders the application
+        
         """
         self.mgl_ctx.clear(*config.app_config.get_color_normalized("map", "background_color"))
         self._map_gl.render()
