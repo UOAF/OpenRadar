@@ -1645,16 +1645,23 @@ class ImguiUserInterface:
         # Handle BRAA line logic
         left_mouse_pressed = imgui.is_mouse_clicked(imgui.MouseButton_.left.value)
         left_mouse_down = imgui.is_mouse_down(imgui.MouseButton_.left.value)
-        left_mouse_released = imgui.is_mouse_released(imgui.MouseButton_.left.value)
+
+        # Only anchor a BRAA line to a cursor position that is actually inside the
+        # window. Note imgui.is_mouse_pos_valid() does not cover this: it only rejects
+        # positions beyond -256000, so the backend's (-1, -1) "outside window" sentinel
+        # passes as valid and would anchor the line to the top-left corner.
+        mouse_pos_in_window = (0 <= mouse_pos.x <= io.display_size.x and 0 <= mouse_pos.y <= io.display_size.y)
 
         # Start BRAA line on left mouse press
-        if left_mouse_pressed and not self.braa_active:
+        if left_mouse_pressed and not self.braa_active and mouse_pos_in_window:
             self.braa_active = True
             self.braa_start_world = mouse_world_pos.to_tuple()
             self.braa_start_screen = (mouse_pos.x, mouse_pos.y)
 
-        # End BRAA line on left mouse release
-        if left_mouse_released and self.braa_active:
+        # End the BRAA line once the button is no longer held. This tracks button state
+        # rather than the release event so that a release which happened while the
+        # window was unfocused (and so never reached us) cannot leave the line stuck on.
+        if self.braa_active and not left_mouse_down:
             self.braa_active = False
             self.braa_start_world = None
             self.braa_start_screen = None

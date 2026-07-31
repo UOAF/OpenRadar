@@ -240,10 +240,16 @@ class App:
             self.scene.zoom_at(pos, scroll_y)
 
     def handle_mouse_button(self, window, button, action, mods):
+        # Refresh ImGui's cursor position before queueing the button event. While the
+        # window is unfocused the backend feeds ImGui a (-1, -1) "mouse outside window"
+        # sentinel, and it only refreshes that on cursor motion - so a click that
+        # refocuses the window would otherwise be registered at (-1, -1).
+        pos = glfw.get_cursor_pos(self.window)
+        self._ImguiUI.impl.mouse_callback(window, *pos)
+
         self._ImguiUI.impl.mouse_button_callback(window, button, action, mods)
         if imgui.get_io().want_capture_mouse:
             return
-        pos = glfw.get_cursor_pos(self.window)
         if action == glfw.PRESS:
             return self.handle_mouse_button_down(button, pos, mods)
         elif action == glfw.RELEASE:
