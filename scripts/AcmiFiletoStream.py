@@ -167,8 +167,8 @@ def main():
     parser.add_argument('--timemultiplier',
                         '-t',
                         type=float,
-                        default=32,
-                        help='Time multiplier for playback speed (default: 32)')
+                        default=1,
+                        help='Time multiplier for playback speed (default: 1)')
     parser.add_argument('--start-time',
                         '-s',
                         type=float,
