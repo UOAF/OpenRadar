@@ -27,6 +27,11 @@ class RadarConfig:
         self.config_file_path = config_file if config_file is not None else application_dir / DEFAULT_CONFIG_FILE
         self.logger = None
 
+        # Lookup cache of (heading, key) -> raw tomlkit value. Walking the tomlkit
+        # document is comparatively expensive and config is read many times per frame,
+        # so resolved values are kept here and invalidated whenever they are written.
+        self._value_cache: dict[tuple[str, str], object] = {}
+
         with self.config_defaults_path.open("r") as f:
             self.config_defaults = tomlkit.parse(f.read())
 
@@ -42,13 +47,20 @@ class RadarConfig:
 
     def get(self, heading, key, requested_type: Type):
 
-        section = self.config.get(heading)
-        if section is None or key not in section:
-            return self.set_default(heading, key)
+        cache_key = (heading, key)
+        if cache_key in self._value_cache:
+            raw_value = self._value_cache[cache_key]
+        else:
+            section = self.config.get(heading)
+            if section is None or key not in section:
+                return self.set_default(heading, key)
+
+            raw_value = section.get(key)  # type: ignore
+            self._value_cache[cache_key] = raw_value
 
         val = None
         try:
-            val = requested_type(section.get(key))  # type: ignore
+            val = requested_type(raw_value)
             return val
         except TypeError as e:
             print(e)
@@ -113,6 +125,9 @@ class RadarConfig:
         if heading not in self.config:
             self.config[heading] = tomlkit.table()
         self.config[heading][key] = value  # type: ignore
+        # Drop rather than update the cache entry: tomlkit normalizes some values as it
+        # stores them, so the next read repopulates from the document itself.
+        self._value_cache.pop((heading, key), None)
         # self.save()
 
     def set_default(self, heading, key):
@@ -126,6 +141,7 @@ class RadarConfig:
 
     def set_all_defaults(self):
         self.config = self.config_defaults
+        self._value_cache.clear()
 
     def save(self):
         if self.logger is not None:
