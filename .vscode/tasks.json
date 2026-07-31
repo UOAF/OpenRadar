@@ -27,7 +27,9 @@
                 "scripts/AcmiFiletoStream.py",
                 "Data/2025-12-13_20-05-14.zip.acmi",
                 "--timemultiplier",
-                "32"
+                "1",
+                "--start-time",
+                "1800"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
