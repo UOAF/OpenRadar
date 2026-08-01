@@ -313,3 +313,8 @@ class TextRendererMsdf:
                                      self._quad_ibo)
 
         vao.render(instances=self.instance_count)
+
+        # moderngl's default gc_mode is None, so these are not freed when they go out of
+        # scope. render() runs every frame, so without this both leak continuously.
+        vao.release()
+        instance_vbo.release()

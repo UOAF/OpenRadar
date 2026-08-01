@@ -35,6 +35,16 @@ class Texture:
     def use(self):
         self.sampler.use()
 
+    def release(self):
+        """Free the GL texture and sampler.
+
+        moderngl's default gc_mode is None, so these are not freed when the wrapper is
+        garbage collected. Map textures can be up to 16k x 16k, so dropping one without
+        releasing strands a large amount of VRAM.
+        """
+        self.sampler.release()
+        self.texture.release()
+
 
 def make_image_texture(filepath: str) -> Texture:
     filepath = str(filepath)
@@ -56,6 +66,14 @@ class Mesh:
         self.vao.program['position'] = position
         self.vao.program['scale'] = scale
         self.vao.render()
+
+    def release(self):
+        """Free the GL vertex array and buffer owned by this mesh.
+
+        The texture is owned by MapGL, not the mesh, so it is not released here.
+        """
+        self.vao.release()
+        self.vbo.release()
 
 
 map_dir = config.bundle_dir / "resources/maps"
@@ -79,7 +97,18 @@ class MapGL:
 
         self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
 
+        # Declared before load_default_map() so the release guards below always have
+        # something to test; both are populated by the call that follows.
+        self.texture: Texture | None = None
+        self.mesh: Mesh | None = None
+
         self.load_default_map()
+
+    def _replace_texture(self, texture: "Texture | None"):
+        """Swap in a new map texture, releasing the one it replaces."""
+        if self.texture is not None:
+            self.texture.release()
+        self.texture = texture
 
     def list_maps(self):
 
@@ -112,7 +141,7 @@ class MapGL:
             self._update_magnetic_variation_from_filename(filename)
 
         try:
-            self.texture = make_image_texture(texture_path)
+            self._replace_texture(make_image_texture(texture_path))
         except Exception as exc:
             logger.exception(f"Failed to load map texture {texture_path}: {exc}. Using default grey map.")
             self.default_grey_map()
@@ -146,8 +175,7 @@ class MapGL:
         self.current_magnetic_variation = config.app_config.get_float("navigation", "magnetic_variation_deg")
 
     def clear_map(self):
-        if self.texture is not None:
-            self.texture = None
+        self._replace_texture(None)
         self.default_grey_map()
 
     def load_default_map(self):
@@ -157,7 +185,7 @@ class MapGL:
 
     def default_grey_map(self):
         gray_pixel = bytearray([0x80, 0x80, 0x80, 0xFF])
-        self.texture = Texture((1, 1), gray_pixel)
+        self._replace_texture(Texture((1, 1), gray_pixel))
 
         self.map_size_m = bms_math.THEATRE_DEFAULT_SIZE_METERS
         config.app_config.set("map", "default_map", "none")
@@ -177,9 +205,15 @@ class MapGL:
         quad = np.zeros((12, 2), dtype=np.float32)
         quad[::2] = prim
         quad[1::2] = prim
+
+        # Release the previous mesh's buffer/VAO before replacing it
+        if self.mesh is not None:
+            self.mesh.release()
         self.mesh = Mesh(self.shader, quad.astype('f4'), self.texture.texture)
 
     def render(self):
+        if self.mesh is None:
+            return
 
         scale = self.map_size_m
         self.shader['camera'].write(self.scene.get_vp())  # type: ignore

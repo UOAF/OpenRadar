@@ -134,8 +134,17 @@ class IconInstancedRenderer:
         # Render instances
         vao.render(instances=instance_count, vertices=vertices_per_instance)
 
+        # moderngl's default gc_mode is None, so dropping the reference does not free the
+        # GL object - without this the VAO leaks once per shape, per frame.
+        vao.release()
+
     def clear(self):
-        """Clean up GPU resources."""
+        """Release the per-frame instance buffers.
+
+        Note: shape_buffers are deliberately NOT released here. They are created once in
+        _initialize_shape_buffers() and never rebuilt, while clear() runs on every state
+        reset - releasing them would break rendering on the next frame.
+        """
         for buffer in self.instance_buffers.values():
             buffer.release()
 
