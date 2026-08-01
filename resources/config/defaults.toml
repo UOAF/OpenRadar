@@ -56,8 +56,8 @@ show_bullseye = true # Show the bullseye on the map
 show_lock_lines = true # Show lock lines between aircraft and their targets
 
 [labels]
-FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{altitude_ft_floor100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}, \"BOTTOM_LEFT\": {\"label_name\": \"B\", \"label_format\": \"{bullseye[0]:.0f} {bullseye[1]:.0f}\", \"show_on_hover\": true}}" # Label for fixed wing aircraft
-ROTARYWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{altitude_ft_floor100:.0f}ft {speed_kt:.0f}kt\", \"show_on_hover\": false}, \"BOTTOM_LEFT\": {\"label_name\": \"B\", \"label_format\": \"{bullseye[0]:.0f} {bullseye[1]:.0f}\", \"show_on_hover\": true}}"
+FIXEDWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{altitude_ft_floor100:.0f}ft M{Mach:.2f}\", \"show_on_hover\": false}, \"BOTTOM_LEFT\": {\"label_name\": \"B\", \"label_format\": \"{bullseye[0]:03.0f} {bullseye[1]:.0f}\", \"show_on_hover\": true}}" # Label for fixed wing aircraft
+ROTARYWING = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": false}, \"RIGHT\": {\"label_name\": \"R\", \"label_format\": \"{altitude_ft_floor100:.0f}ft {speed_kt:.0f}kt\", \"show_on_hover\": false}, \"BOTTOM_LEFT\": {\"label_name\": \"B\", \"label_format\": \"{bullseye[0]:03.0f} {bullseye[1]:.0f}\", \"show_on_hover\": true}}"
 MISSILE = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": true}}"
 GROUND = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": true}}"
 SEA = "{\"TOP_RIGHT\": {\"label_name\": \"TR\", \"label_format\": \"{display_name}\", \"show_on_hover\": true}}"

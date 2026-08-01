@@ -2,8 +2,12 @@ UOAF OpenRadar for BMS Falcon 4.0
 
 ![screenshot](https://github.com/UOAF/OpenRadar/blob/main/Data/Screenshot.png)
 
+## Requirements
+- Windows
+- A GPU and drivers supporting **OpenGL 4.6** (core profile)
+
 ## Getting Started
-1. Download OpenRadar.exe from the release on github
+1. Download OpenRadar.exe from the [latest release on GitHub](https://github.com/UOAF/OpenRadar/releases)
 2. Set the following setting in 'user/config/Falcon BMS User.cfg' to enable Tacview RealTime Telemetry on the BMS host
     ```
     set g_bTacviewRealTime 1
@@ -17,27 +21,44 @@ UOAF OpenRadar for BMS Falcon 4.0
 Instead you can use someone else's Tacview Real-Time Telemetry, tell them to open their chosen port (Default is 42674) to the internet on their router using their local address, then connect with their public IP!
 
 ## Configuration & Customization
-When you run OpenRadar.exe, a config file will be generated in the same directory called "OpenRadar.toml"
+When you run OpenRadar.exe, a config file will be generated in the same directory called `openradar.toml`
 This file contains a bunch of configuration stuff that you can change in the file, or through the in-program settings.
 
-This line dictates what icon set the program will use. You cannot change this in the application.
+If the config file ever becomes unreadable, OpenRadar will move it aside to `openradar.toml.corrupt`
+and start again from defaults rather than failing to launch.
 
-    ```
+This line dictates what icon set the program will use. You can also change it in-app under
+**File -> Settings**, which writes the same value back to this file.
+
     [display]
-    icon_set = "NTDS" # Icon set to use for displaying objects (NTDS, classic)
-    ```
+    icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)
+
 Classic = Classic OpenRadar icons
 
 NTDS = Naval Tactical Data System symbology. You can change each faction's relation in the Coalition tab. 
-<img src="https://github.com/ValerieOSD/OpenRadar/blob/6f586ed2f2ad9cdd3d7d780e9b5a8bfe224d9d71/Data/NTDS.png" width="600">
+<img src="https://github.com/UOAF/OpenRadar/blob/main/Data/NTDS.png" width="600">
 
 
 You can also customize the track labels of all targets visible on OpenRadar with your own text, or through the usage of variables such as speed, altitude, fuel, bullseye position and more.
-List of variables [here](https://github.com/ValerieOSD/OpenRadar/wiki/Track-Label-Variables).
-<img src="https://github.com/ValerieOSD/OpenRadar/blob/493ca90e8d328af058e5955ba3d9175ae4a5c1ad/Data/TrackLabels.png" width="600">
+Labels are edited in-app under **Windows -> Track Labels**; see [docs/label-formats.md](docs/label-formats.md)
+for the full syntax and the available variables.
+<img src="https://github.com/UOAF/OpenRadar/blob/main/Data/TrackLabels.png" width="600">
 
-## Work in Progress
-This project is a work in progress. Features and functionalities are continuously being developed and improved. Some features will be incomplete or not functional. Your feedback and contributions are highly appreciated to help us enhance the tool.
+## Building from Source
+Requires Python 3.12+.
+
+    pip install -r requirements.txt
+    python src/OpenRadar.py
+
+Run from the repository root - some resources are resolved relative to the working directory.
+
+To run the tests:
+
+    pytest
+
+To build a standalone executable:
+
+    pyinstaller OpenRadar.spec
 
 ## Overview
 UOAF OpenRadar is an open-source radar interface tool designed for use with BMS Falcon 4.0. This project aims to 
@@ -65,3 +86,6 @@ We will review your pull request and provide feedback as needed.
 
 ## Join Our Community
 We invite new pilots to join our community and fly with us. Connect with us on our [UOAF Discord](https://discord.gg/KGFUjhxWSh) to get started, ask questions, and participate in events.
+
+## License
+OpenRadar is licensed under the [GNU General Public License v3.0](LICENSE).
