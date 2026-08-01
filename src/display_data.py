@@ -9,7 +9,6 @@ from draw.annotations import MapAnnotations
 from draw.radar_labels_renderer import RadarLabelsRenderer
 from draw.imgui_radar_labels_renderer import ImGuiRadarLabelsRenderer
 from draw.scene import Scene
-from game_object_types import GameObjectType
 from typing import Optional
 import config
 
@@ -69,25 +68,6 @@ class DisplayData:
     def _generate_ac_labels(self):
         """Generate text labels for all visible tracks."""
         self.labels_renderer.draw_all_ac_labels(self.gamestate)
-
-    def _should_render_track_type(self, track_type: GameObjectType) -> bool:
-        """Check if a track type should be rendered based on layer configuration."""
-        layer_mapping = {
-            GameObjectType.FIXEDWING: "show_fixed_wing",
-            GameObjectType.ROTARYWING: "show_rotary_wing",
-            GameObjectType.GROUND: "show_ground",
-            GameObjectType.SEA: "show_ships",
-            GameObjectType.MISSILE: "show_missiles",
-            GameObjectType.BULLSEYE: "show_bullseye",
-        }
-
-        layer_key = layer_mapping.get(track_type)
-        if layer_key:
-            return config.app_config.get_bool("layers", layer_key)
-
-        return True  # Default to showing unknown types
-
-
 
     def render(self):
         """

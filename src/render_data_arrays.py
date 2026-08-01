@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 import config
 from typing import Optional, Any, Dict, Union, List, Tuple
 from game_object import GameObject
-from game_object_types import GameObjectType
+from game_object_types import GameObjectType, get_layer_key
 from draw.shapes import Shapes
 
 
@@ -563,16 +563,12 @@ class TrackRenderDataArrays:
 
     def _should_render_object_type(self, obj_type) -> bool:
         """Check if an object type should be rendered based on layer configuration."""
-        layer_mapping = {
-            GameObjectType.FIXEDWING: "show_fixed_wing",
-            GameObjectType.ROTARYWING: "show_rotary_wing",
-            GameObjectType.GROUND: "show_ground",
-            GameObjectType.SEA: "show_ships",
-            GameObjectType.MISSILE: "show_missiles",
-            # Note: Bullseye is handled separately in display_data.py
-        }
+        # Bullseye has a layer key, but its visibility is handled separately in
+        # display_data.py, so it is never filtered out of the render arrays here.
+        if obj_type == GameObjectType.BULLSEYE:
+            return True
 
-        layer_key = layer_mapping.get(obj_type)
+        layer_key = get_layer_key(obj_type)
         if layer_key:
             return config.app_config.get_bool("layers", layer_key)
 
