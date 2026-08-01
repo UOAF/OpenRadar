@@ -56,6 +56,21 @@ _TACVIEW_TO_TYPE: dict[str, GameObjectType] = {
     for obj_type, tacview_class in _TYPE_TACVIEW_MAP.items()
 }
 
+# Key in the [layers] config section controlling visibility of each type
+_TYPE_LAYER_KEYS: dict[GameObjectType, str] = {
+    GameObjectType.FIXEDWING: "show_fixed_wing",
+    GameObjectType.ROTARYWING: "show_rotary_wing",
+    GameObjectType.MISSILE: "show_missiles",
+    GameObjectType.GROUND: "show_ground",
+    GameObjectType.SEA: "show_ships",
+    GameObjectType.BULLSEYE: "show_bullseye",
+}
+
+
+def get_layer_key(obj_type: GameObjectType) -> str | None:
+    """Get the [layers] config key controlling this type's visibility, or None if untracked."""
+    return _TYPE_LAYER_KEYS.get(obj_type)
+
 
 def infer_object_type_from_tacview(type_field: str) -> GameObjectType:
     """Infer GameObjectType from Tacview Type field string.

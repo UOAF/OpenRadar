@@ -16,7 +16,7 @@ import hashlib
 from imgui_bundle import imgui
 from draw.scene import Scene
 from game_object import GameObject
-from game_object_types import GameObjectType
+from game_object_types import get_layer_key
 from game_state import GameState
 from sensor_tracks import Track
 from util.track_labels import (TrackLabelLocation, TrackLabels, get_labels_for_class_type, evaluate_input_format)
@@ -161,7 +161,9 @@ class ImGuiRadarLabelsRenderer:
         Returns:
             The cached label (updated or newly created)
         """
-        cache_key = f"{obj.object_id}_{location.value}"
+        # Use the enum's name, not .value: the value is a dataclass, so interpolating it
+        # invokes its generated __repr__ and builds a long string for every label.
+        cache_key = f"{obj.object_id}_{location.name}"
 
         cached_label = self._text_cache.get(cache_key)
         if cached_label is not None and cached_label.text == text:
@@ -233,43 +235,39 @@ class ImGuiRadarLabelsRenderer:
 
     def draw_all_ac_labels(self, gamestate: GameState):
         """
-        Draw labels for all aircraft in the game state.
-        
+        Draw labels for every visible object type in the game state.
+
         Args:
             gamestate: Current game state containing all objects
         """
-        # Check if fixed wing layer is visible
-        if not config.app_config.get_bool("layers", "show_fixed_wing"):
-            return
-
-        fixed_wing_objs = gamestate.objects[GameObjectType.FIXEDWING]
-
-        # Get the label configuration for this track type
-        labels = get_labels_for_class_type(GameObjectType.FIXEDWING)
-
         # Get offset for positioning labels relative to track icons
         offset = config.app_config.get_int("radar", "contact_size")
         label_padding = config.app_config.get_int("radar", "contact_label_padding")
         total_offset = offset + label_padding
         font_scale = config.app_config.get_float("radar", "contact_font_scale") / 100.0  # Convert to ImGui scale
 
-        # TODO: labels are only rendered for fixed wing; extending to all object
-        # types was reverted because CPU-side quad calculation for text rendering
-        # isn't performant enough yet. Revisit once font rendering is off the CPU path.
-        if labels is None:
-            return
-
-        objs = list(fixed_wing_objs.values())
-        if not objs:
-            return
-
-        world_positions = np.array([(obj.U, obj.V) for obj in objs], dtype=np.float64)
-        screen_positions = self.scene.world_to_screen_batch(world_positions).tolist()
-
-        for obj, (screen_x, screen_y) in zip(objs, screen_positions):
-            if not self._is_on_screen(screen_x, screen_y):
+        for object_type, objects_by_id in gamestate.objects.items():
+            if not objects_by_id:
                 continue
-            self.draw_track_labels(obj, labels, total_offset, font_scale, screen_x, screen_y)
+
+            # Respect the layer visibility toggle for this type, if it has one
+            layer_key = get_layer_key(object_type)
+            if layer_key is not None and not config.app_config.get_bool("layers", layer_key):
+                continue
+
+            # Types with no labels configured cost nothing beyond this check
+            labels = get_labels_for_class_type(object_type)
+            if labels is None or not labels.labels:
+                continue
+
+            objs = list(objects_by_id.values())
+            world_positions = np.array([(obj.U, obj.V) for obj in objs], dtype=np.float64)
+            screen_positions = self.scene.world_to_screen_batch(world_positions).tolist()
+
+            for obj, (screen_x, screen_y) in zip(objs, screen_positions):
+                if not self._is_on_screen(screen_x, screen_y):
+                    continue
+                self.draw_track_labels(obj, labels, total_offset, font_scale, screen_x, screen_y)
 
     def draw_custom_text(self,
                          text: str,
