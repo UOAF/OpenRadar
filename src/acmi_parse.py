@@ -374,16 +374,9 @@ class ACMIFileParser:
             return {"Longitude": lon, "Latitude": lat, "Altitude": alt, "U": u, "V": v}
 
         if num_pipes == 5:
-            # Complex objects in a spherical world
-
-            # START HACK FOR EXTRA PIPE BAR IN BULLSEYE
-            #Todo remove when the extra pipe bar is removed
-            self.logger.warning(f"FIX ME | Handling extra pipe bar in bullseye data: {t}")
-            lon, lat, alt, u, v, tmp = map(lambda x: float(x.strip()) if x.strip() else None, data)
-            return {"Longitude": lon, "Latitude": lat, "Altitude": alt, "U": u, "V": v}
-
-            #END HACK
-
+            # Complex objects in a spherical world (lon|lat|alt|roll|pitch|yaw).
+            # OpenRadar works in flat-world U/V coordinates, which this form does not
+            # carry, so there is nothing usable to extract.
             return None
 
         if num_pipes == 8:
