@@ -8,8 +8,14 @@ import moderngl as mgl
 # Mock the Scene class for testing
 class MockScene:
     def __init__(self):
-        # Create a minimal OpenGL context for testing
-        self.mgl_context = mgl.create_context(standalone=True)
+        # Create a minimal OpenGL context for testing.
+        # CI runners (e.g. GitHub Actions windows-latest) have no real GPU and only
+        # expose a software OpenGL 1.1 fallback that lacks the ARB extension moderngl
+        # needs to create a standalone 3.3+ context, so skip rather than fail there.
+        try:
+            self.mgl_context = mgl.create_context(standalone=True)
+        except Exception as e:
+            pytest.skip(f"No GPU-capable OpenGL context available in this environment: {e}")
         self.display_size = (800, 600)
     
     def get_vp(self):
