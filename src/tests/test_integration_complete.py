@@ -127,8 +127,6 @@ def test_complete_line_pipeline():
     print("✓ MultiLineRenderer: GPU rendering with SSBO buffers and mitering")
     print("✓ Annotations integration: INI file processing with advanced line rendering")
     print("✓ Performance: Efficient handling of large line datasets")
-    
-    return True
 
 if __name__ == "__main__":
     test_complete_line_pipeline()
