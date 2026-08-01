@@ -318,17 +318,21 @@ class ACMIFileParser:
             properties = {}
             for prop in parts[1:]:
                 try:
-                    key, value = prop.split('=')
+                    key, value = prop.split('=', 1)
                 except ValueError:
+                    # Skip only the malformed field. Breaking here would silently discard
+                    # every remaining property on the line, including position data.
                     self.logger.error(f"Failed to parse property in ACMI line - ValueError: {parts}")
-                    break
-                if key in "T":
+                    continue
+                # Must be an equality test: `key in "T"` is a substring check that is also
+                # true for the empty string, routing malformed fragments into parse_t().
+                if key == "T":
                     position_vals = self.parse_t(value)
                     if position_vals is not None:
                         value = {key: val for key, val in position_vals.items() if val is not None}
                     else:
                         self.logger.warning(f"Invalid T (position) value in ACMI line: {line}")
-                        break
+                        continue
 
                 properties[key] = value
 

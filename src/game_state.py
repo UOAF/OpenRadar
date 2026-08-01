@@ -74,34 +74,42 @@ class GameState:
                 self.logger.debug("Received end-of-data marker")
                 break  # End of data
 
-            acmiline = self.parser.parse_line(line)
-            if acmiline is None:
-                self.logger.error(f"Failed to parse ACMI line: {line}")
-                continue
+            try:
+                self._process_line(line)
+            except Exception:
+                # Telemetry is external input and can be malformed or truncated. A bad
+                # line must never take down the render loop - log it and move on.
+                self.logger.exception(f"Error processing ACMI line, skipping: {line!r}")
 
-            if acmiline.action == acmi_parse.ACTION_REMOVE:
-                # Remove object from battlefield
-                if acmiline.object_id is not None:
-                    self.logger.debug(f"Removing object: {acmiline.object_id}")
-                    self._remove_object(acmiline.object_id)
-                else:
-                    self.logger.warning("Attempted to delete object with uninitialized object_id")
+    def _process_line(self, line: str):
+        """Parse and apply a single ACMI telemetry line."""
+        acmiline = self.parser.parse_line(line)
+        if acmiline is None:
+            self.logger.error(f"Failed to parse ACMI line: {line}")
+            return
 
-            elif acmiline.action == acmi_parse.ACTION_TIME:
-                # Time updates are handled by the parser
-                self.logger.debug(f"Time update: {self.parser.get_time()}")
-                pass
-
-            elif acmiline.action == acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
-                # Update global variables
-                self.global_vars = self.global_vars | acmiline.properties
-
-            elif acmiline.action == acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
-                # Update or create object
-                self._update_object(acmiline)
-
+        if acmiline.action == acmi_parse.ACTION_REMOVE:
+            # Remove object from battlefield
+            if acmiline.object_id is not None:
+                self.logger.debug(f"Removing object: {acmiline.object_id}")
+                self._remove_object(acmiline.object_id)
             else:
-                self.logger.warning(f"Unknown ACMI action '{acmiline.action}' in line: {acmiline}")
+                self.logger.warning("Attempted to delete object with uninitialized object_id")
+
+        elif acmiline.action == acmi_parse.ACTION_TIME:
+            # Time updates are handled by the parser
+            self.logger.debug(f"Time update: {self.parser.get_time()}")
+
+        elif acmiline.action == acmi_parse.ACTION_GLOBAL and isinstance(acmiline, acmi_parse.ACMIObject):
+            # Update global variables
+            self.global_vars = self.global_vars | acmiline.properties
+
+        elif acmiline.action == acmi_parse.ACTION_UPDATE and isinstance(acmiline, acmi_parse.ACMIObject):
+            # Update or create object
+            self._update_object(acmiline)
+
+        else:
+            self.logger.warning(f"Unknown ACMI action '{acmiline.action}' in line: {acmiline}")
 
     def get_nearest_object(self, world_pos: tuple[float, float]) -> GameObject | None:
         """
