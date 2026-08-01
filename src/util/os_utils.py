@@ -25,8 +25,15 @@ def get_bms_path_reg():
     bms_installs = list()
     # Computer\HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Benchmark Sims\Falcon BMS 4.37
     key = r'SOFTWARE\WOW6432Node\Benchmark Sims'
-    aReg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-    parent_Key = winreg.OpenKey(aReg, key)
+    try:
+        aReg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+        parent_Key = winreg.OpenKey(aReg, key)
+    except OSError:
+        # BMS not installed, or the key is absent under an emulated registry such as
+        # Wine/Proton. This function is designed to soft-fail; only this outer open was
+        # left unguarded, which turned a missing key into an uncaught FileNotFoundError.
+        print("Falcon BMS not found in registry")
+        return None
 
     # Enumerate all the subkeys (different BMS versions)
     for i in range(1024):
