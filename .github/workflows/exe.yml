@@ -3,12 +3,33 @@
 name: Build exe
 
 # Controls when the action will run.
-on: [push, workflow_dispatch]
+# pull_request is included so contributions from forks are built and tested before merge;
+# with push alone, forked PRs get no CI at all.
+on: [push, pull_request, workflow_dispatch]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+      - run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
+
   # This workflow contains a single job called "build"
   build:
+    needs: test
     # The type of runner that the job will run on
     runs-on: windows-latest
     strategy:

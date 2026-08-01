@@ -229,6 +229,9 @@ class TestIconRenderData:
         mock_obj.V = v
         mock_obj.color_rgba = color_rgba
         mock_obj.override_color = override_color
+        # Set explicitly: side_override_color is only a class-level annotation on
+        # GameObject, so Mock(spec=GameObject) does not pick it up from dir().
+        mock_obj.side_override_color = None
         return mock_obj
 
     def test_initialization(self):
@@ -486,6 +489,9 @@ class TestVelocityVectorRenderData:
         mock_obj.CAS = cas
         mock_obj.color_rgba = color_rgba
         mock_obj.override_color = override_color
+        # Set explicitly: side_override_color is only a class-level annotation on
+        # GameObject, so Mock(spec=GameObject) does not pick it up from dir().
+        mock_obj.side_override_color = None
         return mock_obj
 
     def test_initialization(self):
@@ -598,6 +604,9 @@ class TestLockLineRenderData:
         mock_obj.locked_target_objs = locked_targets if locked_targets is not None else []
         mock_obj.color_rgba = color_rgba
         mock_obj.override_color = override_color
+        # Set explicitly: side_override_color is only a class-level annotation on
+        # GameObject, so Mock(spec=GameObject) does not pick it up from dir().
+        mock_obj.side_override_color = None
         return mock_obj
 
     def test_initialization(self):
@@ -854,6 +863,8 @@ class TestTrackRenderDataArrays:
         mock_obj.locked_target_objs = locked_targets if locked_targets is not None else []
         mock_obj.color_rgba = color_rgba
         mock_obj.override_color = None
+        # See note above: not visible to Mock(spec=GameObject) via dir().
+        mock_obj.side_override_color = None
         mock_obj.is_air_unit = Mock(
             return_value=(obj_type == GameObjectType.FIXEDWING or obj_type == GameObjectType.ROTARYWING))
         return mock_obj
@@ -1224,7 +1235,8 @@ class TestLineRenderData:
         assert len(points) == 9   # 2 + 4 + 3 = 9 points total
         
         # Check metadata structure
-        assert metadata.dtype.names == ('start_index', 'end_index', 'width', 'color')
+        # _padding is a deliberate GPU struct-alignment field in the metadata dtype
+        assert metadata.dtype.names == ('start_index', 'end_index', 'width', '_padding', 'color')
         
         # Check first line metadata
         assert metadata[0]['start_index'] == 0
