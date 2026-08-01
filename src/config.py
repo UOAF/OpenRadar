@@ -1,5 +1,5 @@
 import atexit
-import select
+import copy
 
 import tomlkit
 from typing import Type
@@ -32,18 +32,41 @@ class RadarConfig:
         # so resolved values are kept here and invalidated whenever they are written.
         self._value_cache: dict[tuple[str, str], object] = {}
 
-        with self.config_defaults_path.open("r") as f:
+        with self.config_defaults_path.open("r", encoding="utf-8") as f:
             self.config_defaults = tomlkit.parse(f.read())
 
         if self.config_file_path.exists():
-            with self.config_file_path.open() as f:
-                print(f"Loading config from {self.config_file_path}")
-                self.config = tomlkit.parse(f.read())
+            self._load_user_config()
         else:
             self.set_all_defaults()
             self.save()
 
         atexit.register(self.save)
+
+    def _load_user_config(self):
+        """Load the user config, falling back to defaults if it cannot be parsed.
+
+        This runs at import time, before logging is configured, so a corrupt file used to
+        kill the app before any crash dump could be written - and left it unstartable
+        until the user found and deleted the file themselves.
+        """
+        try:
+            with self.config_file_path.open(encoding="utf-8") as f:
+                print(f"Loading config from {self.config_file_path}")
+                self.config = tomlkit.parse(f.read())
+            return
+        except (OSError, tomlkit.exceptions.ParseError, UnicodeDecodeError) as e:
+            print(f"Could not read config {self.config_file_path}: {e}")
+
+        # Preserve the unreadable file for diagnosis rather than silently overwriting it
+        backup_path = self.config_file_path.with_suffix(self.config_file_path.suffix + ".corrupt")
+        try:
+            os.replace(self.config_file_path, backup_path)
+            print(f"Moved unreadable config aside to {backup_path}; starting from defaults.")
+        except OSError as e:
+            print(f"Could not move unreadable config aside: {e}; starting from defaults.")
+
+        self.set_all_defaults()
 
     def get(self, heading, key, requested_type: Type):
 
@@ -140,14 +163,36 @@ class RadarConfig:
         return def_val
 
     def set_all_defaults(self):
-        self.config = self.config_defaults
+        # Must be a copy. Aliasing the defaults document means every later set() - window
+        # moves, sliders, colour pickers - also mutates config_defaults, which silently
+        # turns the UI's "reset to defaults" into a no-op for the rest of the session.
+        self.config = copy.deepcopy(self.config_defaults)
         self._value_cache.clear()
 
     def save(self):
         if self.logger is not None:
             self.logger.info("Saving configuration to: %s", self.config_file_path)
-        with self.config_file_path.open('w') as f:
-            f.write(tomlkit.dumps(self.config))
+
+        # Write to a temporary file in the same directory and swap it in, so an
+        # interrupted write cannot leave a truncated config behind. os.replace is atomic
+        # on the same filesystem.
+        tmp_path = self.config_file_path.with_suffix(self.config_file_path.suffix + ".tmp")
+        try:
+            with tmp_path.open('w', encoding="utf-8") as f:
+                f.write(tomlkit.dumps(self.config))
+            os.replace(tmp_path, self.config_file_path)
+        except OSError as e:
+            # Runs from atexit, and the config lives next to the executable - a read-only
+            # install directory must not produce an unhandled traceback on every exit.
+            message = f"Could not save configuration to {self.config_file_path}: {e}"
+            if self.logger is not None:
+                self.logger.error(message)
+            else:
+                print(message)
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def set_logger(self, logger):
         self.logger = logger
