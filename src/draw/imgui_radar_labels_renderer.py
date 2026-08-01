@@ -226,11 +226,16 @@ class ImGuiRadarLabelsRenderer:
                 cached_label.y_screen = final_y
 
     def _is_on_screen(self, screen_x: float, screen_y: float) -> bool:
-        io = imgui.get_io()
+        # Bound against the same display_size that produced these coordinates
+        # (Scene.world_to_screen_batch) rather than imgui's io.display_size. The two
+        # normally agree, but diverge while the window is minimized: the imgui backend
+        # reports (0, 0) whereas Scene deliberately keeps its last non-zero size, which
+        # would cull every label.
+        width, height = self.scene.display_size
 
         return (
-            0 <= screen_x <= io.display_size.x and
-            0 <= screen_y <= io.display_size.y
+            0 <= screen_x <= width and
+            0 <= screen_y <= height
         )
 
     def draw_all_ac_labels(self, gamestate: GameState):
