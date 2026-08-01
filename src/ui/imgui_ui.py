@@ -20,6 +20,7 @@ from icons import get_available_icon_sets
 from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 from render_data_arrays import TrackRenderDataArrays
+from version import VERSION_STRING
 import config
 
 from util.bms_math import METERS_TO_FT, NM_TO_METERS, M_PER_SEC_TO_KNOTS
@@ -770,6 +771,14 @@ class ImguiUserInterface:
                     self.fps_window_open = not self.fps_window_open
 
                 imgui.end_menu()
+
+            # Version, right-aligned in the menu bar so users can report which build they
+            # are running. A menu bar already lays its items out horizontally, so set the
+            # cursor X directly - same_line() here pushes the text onto a second row,
+            # where it is clipped by the menu bar's height and never appears.
+            version_width = imgui.calc_text_size(VERSION_STRING).x
+            imgui.set_cursor_pos_x(imgui.get_window_width() - version_width - 10)
+            imgui.text_disabled(VERSION_STRING)
 
             imgui.end_main_menu_bar()
 
