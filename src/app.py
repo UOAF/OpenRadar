@@ -25,7 +25,7 @@ from display_data import DisplayData
 from gpu_timer import GPUTimer
 
 from util.os_utils import from_path
-from util.bms_math import THEATRE_DEFAULT_SIZE_FT
+from version import VERSION_STRING
 
 VSYNC_ENABLE = True
 MOUSEDRAGBUTTON = 1
@@ -91,7 +91,6 @@ class App:
         glfw.init()
         self.clock = Clock()
         glfw.set_error_callback(self.handle_error)
-        window_icon = Image.open(from_path(config.bundle_dir / "resources/icons/OpenRadaricon.png"))
 
         # Set window hints for initial position (Hide the window initially before setting position)
         glfw.window_hint(glfw.VISIBLE, glfw.FALSE)
@@ -125,24 +124,28 @@ class App:
             return value
 
         config_size: tuple[int, int] = get_config_with_validation("size")
-        h, w = config_size
-        self.window = glfw.create_window(h, w, "OpenRadar", None, None)
-        self.logger.info(f"Created window with size: {h}x{w}")
+        width, height = config_size
+        self.window = glfw.create_window(width, height, VERSION_STRING, None, None)
+        if not self.window:
+            # Most commonly this means the OpenGL 4.6 core profile requested above is not
+            # available. Fail with something diagnosable rather than passing None to GLFW.
+            glfw.terminate()
+            raise RuntimeError(
+                "Failed to create a window. OpenRadar requires an OpenGL 4.6 core profile; "
+                "check that your GPU drivers are up to date and that you are not running "
+                "over a remote desktop session that lacks GPU acceleration.")
+        self.logger.info(f"Created window with size: {width}x{height}")
 
         window_x, window_y = get_config_with_validation("location", (0, 20))
-        glfw.set_window_pos(self.window, window_x, window_y)
-
-        h, w = config_size
-        self.window = glfw.create_window(h, w, "OpenRadar", None, None)
-        self.logger.info(f"Created window with size: {h}x{w}")
-
         glfw.set_window_pos(self.window, window_x, window_y)
 
         glfw.show_window(self.window)
 
         glfw.set_input_mode(self.window, glfw.CURSOR, glfw.CURSOR_NORMAL)
 
-        glfw.set_window_icon(self.window, 1, window_icon)
+        with Image.open(from_path(config.bundle_dir / "resources/icons/OpenRadarIcon.png")) as window_icon:
+            glfw.set_window_icon(self.window, 1, window_icon)
+
         glfw.make_context_current(self.window)
 
         glfw.swap_interval(int(VSYNC_ENABLE))

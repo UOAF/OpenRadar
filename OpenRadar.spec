@@ -50,4 +50,4 @@ exe = EXE(pyz,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None,
-          icon='resources\\icons\\OpenRadar_icon.ico')
+          icon='resources/icons/openradar_icon.ico')
