@@ -449,7 +449,10 @@ class ImguiUserInterface:
         self.tacview_colors_window()
         self.contact_color_window()
 
-        self.display_data.labels_renderer.render()
+        # NOTE: track labels are rendered from DisplayData.render(), alongside the other
+        # display renderers. Calling labels_renderer.render() here too would re-enter the
+        # same ImGui overlay window in the same frame, and ImGui appends rather than
+        # replaces - emitting every label twice.
 
     def _setup_dockspace(self):
         """Setup the main dockspace for docking windows."""
