@@ -189,6 +189,7 @@ class App:
 
         self._ImguiUI.set_reset_callback(self.reset_state_callback)
         self._ImguiUI.set_render_refresh_callback(self.render_refresh_callback)
+        self._ImguiUI.set_exit_callback(self.request_exit)
 
         self.hovered_game_obj: GameObject | None = None
 
@@ -200,6 +201,10 @@ class App:
 
     def window_close_callback(self, event):
         self.logger.info("Window close requested")
+        self._running = False
+
+    def request_exit(self):
+        self.logger.info("Application exit requested")
         self._running = False
 
     def reset_state_callback(self):
@@ -301,9 +306,7 @@ class App:
         self._ImguiUI.impl.keyboard_callback(window, key, scancode, action, mods)
         if imgui.get_io().want_capture_keyboard:
             return
-        if action == glfw.PRESS:
-            if key == glfw.KEY_ESCAPE:
-                self._running = False
+        # No keyboard shortcut exits the app; use File / Exit or the window close button.
 
     def handle_char(self, window, char):
         self._ImguiUI.impl.char_callback(window, char)
