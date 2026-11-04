@@ -1059,6 +1059,7 @@ class ImguiUserInterface:
         font_scale = config.app_config.get_int("radar", "contact_font_scale")
         label_padding = config.app_config.get_int("radar", "contact_label_padding")
         center_point_size = config.app_config.get_float("radar", "center_point_size")
+        hide_contacts_below_0_2m = config.app_config.get_bool("radar", "hide_contacts_below_0_2m")
         update_interval = config.app_config.get_float("radar", "update_interval")
         bullseye_num_rings = config.app_config.get_int("radar", "bullseye_num_rings")
         bullseye_ring_distance = config.app_config.get_int("radar", "bullseye_ring_distance")
@@ -1081,6 +1082,15 @@ class ImguiUserInterface:
         center_changed, _ = create_slider_float("Center Point Size", center_point_size, 0, 6.0, "radar",
                                                 "center_point_size")
         if center_changed:
+            changed = True
+
+        hide_contacts_changed, _ = create_checkbox(
+            "Hide Contacts <0.2M",
+            hide_contacts_below_0_2m,
+            "radar",
+            "hide_contacts_below_0_2m"
+        )
+        if hide_contacts_changed:
             changed = True
 
         imgui.separator()

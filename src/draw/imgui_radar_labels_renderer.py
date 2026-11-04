@@ -16,7 +16,7 @@ import hashlib
 from imgui_bundle import imgui
 from draw.scene import Scene
 from game_object import GameObject
-from game_object_types import get_layer_key
+from game_object_types import GameObjectType, get_layer_key
 from game_state import GameState
 from sensor_tracks import Track
 from util.track_labels import (TrackLabelLocation, TrackLabels, get_labels_for_class_type, evaluate_input_format)
@@ -251,6 +251,12 @@ class ImGuiRadarLabelsRenderer:
         total_offset = offset + label_padding
         font_scale = config.app_config.get_float("radar", "contact_font_scale") / 100.0  # Convert to ImGui scale
 
+        # Collect IDs for objects actually present in the icon render arrays.
+        # Only render labels on objects that are visible on the radar (i.e., have icons).
+        visible_icon_object_ids = set()
+        for icon_data in gamestate.render_arrays.icon_data.values():
+            visible_icon_object_ids.update(icon_data.id_to_index.keys())
+
         for object_type, objects_by_id in gamestate.objects.items():
             if not objects_by_id:
                 continue
@@ -265,7 +271,11 @@ class ImGuiRadarLabelsRenderer:
             if labels is None or not labels.labels:
                 continue
 
-            objs = list(objects_by_id.values())
+            # Only if there are visible objects of this type do we proceed to render labels
+            objs = [obj for obj in objects_by_id.values() if obj.object_id in visible_icon_object_ids]
+            if not objs:
+                continue
+
             world_positions = np.array([(obj.U, obj.V) for obj in objs], dtype=np.float64)
             screen_positions = self.scene.world_to_screen_batch(world_positions).tolist()
 

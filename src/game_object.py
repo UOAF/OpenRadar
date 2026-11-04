@@ -149,7 +149,7 @@ class GameObject:
         self.bull_x = 0.0
         self.bull_y = 0.0
         self.magnetic_variation = 0.0
-
+       
         logger.debug(f"Creating GameObject {object_id} of type {object_type}")
 
         # Initialize all ACMI numeric fields to 0.0
@@ -263,6 +263,10 @@ class GameObject:
 
     def get_pos(self) -> tuple[float, float]:
         return (self.U, self.V)
+
+    def get_mach(self) -> float:
+        """Get the Mach number for this object."""
+        return self.Mach
 
     def change_name(self, name: str):
         self.override_name = name
