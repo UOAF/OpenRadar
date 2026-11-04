@@ -8,8 +8,9 @@ This class uses ImGui for text rendering instead of OpenGL/MSDF, providing:
 - Integration with the existing dockspace window
 """
 
+import copy
 import numpy as np
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 import hashlib
 
@@ -23,6 +24,11 @@ from util.track_labels import (TrackLabelLocation, TrackLabels, get_labels_for_c
 from util.bms_math import NM_TO_METERS
 
 import config
+
+# GameObject attributes set by the user/UI rather than by radar data. These are copied from
+# the live object onto frozen snapshot copies so edits (e.g. a callsign change) show at once.
+_USER_DRIVEN_FIELDS = ("override_name", "override_color", "side_override_color", "bull_x", "bull_y",
+                       "magnetic_variation")
 
 # Per-anchor-location offset formula, as (offset_x_sign, text_width_coef, offset_y_sign, text_height_coef):
 #   dx = offset_x_sign * offset + text_width_coef * text_width
@@ -80,6 +86,10 @@ class ImGuiRadarLabelsRenderer:
         # Cache for text labels - keyed by object_id + location
         self._text_cache: Dict[str, CachedTextLabel] = {}
 
+        # Objects captured at the last radar update, per type:
+        # (object_type, live objects, objects used for label text, world positions)
+        self._snapshot: List[Tuple[Any, List[GameObject], List[GameObject], np.ndarray]] = []
+
         # Track the currently hovered game object for special rendering
         self._hovered_object: GameObject | None = None
 
@@ -94,8 +104,9 @@ class ImGuiRadarLabelsRenderer:
                                | imgui.WindowFlags_.no_focus_on_appearing.value | imgui.WindowFlags_.no_inputs.value)
 
     def clear(self):
-        """Clear the text cache to force regeneration of all labels."""
+        """Clear the text cache and snapshot to force regeneration of all labels."""
         self._text_cache.clear()
+        self._snapshot = []
 
     def set_hovered_obj(self, obj: GameObject | None):
         """
@@ -238,23 +249,67 @@ class ImGuiRadarLabelsRenderer:
             0 <= screen_y <= height
         )
 
-    def draw_all_ac_labels(self, gamestate: GameState):
+    def draw_all_ac_labels(self, gamestate: GameState, freeze_objects: bool = False):
         """
-        Draw labels for every visible object type in the game state.
+        Snapshot the game state and lay out labels for every visible object type.
 
         Args:
             gamestate: Current game state containing all objects
+            freeze_objects: See take_snapshot
         """
+        self.take_snapshot(gamestate, freeze_objects)
+        self.layout_labels()
+
+    def take_snapshot(self, gamestate: GameState, freeze_objects: bool = False):
+        """
+        Capture object positions (and optionally label data) at a radar update.
+
+        Labels are laid out from this snapshot every frame by layout_labels, so they
+        follow pan/zoom and user edits immediately while their position and data only
+        advance on radar updates.
+
+        Args:
+            gamestate: Current game state containing all objects
+            freeze_objects: Copy objects so label data (altitude, speed, ...) stays as it
+                was at this update. Unnecessary when snapshots are taken every frame.
+        """
+        self._snapshot = []
+        for object_type, objects_by_id in gamestate.objects.items():
+            if not objects_by_id:
+                continue
+
+            live_objs = list(objects_by_id.values())
+            world_positions = np.array([(obj.U, obj.V) for obj in live_objs], dtype=np.float64)
+
+            # Only types with labels need frozen copies
+            labels = get_labels_for_class_type(object_type)
+            if freeze_objects and labels is not None and labels.labels:
+                label_objs = [copy.copy(obj) for obj in live_objs]
+            else:
+                label_objs = live_objs
+
+            self._snapshot.append((object_type, live_objs, label_objs, world_positions))
+
+    @staticmethod
+    def _sync_user_fields(frozen: GameObject, live: GameObject):
+        """Carry user/UI-driven state from the live object onto a frozen snapshot copy."""
+        for field in _USER_DRIVEN_FIELDS:
+            setattr(frozen, field, getattr(live, field))
+
+    def layout_labels(self):
+        """
+        Regenerate all label text and screen positions from the last snapshot using the
+        current camera, label configuration and hover state.
+        """
+        self._text_cache.clear()
+
         # Get offset for positioning labels relative to track icons
         offset = config.app_config.get_int("radar", "contact_size")
         label_padding = config.app_config.get_int("radar", "contact_label_padding")
         total_offset = offset + label_padding
         font_scale = config.app_config.get_float("radar", "contact_font_scale") / 100.0  # Convert to ImGui scale
 
-        for object_type, objects_by_id in gamestate.objects.items():
-            if not objects_by_id:
-                continue
-
+        for object_type, live_objs, label_objs, world_positions in self._snapshot:
             # Respect the layer visibility toggle for this type, if it has one
             layer_key = get_layer_key(object_type)
             if layer_key is not None and not config.app_config.get_bool("layers", layer_key):
@@ -265,13 +320,14 @@ class ImGuiRadarLabelsRenderer:
             if labels is None or not labels.labels:
                 continue
 
-            objs = list(objects_by_id.values())
-            world_positions = np.array([(obj.U, obj.V) for obj in objs], dtype=np.float64)
+            frozen = label_objs is not live_objs
             screen_positions = self.scene.world_to_screen_batch(world_positions).tolist()
 
-            for obj, (screen_x, screen_y) in zip(objs, screen_positions):
+            for live_obj, obj, (screen_x, screen_y) in zip(live_objs, label_objs, screen_positions):
                 if not self._is_on_screen(screen_x, screen_y):
                     continue
+                if frozen:
+                    self._sync_user_fields(obj, live_obj)
                 self.draw_track_labels(obj, labels, total_offset, font_scale, screen_x, screen_y)
 
     def draw_custom_text(self,

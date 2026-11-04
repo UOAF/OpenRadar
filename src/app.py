@@ -216,11 +216,15 @@ class App:
         self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
 
         # Update the cached render arrays in sensor tracks
-        self._tracks.render_arrays = self.gamestate.render_arrays.get_render_data()
+        self._tracks.update()
 
         # Regenerate display data with updated arrays
-        self._display_data.generate_render_arrays()
+        self._display_data.generate_render_arrays(self._radar_interval_active())
         self._display_data.refresh_configuration()
+
+    @staticmethod
+    def _radar_interval_active() -> bool:
+        return config.app_config.get_float("radar", "update_interval") > 0.0
 
     def handle_window_moved(self, window, xpos, ypos):
         config.app_config.set("window", "location", (xpos, ypos))
@@ -333,7 +337,7 @@ class App:
                                                     float):  #TODO implement in sensor_tracks
             self.radar_sleep = 0
             self._tracks.update()
-            self._display_data.generate_render_arrays()
+            self._display_data.generate_render_arrays(self._radar_interval_active())
         self._ImguiUI.update()
         self._ImguiUI.fps = self.clock.fps
         self._ImguiUI.frame_time = self.gpu_frame_time_us

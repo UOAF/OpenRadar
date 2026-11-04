@@ -30,10 +30,26 @@ class DisplayData:
         # self.labels_renderer: RadarLabelsRenderer = RadarLabelsRenderer(self.scene)
         self.labels_renderer: ImGuiRadarLabelsRenderer = ImGuiRadarLabelsRenderer(self.scene)
 
-    def generate_render_arrays(self):
+    def generate_render_arrays(self, freeze_label_data: bool = False):
         """
-        Generate the instance arrays for rendering. called 
+        Generate the instance arrays for rendering. Called on each radar update.
+
+        Args:
+            freeze_label_data: Keep label data as of this update until the next one
+                (used when the radar update interval is longer than a frame).
         """
+        self._load_track_arrays()
+
+        # Update bullseye if enabled and position available
+        if config.app_config.get_bool("layers", "show_bullseye"):
+            bullseye_pos = self.gamestate.get_bullseye_pos()
+            if bullseye_pos != (0, 0):  # Valid bullseye position
+                self.bullseye_renderer.set_bullseye(bullseye_pos[0], bullseye_pos[1])
+
+        # Snapshot track labels; they are laid out against the current view every frame
+        self.labels_renderer.take_snapshot(self.gamestate, freeze_label_data)
+
+    def _load_track_arrays(self):
         render_arrays = self.sensor_tracks.render_arrays
 
         if render_arrays:
@@ -46,15 +62,13 @@ class DisplayData:
             lock_lines = render_arrays.get('lock_lines')
             self.lock_renderer.load_render_arrays(lock_lines)
 
-        # Update bullseye if enabled and position available
-        if config.app_config.get_bool("layers", "show_bullseye"):
-            bullseye_pos = self.gamestate.get_bullseye_pos()
-            if bullseye_pos != (0, 0):  # Valid bullseye position
-                self.bullseye_renderer.set_bullseye(bullseye_pos[0], bullseye_pos[1])
-
-        # Clear and regenerate track labels
-        self.labels_renderer.clear()
-        self._generate_ac_labels()
+    def refresh_object_style(self, game_obj: GameObject):
+        """
+        Apply a user edit to one object (e.g. color override) immediately, rather than
+        waiting for the next radar update. Labels already re-layout every frame.
+        """
+        if self.sensor_tracks.refresh_object_style(game_obj):
+            self._load_track_arrays()
 
     def set_hovered_obj(self, track: Optional[GameObject]):
         """
@@ -64,10 +78,6 @@ class DisplayData:
             track: The track that is currently being hovered, or None if no track is hovered
         """
         self.labels_renderer.set_hovered_obj(track)
-
-    def _generate_ac_labels(self):
-        """Generate text labels for all visible tracks."""
-        self.labels_renderer.draw_all_ac_labels(self.gamestate)
 
     def render(self):
         """
@@ -89,7 +99,8 @@ class DisplayData:
         # Render velocity vectors using the new vector renderer
         self.vector_renderer.render()
 
-        # Render all track labels
+        # Render all track labels, re-projected against the current view every frame
+        self.labels_renderer.layout_labels()
         self.labels_renderer.render()
 
     def clear(self):
