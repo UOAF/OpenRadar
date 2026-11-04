@@ -919,6 +919,67 @@ class TestTrackRenderDataArrays:
         assert "source" in render_arrays.lock_lines.id_to_locks
         assert "target" in render_arrays.lock_lines.id_to_locks["source"]
 
+    def test_sort_square_callsigns_by_flight_position(self):
+        """Square icons are ordered #4, #2, #3, #1 so #1 is drawn last (on top)."""
+        render_arrays = TrackRenderDataArrays(100)
+
+        callsigns = {"obj1": "Falcon11", "obj2": "Avenger23", "obj3": "Eagle22",
+                     "obj4": "Viper14", "obj5": "Tanker", "obj6": "Hawk12"}
+        objs = {}
+        for obj_id, callsign in callsigns.items():
+            obj = self.create_mock_game_object(obj_id, icon=2)
+            obj.CallSign = callsign
+            objs[obj_id] = obj
+            render_arrays.add_object(obj)
+
+        ordered_ids = render_arrays.get_icon_order_for_shape(Shapes.SQUARE)
+        assert ordered_ids == ["obj5", "obj4", "obj3", "obj6", "obj2", "obj1"]
+
+        # Removing #1 leaves #3 on top, then #2, then #4
+        render_arrays.remove_object(objs["obj1"])
+        ordered_ids = render_arrays.get_icon_order_for_shape(Shapes.SQUARE)
+        assert ordered_ids == ["obj5", "obj4", "obj3", "obj6", "obj2"]
+
+        square = render_arrays.icon_data[Shapes.SQUARE]
+        for i, obj_id in enumerate(ordered_ids):
+            assert square.id_to_index[obj_id] == i
+
+    def test_resort_by_callsign_uses_updated_callsigns(self):
+        """Manual re-sort picks up callsign changes from the supplied objects."""
+        render_arrays = TrackRenderDataArrays(100)
+
+        first = self.create_mock_game_object("obj1", icon=2)
+        first.CallSign = "Falcon11"
+        second = self.create_mock_game_object("obj2", icon=2)
+        second.CallSign = "Avenger24"
+        render_arrays.add_object(first)
+        render_arrays.add_object(second)
+        assert render_arrays.get_icon_order_for_shape(Shapes.SQUARE) == ["obj2", "obj1"]
+
+        first.CallSign = "Falcon14"
+        second.CallSign = "Avenger21"
+        render_arrays.resort_by_callsign({"obj1": first, "obj2": second})
+        assert render_arrays.get_icon_order_for_shape(Shapes.SQUARE) == ["obj1", "obj2"]
+
+    def test_get_icon_order_for_shape_returns_current_buffer_order(self):
+        """Test that icon order can be retrieved from the current render array."""
+        render_arrays = TrackRenderDataArrays(100)
+
+        first = self.create_mock_game_object("obj1", icon=2)
+        first.CallSign = "Falcon11"
+        second = self.create_mock_game_object("obj2", icon=2)
+        second.CallSign = "Avenger21"
+        third = self.create_mock_game_object("obj3", icon=2)
+        third.CallSign = "Eagle22"
+
+        render_arrays.add_object(first)
+        render_arrays.add_object(second)
+        render_arrays.add_object(third)
+        render_arrays.sort_elements_by_callsign(first)
+
+        ordered_ids = render_arrays.get_icon_order_for_shape(Shapes.SQUARE)
+        assert ordered_ids == ["obj3", "obj1", "obj2"]
+
     def test_remove_object(self):
         """Test removing an object from all arrays."""
         render_arrays = TrackRenderDataArrays(100)

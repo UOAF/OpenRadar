@@ -561,6 +561,9 @@ class TrackRenderDataArrays:
         self.velocity_vectors = VelocityVectorRenderData(initial_capacity // 2)
         self.lock_lines = LockLineRenderData(initial_capacity // 2)
 
+        # Store callsign metadata for objects currently in icon arrays.
+        self._callsign_by_object_id: dict[str, str] = {}
+
     def _should_render_object_type(self, obj_type) -> bool:
         """Check if an object type should be rendered based on layer configuration."""
         # Bullseye has a layer key, but its visibility is handled separately in
@@ -574,6 +577,77 @@ class TrackRenderDataArrays:
 
         return True  # Default to showing unknown types
 
+    # Draw order by last callsign digit (flight position); later entries are drawn on top.
+    # Callsigns not ending in 1-4 are drawn first (bottom).
+    CALLSIGN_DRAW_PRIORITY = {"4": 1, "2": 2, "3": 3, "1": 4}
+    SORTED_SHAPES = (Shapes.SQUARE, Shapes.TOP_BOX)
+
+    def _callsign_priority(self, element_id: str) -> int:
+        callsign = self._callsign_by_object_id.get(element_id, "")
+        return self.CALLSIGN_DRAW_PRIORITY.get(callsign[-1:], 0)
+
+    def resort_by_callsign(self, objects: dict | None = None):
+        """Refresh cached callsigns (if objects supplied) and re-sort all sorted icon arrays."""
+        if objects is not None:
+            for obj in objects.values():
+                if obj.object_id in self._callsign_by_object_id:
+                    self._callsign_by_object_id[obj.object_id] = getattr(obj, 'CallSign', '') or ''
+        self.sort_elements_by_callsign()
+
+    def sort_elements_by_callsign(self, game_obj: GameObject | None = None):
+        """Reorder aircraft icon arrays by flight position: #4, #2, #3, #1 (so #1 draws on top)."""
+        shapes_to_sort = list(self.SORTED_SHAPES)
+        if game_obj is not None:
+            shape = Shapes.from_idx(game_obj.icon) if game_obj.icon is not None else None
+            if shape in self.SORTED_SHAPES:
+                shapes_to_sort = [shape]
+
+        for shape in shapes_to_sort:
+            icon_data = self.icon_data.get(shape)
+            if icon_data is None or icon_data.count == 0:
+                continue
+
+            current_order = [icon_data.index_to_id[index] for index in range(icon_data.count)]
+            # Stable sort keeps existing relative order within each priority group.
+            new_order = sorted(current_order, key=self._callsign_priority)
+            if new_order != current_order:
+                self._reorder_icon_data(icon_data, new_order)
+
+                # Print the current ordered callsigns for debug/verification
+                #print("---")
+                #for index in range(icon_data.count):
+                #    element_id = icon_data.index_to_id[index]
+                #    callsign = self._callsign_by_object_id.get(element_id, "")
+                #    print(callsign)
+
+    def _reorder_icon_data(self, icon_data: IconRenderData, new_order: list[str]):
+        """Reorder an icon array to match the supplied list of element IDs."""
+        if icon_data.data is None or icon_data.count == 0:
+            return
+
+        active_data = icon_data.get_active_data()
+        if active_data is None:
+            return
+
+        reordered_data = np.zeros_like(active_data)
+        for new_index, element_id in enumerate(new_order):
+            old_index = icon_data.id_to_index[element_id]
+            reordered_data[new_index] = active_data[old_index]
+
+        icon_data.data[:icon_data.count] = reordered_data
+        for new_index, element_id in enumerate(new_order):
+            icon_data.index_to_id[new_index] = element_id
+            icon_data.id_to_index[element_id] = new_index
+        # Reordering icon instances only affects icon draw order.
+        # Label renderers should use the same ordered object list for consistent rendering.
+
+    def get_icon_order_for_shape(self, shape: Shapes) -> list[str]:
+        """Return the object IDs in the current icon buffer order for a shape."""
+        icon_data = self.icon_data.get(shape)
+        if icon_data is None or icon_data.count == 0:
+            return []
+        return [icon_data.index_to_id[i] for i in range(icon_data.count)]
+
     def add_object(self, game_obj: GameObject):
         """Add a game object to all relevant render arrays."""
 
@@ -586,6 +660,9 @@ class TrackRenderDataArrays:
         shape = Shapes.from_idx(shape_id) if shape_id is not None else None
         if shape is not None:
             self.icon_data[shape].add_object(game_obj)
+            self._callsign_by_object_id[game_obj.object_id] = getattr(game_obj, 'CallSign', '') or ''
+            if shape in self.SORTED_SHAPES:
+                self.sort_elements_by_callsign(game_obj)
 
         # Add velocity vector if it's an aircraft
         if game_obj.is_air_unit() and game_obj.CAS > 0:
@@ -604,8 +681,14 @@ class TrackRenderDataArrays:
         shape_id = game_obj.icon
 
         shape = Shapes.from_idx(shape_id) if shape_id is not None else None
-        if shape is not None:
+        removed = False
+        if shape is not None and object_id in self.icon_data[shape].id_to_index:
             self.icon_data[shape].remove_object(object_id)
+            removed = True
+        self._callsign_by_object_id.pop(object_id, None)
+        # Removal swaps the last element into the gap, so restore callsign order.
+        if removed and shape in self.SORTED_SHAPES:
+            self.sort_elements_by_callsign(game_obj)
 
         self.velocity_vectors.remove_object(object_id)
         self.lock_lines.remove_object_locks(object_id)
@@ -627,9 +710,13 @@ class TrackRenderDataArrays:
             if game_obj.object_id in self.icon_data[shape].id_to_index:
                 # Object exists, update it
                 self.icon_data[shape].update_object(game_obj)
+                self._callsign_by_object_id[game_obj.object_id] = getattr(game_obj, 'CallSign', '') or ''
             else:
                 # Object doesn't exist, add it
                 self.icon_data[shape].add_object(game_obj)
+                self._callsign_by_object_id[game_obj.object_id] = getattr(game_obj, 'CallSign', '') or ''
+                if shape in self.SORTED_SHAPES:
+                    self.sort_elements_by_callsign(game_obj)
 
         # Update or add/remove velocity vector based on movement
         if game_obj.is_air_unit() and game_obj.CAS > 0:
@@ -679,8 +766,7 @@ class TrackRenderDataArrays:
         """Rebuild all render arrays from a dictionary of game objects."""
         self.clear_all()
         for obj in objects.values():
-            self.add_object(obj)
-
+            self.add_object(obj)     
 
 class PolygonRenderData(GenericStructuredArray):
     """

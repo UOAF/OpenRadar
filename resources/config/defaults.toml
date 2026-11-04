@@ -40,6 +40,8 @@ contact_label_padding = 5 # Additional padding for track labels in pixels
 center_point_size = 3.0 # Size of the center point quad in pixels
 bullseye_num_rings = 6 # Number of concentric rings in the bullseye display
 bullseye_ring_distance = 20 # Distance between bullseye rings in nautical miles
+bullseye_text_color = [ 220, 200, 40 ] # [r, g, b] Bullseye cursor text color
+braa_text_color = [ 30, 150, 235 ] # [r, g, b] BRAA text and line color
 
 [display]
 icon_set = "classic" # Icon set to use for displaying objects (NTDS, classic)

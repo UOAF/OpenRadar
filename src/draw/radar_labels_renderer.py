@@ -9,6 +9,7 @@ import numpy as np
 from typing import Dict, Optional
 
 from draw.scene import Scene
+from draw.shapes import Shapes
 from draw.text import TextRendererMsdf, make_text_renderer
 from game_object import GameObject
 from game_object_types import GameObjectType
@@ -64,9 +65,21 @@ class RadarLabelsRenderer:
         """
         self._hovered_object = obj
 
-    def draw_all_ac_labels(self, gamestate: GameState):
+    def _get_ordered_objects_by_icon(self, gamestate: GameState, object_type: GameObjectType, shapes: list[Shapes]) -> list[GameObject]:
+        """Return objects in the order they appear in the icon render buffers for given shapes."""
+        ordered_ids: list[str] = []
+        for shape in shapes:
+            ordered_ids.extend(gamestate.render_arrays.get_icon_order_for_shape(shape))
 
-        fixed_wing_objs = gamestate.objects[GameObjectType.FIXEDWING]
+        ordered_objects: list[GameObject] = []
+        type_objects = gamestate.objects.get(object_type, {})
+        for object_id in ordered_ids:
+            if object_id in type_objects:
+                ordered_objects.append(type_objects[object_id])
+
+        return ordered_objects
+
+    def draw_all_ac_labels(self, gamestate: GameState):
 
         # Get the label configuration for this track type
         labels = get_labels_for_class_type(GameObjectType.FIXEDWING)
@@ -76,7 +89,10 @@ class RadarLabelsRenderer:
         font_scale = config.app_config.get_int("radar", "contact_font_scale")
 
         if labels is not None:
-            for obj in fixed_wing_objs.values():
+            fixed_wing_objs = self._get_ordered_objects_by_icon(gamestate, GameObjectType.FIXEDWING, [Shapes.SQUARE])
+            if not fixed_wing_objs:
+                fixed_wing_objs = list(gamestate.objects[GameObjectType.FIXEDWING].values())
+            for obj in fixed_wing_objs:
                 self.draw_track_labels(obj, labels, offset, font_scale)
 
         #draw hovered labels

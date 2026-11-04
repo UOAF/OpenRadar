@@ -406,6 +406,10 @@ class ImguiUserInterface:
                 self.gamestate.render_arrays.clear_all()
                 self.gamestate.render_arrays.rebuild_from_objects(self.gamestate.all_objects)
 
+    def resort_contacts(self):
+        """Re-sort contact draw order by flight position (#4, #2, #3, #1 on top)."""
+        self.gamestate.render_arrays.resort_by_callsign(self.gamestate.all_objects)
+
     def open_context_menu(self):
         """
         Set the track for the context menu.
@@ -746,6 +750,10 @@ class ImguiUserInterface:
 
                 if imgui.menu_item('Settings', "", self.settings_window_open, True)[0]:
                     self.settings_window_open = not self.settings_window_open
+
+                imgui.separator()
+                if imgui.menu_item('Re-sort Contacts', '', False, True)[0]:
+                    self.resort_contacts()
                 imgui.end_menu()
 
             # Windows Dropdown
@@ -1105,6 +1113,17 @@ class ImguiUserInterface:
                 self.render_refresh_callback()
 
         imgui.separator()
+        imgui.text("Cursor Text")
+        bullseye_text_color = config.app_config.get_color_normalized("radar", "bullseye_text_color")
+        braa_text_color = config.app_config.get_color_normalized("radar", "braa_text_color")
+        create_color_edit("Bullseye Text", bullseye_text_color, "radar", "bullseye_text_color")
+        create_color_edit("BRAA Text and Line", braa_text_color, "radar", "braa_text_color")
+
+        if imgui.button("Reset Cursor Colors to Defaults"):
+            config.app_config.set_color_from_normalized("radar", "bullseye_text_color", (220/255.0, 200/255.0, 40/255.0))
+            config.app_config.set_color_from_normalized("radar", "braa_text_color", (30/255.0, 150/255.0, 235/255.0))
+
+        imgui.separator()
         if imgui.button("Change Coalition Display Colors"):
             self.tacview_colors_window_open = True
 
@@ -1456,6 +1475,11 @@ class ImguiUserInterface:
                         self.current_contact_color = list(obj.color_rgba)
                 imgui.close_current_popup()
 
+            imgui.separator()
+            if imgui.menu_item("Re-sort Contacts", "", False)[0]:
+                self.resort_contacts()
+                imgui.close_current_popup()
+
             imgui.end_popup()
         else:
             # If the popup was not opened, reset the context track
@@ -1682,8 +1706,9 @@ class ImguiUserInterface:
         if self.braa_active and self.braa_start_world:
             # BRAA mode: reference from start point
             reference_pos = self.braa_start_world
-            coord_color = imgui.ImVec4(1.0, 0.5, 0.0, 1.0)  # Orange for BRAA
-            bg_color = imgui.ImVec4(0.2, 0.1, 0.0, 0.8)  # Dark orange background
+            braa_color = config.app_config.get_color_normalized("radar", "braa_text_color")
+            coord_color = imgui.ImVec4(braa_color[0], braa_color[1], braa_color[2], 1.0)
+            bg_color = imgui.ImVec4(0.03, 0.06, 0.08, 0.85)  # subtle dark-blue background
 
             # Draw BRAA line from start to current mouse position
             self._draw_braa_line()
@@ -1693,7 +1718,8 @@ class ImguiUserInterface:
             if bullseye_pos == (0, 0):
                 return  # No bullseye available
             reference_pos = bullseye_pos
-            coord_color = imgui.ImVec4(1.0, 1.0, 1.0, 1.0)  # White for bullseye
+            bullseye_color = config.app_config.get_color_normalized("radar", "bullseye_text_color")
+            coord_color = imgui.ImVec4(bullseye_color[0], bullseye_color[1], bullseye_color[2], 1.0)
             bg_color = imgui.ImVec4(0.0, 0.0, 0.0, 0.7)  # Dark background
 
         # Calculate polar coordinates relative to reference point
@@ -1732,20 +1758,21 @@ class ImguiUserInterface:
 
         # Window flags for overlay - no interaction, no decoration
         window_flags = (imgui.WindowFlags_.no_title_bar.value | imgui.WindowFlags_.no_resize.value
-                        | imgui.WindowFlags_.no_move.value | imgui.WindowFlags_.no_scrollbar.value
-                        | imgui.WindowFlags_.no_scroll_with_mouse.value | imgui.WindowFlags_.always_auto_resize.value
-                        | imgui.WindowFlags_.no_background.value | imgui.WindowFlags_.no_focus_on_appearing.value
-                        | imgui.WindowFlags_.no_bring_to_front_on_focus.value | imgui.WindowFlags_.no_inputs.value)
+                | imgui.WindowFlags_.no_move.value | imgui.WindowFlags_.no_scrollbar.value
+                | imgui.WindowFlags_.no_scroll_with_mouse.value | imgui.WindowFlags_.always_auto_resize.value
+                | imgui.WindowFlags_.no_focus_on_appearing.value | imgui.WindowFlags_.no_inputs.value)
 
         # Semi-transparent background for better text readability
+        imgui.push_style_var(imgui.StyleVar_.window_padding.value, imgui.ImVec2(0.0, 0.0))
         imgui.push_style_color(imgui.Col_.window_bg.value, bg_color)
         imgui.push_style_color(imgui.Col_.text.value, coord_color)
 
         if imgui.begin("Bullseye Coordinates", None, window_flags):
             imgui.text(coord_text)
         imgui.end()
-
+        
         imgui.pop_style_color(2)
+        imgui.pop_style_var(1)
 
     def _draw_braa_line(self):
         """Draw BRAA line from start point to current mouse position"""
@@ -1764,8 +1791,9 @@ class ImguiUserInterface:
         viewport = imgui.get_main_viewport()
         draw_list = imgui.get_foreground_draw_list()
 
-        # Line color (orange for BRAA)
-        line_color = imgui.get_color_u32(imgui.ImVec4(1.0, 0.5, 0.0, 0.8))
+        # Line color (BRAA color from config)
+        braa_color = config.app_config.get_color_normalized("radar", "braa_text_color")
+        line_color = imgui.get_color_u32(imgui.ImVec4(braa_color[0], braa_color[1], braa_color[2], 0.9))
 
         # Draw the line
         draw_list.add_line(
@@ -1776,8 +1804,9 @@ class ImguiUserInterface:
         )
 
         # Draw start point marker (small circle)
-        start_marker_color = imgui.get_color_u32(imgui.ImVec4(1.0, 0.2, 0.0, 1.0))
+        start_marker_color = imgui.get_color_u32(imgui.ImVec4(braa_color[0], braa_color[1], braa_color[2], 1.0))
         draw_list.add_circle_filled(
             imgui.ImVec2(float(start_screen[0]), float(start_screen[1])),
             4.0,  # Radius
             start_marker_color)
+        

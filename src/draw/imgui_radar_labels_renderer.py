@@ -15,8 +15,9 @@ import hashlib
 
 from imgui_bundle import imgui
 from draw.scene import Scene
+from draw.shapes import Shapes
 from game_object import GameObject
-from game_object_types import get_layer_key
+from game_object_types import GameObjectType, get_layer_key
 from game_state import GameState
 from sensor_tracks import Track
 from util.track_labels import (TrackLabelLocation, TrackLabels, get_labels_for_class_type, evaluate_input_format)
@@ -28,12 +29,14 @@ import config
 #   dx = offset_x_sign * offset + text_width_coef * text_width
 #   dy = offset_y_sign * offset + text_height_coef * text_height
 _LABEL_OFFSET_COEFFICIENTS: Dict[TrackLabelLocation, Tuple[float, float, float, float]] = {
-    TrackLabelLocation.TOP_LEFT: (-1.0, -1.0, -1.0, -1.0),
-    TrackLabelLocation.TOP_CENTER: (0.0, -0.5, -1.0, -1.0),
-    TrackLabelLocation.TOP_RIGHT: (1.0, 0.0, -1.0, -1.0),
-    TrackLabelLocation.LEFT: (-1.0, -1.0, 0.0, -0.5),
-    TrackLabelLocation.CENTER: (0.0, -0.5, 0.0, -0.5),
-    TrackLabelLocation.RIGHT: (1.0, 0.0, 0.0, -0.5),
+    # Keep horizontal/text-width coefficients, but set text_height_coef to 0.0
+    # so vertical placement does not multiply by text height (avoids implicit gaps).
+    TrackLabelLocation.TOP_LEFT: (-1.0, -1.0, -1.0, 0.0),
+    TrackLabelLocation.TOP_CENTER: (0.0, -0.5, -1.0, 0.0),
+    TrackLabelLocation.TOP_RIGHT: (1.0, 0.0, -1.0, 0.0),
+    TrackLabelLocation.LEFT: (-1.0, -1.0, 0.0, 0.0),
+    TrackLabelLocation.CENTER: (0.0, -0.5, 0.0, 0.0),
+    TrackLabelLocation.RIGHT: (1.0, 0.0, 0.0, 0.0),
     TrackLabelLocation.BOTTOM_LEFT: (-1.0, -1.0, 1.0, 0.0),
     TrackLabelLocation.BOTTOM_CENTER: (0.0, -0.5, 1.0, 0.0),
     TrackLabelLocation.BOTTOM_RIGHT: (1.0, 0.0, 1.0, 0.0),
@@ -265,7 +268,19 @@ class ImGuiRadarLabelsRenderer:
             if labels is None or not labels.labels:
                 continue
 
-            objs = list(objects_by_id.values())
+            if object_type == GameObjectType.FIXEDWING:
+                ordered_ids = gamestate.render_arrays.get_icon_order_for_shape(Shapes.SQUARE)
+                objs = [objects_by_id[oid] for oid in ordered_ids if oid in objects_by_id]
+                if not objs:
+                    objs = list(objects_by_id.values())
+            elif object_type == GameObjectType.ROTARYWING:
+                ordered_ids = gamestate.render_arrays.get_icon_order_for_shape(Shapes.TOP_BOX)
+                objs = [objects_by_id[oid] for oid in ordered_ids if oid in objects_by_id]
+                if not objs:
+                    objs = list(objects_by_id.values())
+            else:
+                objs = list(objects_by_id.values())
+
             world_positions = np.array([(obj.U, obj.V) for obj in objs], dtype=np.float64)
             screen_positions = self.scene.world_to_screen_batch(world_positions).tolist()
 
@@ -346,14 +361,33 @@ class ImGuiRadarLabelsRenderer:
         if imgui.begin("RadarLabelsOverlay", None, self._overlay_flags):
             draw_list = imgui.get_window_draw_list()
 
-            # Render each cached label
+            # Render each cached label with a zero-padded background rectangle
             for cached_label in self._text_cache.values():
+                # Calculate text size
+                text_size = imgui.calc_text_size(cached_label.text)
+
+                # Background color (semi-transparent dark) and zero padding
+                bg_col = imgui.get_color_u32(imgui.ImVec4(0.0, 0.0, 0.0, 0.7))
+
+                # Rectangle coordinates: no padding (zero padding)
+                rect_min = imgui.ImVec2(cached_label.x_screen, cached_label.y_screen)
+                rect_max = imgui.ImVec2(cached_label.x_screen + text_size.x, cached_label.y_screen + text_size.y)
+
+                # if rect_min rect_max overlaps with a rect_min and rect_max already in the draw_list, then skip drawing this label to avoid overlap
+#                for rects in draw_list:
+#                    if (rect_min.x < rects.x and rect_max.x > rects.x and
+#                            rect_min.y < rects.y and rect_max.y > rects.y):
+#                        # Overlap detected, skip drawing this label
+#                        continue
+
+                # Draw background rectangle then text
+                draw_list.add_rect_filled(rect_min, rect_max, bg_col)
+
                 # Get text color (white by default)
                 text_color = imgui.get_color_u32(
                     imgui.ImVec4(cached_label.color[0], cached_label.color[1], cached_label.color[2],
                                  cached_label.color[3]))
 
-                # Add text to the draw list at the specified position
                 draw_list.add_text(imgui.ImVec2(cached_label.x_screen, cached_label.y_screen), text_color,
                                    cached_label.text)
 
