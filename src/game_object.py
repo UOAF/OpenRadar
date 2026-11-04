@@ -127,6 +127,7 @@ class GameObject:
 
     # UI / runtime metadata
     icon: int | None
+    short_alt: str  # Altitude in hundreds of feet, zero-padded to 3 digits, refreshed periodically
     color_rgba: tuple[float, float, float, float]
     visible: bool
     override_name: Optional[str]
@@ -165,6 +166,7 @@ class GameObject:
 
         self.visible = True  # Default visibility
         # UI / runtime initialization
+        self.short_alt = "000"
         self.color_rgba = (1.0, 1.0, 1.0, 1.0)
         self.override_name = None
         self.override_color = None
@@ -174,6 +176,7 @@ class GameObject:
         # Apply initial data if provided
         if initial is not None:
             self.apply_delta(initial)
+            self.update_short_alt()
 
         # Initialize icon based on type
         self.icon, icon_color = get_icon_style(self)
@@ -322,6 +325,17 @@ class GameObject:
     def altitude_ft_floor100(self) -> float:
         """Get the altitude in feet, floored to the nearest 100 ft."""
         return (self.altitude_ft // 100) * 100
+
+    def update_short_alt(self):
+        """Refresh short_alt: altitude in hundreds of feet, zero-padded to 3 digits
+        (15,743 ft -> "157", 4,900 ft -> "049").
+
+        Unlike the altitude_* properties, short_alt is a precomputed string attribute so
+        label templates using {short_alt} cost only an attribute lookup per frame. It is
+        refreshed periodically from the app loop (and once on object creation) rather
+        than recomputed for every label every frame.
+        """
+        self.short_alt = f"{int(self.Altitude * METERS_TO_FT) // 100:03d}"
 
     @property
     def speed_kt(self) -> float:

@@ -34,6 +34,11 @@ MOUSEBRAABUTTON = 0
 MINIMUM_DRAG_DISTANCE = 5
 MAXIMUM_HOVER_DISTANCE = 40
 
+# How often (seconds) every object's short_alt label value is recomputed. Aircraft climb
+# or descend a few thousand ft/min at most, so hundreds-of-feet resolution stays
+# accurate enough between refreshes while costing nothing per frame.
+SHORT_ALT_UPDATE_INTERVAL = 20.0
+
 
 class Clock:
 
@@ -74,6 +79,7 @@ class App:
         self.gpu_frame_time_us = 0
         self.cpu_frame_time = 0
         self.radar_sleep = 0
+        self.short_alt_sleep = 0.0
 
         # GPU timing management must only be initialized after OpenGL context has been created
         self.gpu_timer: GPUTimer | None = None
@@ -322,11 +328,19 @@ class App:
         mag_variation = self._ImguiUI.map_gl.get_current_magnetic_variation()
         bull_u, bull_v = self.gamestate.get_bullseye_pos()
 
+        # Periodically refresh the cheap short_alt label value for every object
+        self.short_alt_sleep += delta_time
+        update_short_alt = self.short_alt_sleep >= SHORT_ALT_UPDATE_INTERVAL
+        if update_short_alt:
+            self.short_alt_sleep = 0.0
+
         for obj_dict in self.gamestate.objects.values():
             for obj in obj_dict.values():
                 obj.bull_x = bull_u
                 obj.bull_y = bull_v
                 obj.magnetic_variation = mag_variation if use_magnetic else 0.0
+                if update_short_alt:
+                    obj.update_short_alt()
 
         self.radar_sleep += delta_time
         if self.radar_sleep > config.app_config.get("radar", "update_interval",
