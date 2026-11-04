@@ -21,6 +21,7 @@ from sensor_tracks import SensorTracks, Track, Coalition
 from display_data import DisplayData
 from render_data_arrays import TrackRenderDataArrays
 from version import VERSION_STRING
+from abbrev_color import AbbrevColorWindow
 import config
 
 from util.bms_math import METERS_TO_FT, NM_TO_METERS, M_PER_SEC_TO_KNOTS
@@ -201,6 +202,9 @@ class ImguiUserInterface:
         self.scale_indicator_window_open = True
         self.tacview_colors_window_open = False
         self.contact_color_window_open = False
+        self.abbrev_color_window_open = False
+
+        self.abbrev_color_window = AbbrevColorWindow(gamestate=self.gamestate)
 
         self.map_selection_dialog_size = 1
         self.map_selection_dialog_path = ""
@@ -442,6 +446,9 @@ class ImguiUserInterface:
         self.notepad_window()
         self.debug_window()
         self.track_labels_window()
+        self.abbrev_color_window.open = self.abbrev_color_window_open
+        self.abbrev_color_window.render()
+        self.abbrev_color_window_open = self.abbrev_color_window.open
         self.layers_window()
         self.context_menu()
         self.callsign_change_modal()
@@ -758,6 +765,8 @@ class ImguiUserInterface:
                     self.notepad_window_open = not self.notepad_window_open
                 if imgui.menu_item('Track Labels', '', self.track_labels_window_open, True)[0]:
                     self.track_labels_window_open = not self.track_labels_window_open
+                if imgui.menu_item('Abbrev Color', '', self.abbrev_color_window_open, True)[0]:
+                    self.abbrev_color_window_open = not self.abbrev_color_window_open
                 if imgui.menu_item('Scale Indicator', '', self.scale_indicator_window_open, True)[0]:
                     self.scale_indicator_window_open = not self.scale_indicator_window_open
 
