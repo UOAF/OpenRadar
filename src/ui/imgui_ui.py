@@ -149,6 +149,7 @@ class ImguiUserInterface:
         self.data_client = data_client
         self.reset_state_callback = None
         self.render_refresh_callback = None
+        self.exit_callback = None
         self.coalition_manager = coalition_manager
 
         # Initialize logger
@@ -287,6 +288,10 @@ class ImguiUserInterface:
     def set_render_refresh_callback(self, callback):
         """Set callback to refresh render arrays when configuration changes."""
         self.render_refresh_callback = callback
+
+    def set_exit_callback(self, callback):
+        """Set callback to request application exit (File / Exit)."""
+        self.exit_callback = callback
 
     def open_ini_file_dialog(self):
         """Open a non-blocking file dialog for selecting INI files."""
@@ -746,6 +751,12 @@ class ImguiUserInterface:
 
                 if imgui.menu_item('Settings', "", self.settings_window_open, True)[0]:
                     self.settings_window_open = not self.settings_window_open
+
+                imgui.separator()
+
+                if imgui.menu_item('Exit', '', False, True)[0]:
+                    if self.exit_callback:
+                        self.exit_callback()
                 imgui.end_menu()
 
             # Windows Dropdown
