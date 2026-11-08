@@ -78,6 +78,7 @@ class PolygonRenderer:
         Args:
             polygon_arrays: Dictionary mapping Shapes to NumPy structured arrays with polygon data
         """
+
         # Clean up previous buffers
         for shape_buffer in self.instance_buffers.values():
             shape_buffer.release()
@@ -111,7 +112,9 @@ class PolygonRenderer:
         self.program['u_resolution'] = self.scene.display_size
 
         # Get default width from config (can be overridden per instance)
-        default_width = config.app_config.get_float("radar", "contact_stroke")
+# Changing this from contact_stroke to ini_width to fix the broken slider        
+#        default_width = config.app_config.get_float("radar", "contact_stroke")
+        default_width = config.app_config.get_float("annotations", "ini_width")
         self.program['u_width'] = default_width
 
         # Render each shape type
