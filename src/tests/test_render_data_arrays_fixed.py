@@ -886,6 +886,19 @@ class TestTrackRenderDataArrays:
         assert isinstance(render_arrays.lock_lines, LockLineRenderData)
         assert render_arrays.lock_lines.capacity == 50  # initial_capacity // 2
 
+    def test_hide_contacts_below_mach_threshold_toggle(self):
+        """Test that the new radar toggle can disable the below-0.2 Mach filter."""
+        render_arrays = TrackRenderDataArrays(100)
+        aircraft_obj = self.create_mock_game_object("aircraft1", GameObjectType.FIXEDWING, icon=1, cas=50.0)
+        aircraft_obj.Mach = 0.1
+        aircraft_obj.Pilot = ""
+
+        config.app_config.set("radar", "hide_contacts_below_0_2m", True)
+        assert not render_arrays._should_render_object_mach(aircraft_obj)
+
+        config.app_config.set("radar", "hide_contacts_below_0_2m", False)
+        assert render_arrays._should_render_object_mach(aircraft_obj)
+
     def test_add_aircraft_object(self):
         """Test adding an aircraft object (should add to icon and velocity arrays)."""
         render_arrays = TrackRenderDataArrays(100)

@@ -561,6 +561,22 @@ class TrackRenderDataArrays:
         self.velocity_vectors = VelocityVectorRenderData(initial_capacity // 2)
         self.lock_lines = LockLineRenderData(initial_capacity // 2)
 
+    def _should_render_object_mach(self, game_obj: GameObject) -> bool:
+        """Check if an object should be rendered based on Mach threshold and user preference."""
+        if not game_obj.is_air_unit():
+            return True
+
+        if game_obj.Pilot not in (None, ""):
+            return True
+
+        if not config.app_config.get_bool("radar", "hide_contacts_below_0_2m"):
+            return True
+
+        if game_obj.Mach >= 0.2:
+            return True
+
+        return False
+    
     def _should_render_object_type(self, obj_type) -> bool:
         """Check if an object type should be rendered based on layer configuration."""
         # Bullseye has a layer key, but its visibility is handled separately in
@@ -579,6 +595,10 @@ class TrackRenderDataArrays:
 
         # Check if this object type should be rendered based on layer visibility
         if not self._should_render_object_type(game_obj.object_type):
+            return
+
+        # Check if this object should be rendered based on Mach number (for air units) //bs1
+        if not self._should_render_object_mach(game_obj):
             return
 
         # Add to icon array (Most objects have icons)
@@ -616,6 +636,11 @@ class TrackRenderDataArrays:
         # Check if this object type should be rendered based on layer visibility
         if not self._should_render_object_type(game_obj.object_type):
             # Object should not be rendered - remove it if it exists
+            self.remove_object(game_obj)
+            return
+
+        # Check if this object shoudl be rendered based on Mach number (for air units) //bs1
+        if not self._should_render_object_mach(game_obj):
             self.remove_object(game_obj)
             return
 
