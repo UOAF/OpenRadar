@@ -649,6 +649,7 @@ class ImguiUserInterface:
             if changed:
                 self.current_contact_color = list(new_color)
                 obj.override_color = tuple(new_color)  # type: ignore
+                self.display_data.refresh_object_style(obj)
 
             imgui.separator()
 
@@ -668,6 +669,7 @@ class ImguiUserInterface:
                                           imgui.ColorEditFlags_.no_border.value, imgui.ImVec2(30, 30)):
                         self.current_contact_color = list(coalition_color)
                         obj.override_color = tuple(coalition_color)  # type: ignore
+                        self.display_data.refresh_object_style(obj)
 
                     # Tooltip with color name
                     if imgui.is_item_hovered():
@@ -689,6 +691,7 @@ class ImguiUserInterface:
                                           imgui.ImVec2(30, 30)):
                         self.current_contact_color = list(custom_color)
                         obj.override_color = tuple(custom_color)  # type: ignore
+                        self.display_data.refresh_object_style(obj)
 
                 imgui.separator()
 
@@ -704,6 +707,7 @@ class ImguiUserInterface:
             if imgui.button("Reset", imgui.ImVec2(80, 0)):
                 # Reset to original color (remove override)
                 obj.override_color = None
+                self.display_data.refresh_object_style(obj)
                 self.contact_color_window_open = False
 
             imgui.same_line()

@@ -128,6 +128,10 @@ class SensorTracks:
         # self.tracks: dict[GameObjectType, dict[str, Track]] = {class_type: {} for class_type in GameObjectType}
         self.cur_time: datetime.datetime | None = None
         self.track_inactivity_timeout_sec = 10
+        self.render_arrays: dict | None = None
+        self._icon_index_maps: dict = {}
+        self._vector_index_map: dict[str, int] = {}
+        self._lock_index_map: dict[str, int] = {}
 
         self.update_bullseye()
 
@@ -158,6 +162,7 @@ class SensorTracks:
         )  # Only updates the current time when tracks are updated, this may be undeseirable
 
         self.render_arrays = self.gamestate.render_arrays.get_render_data()
+        self._snapshot_index_maps()
 
         # for classenum, object_class_dict in self.gamestate.objects.items():
 
@@ -194,6 +199,60 @@ class SensorTracks:
         #             )
         #     for id in to_delete:
         #         del self.tracks[classenum][id]
+
+    def _snapshot_index_maps(self):
+        """Record which row each object occupies in the snapshotted render arrays."""
+        live = self.gamestate.render_arrays
+        self._icon_index_maps = {shape: dict(icon_data.id_to_index) for shape, icon_data in live.icon_data.items()}
+        self._vector_index_map = dict(live.velocity_vectors.id_to_index)
+        self._lock_index_map = dict(live.lock_lines.id_to_index)
+
+    def refresh_object_style(self, game_obj) -> bool:
+        """
+        Apply a user-driven style change (e.g. color override) for one object to the
+        snapshotted render arrays immediately, without waiting for the next radar update.
+        Position and other track data are left as they were at the last radar update.
+
+        Returns:
+            True if any snapshotted array was modified.
+        """
+        if not self.render_arrays:
+            return False
+
+        live = self.gamestate.render_arrays
+        live.update_object(game_obj)
+        object_id = game_obj.object_id
+        changed = False
+
+        icons = self.render_arrays.get('icons', {})
+        for shape, snap_index_map in self._icon_index_maps.items():
+            snap_idx = snap_index_map.get(object_id)
+            live_idx = live.icon_data[shape].id_to_index.get(object_id)
+            snap_array = icons.get(shape)
+            if snap_idx is None or live_idx is None or snap_array is None:
+                continue
+            snap_array[snap_idx]['color'] = live.icon_data[shape].data[live_idx]['color']
+            changed = True
+
+        vectors = self.render_arrays.get('velocity_vectors')
+        snap_idx = self._vector_index_map.get(object_id)
+        live_idx = live.velocity_vectors.id_to_index.get(object_id)
+        if vectors is not None and snap_idx is not None and live_idx is not None:
+            vectors[snap_idx]['color'] = live.velocity_vectors.data[live_idx]['color']
+            changed = True
+
+        lock_lines = self.render_arrays.get('lock_lines')
+        if lock_lines is not None:
+            prefix = f"{object_id}:"
+            for lock_pair, snap_idx in self._lock_index_map.items():
+                if not lock_pair.startswith(prefix):
+                    continue
+                live_idx = live.lock_lines.id_to_index.get(lock_pair)
+                if live_idx is not None:
+                    lock_lines[snap_idx]['color'] = live.lock_lines.data[live_idx]['color']
+                    changed = True
+
+        return changed
 
     def clear(self):
         """
