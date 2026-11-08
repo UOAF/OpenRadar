@@ -50,9 +50,15 @@ These are computed for you and are usually what you want:
 | `altitude_100ft` | Altitude in hundreds of feet (flight-level style) |
 | `altitude_1000ft` | Altitude in thousands of feet (angels) |
 | `altitude_ft_floor100` | Altitude in feet, rounded down to the nearest 100 |
+| `short_alt` | Altitude in hundreds of feet, zero-padded to 3 digits (24,606 ft -> `246`, 4,900 ft -> `049`) |
 | `speed_kt` | Calibrated airspeed in knots |
 | `magnetic_heading` | Heading in degrees, magnetic if enabled in settings |
 | `bullseye` | Bearing and range from bullseye - see below |
+
+`short_alt` is special: it is precomputed and refreshed about every 20 seconds instead of
+being recalculated for every label on every frame, so it is the cheapest way to show
+altitude - handy when many tracks are visible or the radar update interval is very low.
+It is already a zero-padded string, so it needs no format spec: just `{short_alt}`.
 
 ### Aliases
 

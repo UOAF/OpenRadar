@@ -49,6 +49,29 @@ class TestSubstitution:
     def test_raw_acmi_field(self, track):
         assert evaluate_input_format("{Mach:.2f}", track) == "0.85"
 
+    def test_short_alt(self, track):
+        """short_alt is a precomputed zero-padded string (hundreds of feet)."""
+        track.update_short_alt()  # 7500 m -> 24606 ft -> 246
+
+        assert evaluate_input_format("{short_alt}", track) == "246"
+
+    def test_short_alt_pads_below_1000ft_hundreds(self, track):
+        """Altitudes below 10,000 ft keep a leading zero, e.g. 4900 ft -> 049."""
+        track.Altitude = 1493.52  # metres -> 4900 ft
+        track.update_short_alt()
+
+        assert evaluate_input_format("{short_alt}", track) == "049"
+
+    def test_short_alt_is_stale_until_polled(self, track):
+        """short_alt only changes when update_short_alt() is called, not per-read."""
+        track.update_short_alt()
+        track.Altitude = 9000.0
+
+        assert evaluate_input_format("{short_alt}", track) == "246"
+
+        track.update_short_alt()  # 9000 m -> 29527 ft -> 295
+        assert evaluate_input_format("{short_alt}", track) == "295"
+
     @pytest.mark.parametrize("alias,expected", [("{id}", "3001"), ("{name}", "Viper11"),
                                                 ("{type}", "FIXEDWING")])
     def test_aliases(self, track, alias, expected):

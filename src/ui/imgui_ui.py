@@ -50,6 +50,7 @@ example_object.FuelWeight = 5000
 example_object.AOA = 5.0
 example_object.Coalition = "U.S."
 example_object.Name = "F-16C"
+example_object.update_short_alt()
 
 IMGUI_INI_FILENAME = "openradar_imgui.ini"
 
@@ -79,6 +80,28 @@ def help_marker(description: str):
         imgui.push_text_wrap_pos(imgui.get_font_size() * 35.0)
         imgui.text_unformatted(description)
         imgui.pop_text_wrap_pos()
+        imgui.end_tooltip()
+
+
+def help_marker_with_items(description: str, items: list[str], columns: int = 3):
+    """Help marker whose tooltip shows a description followed by a multi-column item
+    list, so long lists (e.g. label variables) fit on screen."""
+    imgui.text_disabled("(?)")
+    if imgui.is_item_hovered():
+        imgui.begin_tooltip()
+        imgui.push_text_wrap_pos(imgui.get_font_size() * 35.0)
+        imgui.text_unformatted(description)
+        imgui.pop_text_wrap_pos()
+        if items and imgui.begin_table("##help_marker_items", columns):
+            rows = (len(items) + columns - 1) // columns
+            for row in range(rows):
+                imgui.table_next_row()
+                for col in range(columns):
+                    imgui.table_set_column_index(col)
+                    idx = col * rows + row  # fill down each column, then across
+                    if idx < len(items):
+                        imgui.text_unformatted(items[idx])
+            imgui.end_table()
         imgui.end_tooltip()
 
 
@@ -1406,9 +1429,11 @@ class ImguiUserInterface:
 
                 imgui.text("Label Contents")
                 imgui.same_line()
-                help_marker("Add the text to be displayed on the label. "
-                            "This can be a static string or a formatted string with variables."
-                            "Valid variables include: \n" + "\n".join(get_all_attributes(example_object).keys()))
+                help_marker_with_items(
+                    "Add the text to be displayed on the label. "
+                    "This can be a static string or a formatted string with variables. "
+                    "Valid variables include:",
+                    sorted(get_all_attributes(example_object).keys()))
 
                 changed, user_input = imgui.input_text("##Label Contents", selected_label.label_format)
                 if changed:
